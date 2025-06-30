@@ -5,10 +5,17 @@
  */
 class EM_Widget extends WP_Widget {
 	
-	var $defaults;
+	public $defaults;
+
+	public $em_orderby_options = [
+		'event_start_date,event_start_time,event_name' => 'start date, start time, event name',
+		'event_name,event_start_date,event_start_time' => 'name, start date, start time',
+		'event_name,event_end_date,event_end_time' => 'name, end date, end time',
+		'event_end_date,event_end_time,event_name' => 'end date, end time, event name',
+	];
 	
 	public static function init(){
-		return register_widget("EM_Widget");
+		register_widget("EM_Widget");
 	}
 	
     /** constructor */
@@ -71,7 +78,7 @@ class EM_Widget extends WP_Widget {
 			$instance = $this->get_v6_instance_options($instance);
 	    }
 		//orderby fix for previous versions with old orderby values
-		if( !array_key_exists($instance['orderby'], $this->em_orderby_options) ){
+		if( !array_key_exists($instance['orderby'], $this->em_orderby_options ?? []) ){
 			//replace old values
 			$old_vals = array(
 				'name' => 'event_name',
