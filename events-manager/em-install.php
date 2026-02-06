@@ -825,6 +825,7 @@ function em_add_options() {
 		'dbem_display_calendar_events_limit' => get_option('dbem_full_calendar_events_limit',3),
 		'dbem_display_calendar_events_limit_msg' => __('more...','events-manager'),
 		'dbem_calendar_size' => 'auto',
+		'dbem_calendar_timeslots' => false,
 		'dbem_calendar_direct_links' => 1,
 		'dbem_calendar_preview_mode' => 'modal',
 		'dbem_calendar_preview_mode_date' => 'modal',
@@ -1145,10 +1146,13 @@ function em_upgrade_current_installation(){
 		$data['admin-modals']['review-nudge'] = time() + (DAY_IN_SECONDS * 14);
 		update_site_option('dbem_data', $data);
 	}
-	// temp promo
-	if( time() < 1751659200 && ( version_compare($current_version, '7.0.4', '<') || !empty($data['admin-modals']['review-nudge']) )  ) {
-		$EM_Admin_Notice = new EM_Admin_Notice(array( 'name' => 'promo-popup', 'who' => 'admin', 'where' => 'all', 'raw_output' => true ));
-		EM_Admin_Notices::add($EM_Admin_Notice, is_multisite());
+	// promo - lt
+	if( ( version_compare($current_version, '7.2.2', '<') || !empty($data['admin-modals']['review-nudge']) )  ) {
+		//$EM_Admin_Notice = new EM_Admin_Notice(array( 'name' => 'promo-popup', 'who' => 'admin', 'where' => 'all', 'raw_output' => true ));
+		//EM_Admin_Notices::add($EM_Admin_Notice, is_multisite());
+		if(  empty($data['admin-modals'])  )  $data['admin-modals']  =  array();
+		$data['admin-modals']['promo-popup']  =  true;
+		update_site_option('dbem_data',  $data);
 	}
 	
 	// Check EM Pro update min
@@ -1885,7 +1889,7 @@ function em_upgrade_current_installation(){
 				// Update event_type based on recurrence field
 				$wpdb->query("UPDATE " . EM_EVENTS_TABLE . " SET event_type = 
 		                CASE 
-		                    WHEN event_type IS NOT NULL AND event_type != 'event' THEN event_type
+		                    WHEN event_type IS NOT NULL AND event_type != 'single' THEN event_type
 		                    WHEN recurrence = 1 THEN 'repeating' 
 		                    WHEN recurrence_id IS NOT NULL AND recurrence != 1 THEN 'recurrence' 
 		                    ELSE 'single'
@@ -1958,6 +1962,21 @@ function em_upgrade_current_installation(){
 			$url = 'https://wp-events-plugin.com/blog/2025/09/25/events-manager-7-2-and-pro-3-7-2/';
 			$message = 'Events Manager 7.2 introduces timeslots! Enable this in <a href="'. EM_ADMIN_URL .'&amp;page=events-manager-options#general+general' .'"><em>Events > Settings > General Options</em></a>. <a href="'. $url .'">Learn more</a>';
 			EM_Admin_Notices::add(new EM_Admin_Notice(array( 'name' => 'v-update', 'who' => 'admin', 'what' => 'success', 'where' => 'all', 'message' => $message )), is_multisite());
+		}
+		if ( version_compare( $current_version, '7.2.2.3', '<' ) && version_compare( $current_version, '7', '>' ) ) {
+			// Update event_type based on recurrence field
+			$wpdb->query("UPDATE " . EM_EVENTS_TABLE . " SET event_type = 'repeating' WHERE recurrence = 1 AND recurrence_set_id IS NULL AND event_type = 'single'");
+			if ( $wpdb->rows_affected > 0 ) {
+				$wpdb->query("UPDATE {$wpdb->postmeta} SET meta_value = 'repeating' WHERE meta_key = '_event_type' AND post_id IN ( SELECT post_id FROM " . EM_EVENTS_TABLE . " WHERE event_type = 'repeating')");
+			}
+		}
+		if ( version_compare( $current_version, '7.2.3', '<' ) ) {
+			// update google map infowindow formats as now the title is included in the header
+			foreach ( ['dbem_map_text_format', 'dbem_location_baloon_format'] as $opt ) {
+				$map_balloon = get_option($opt);
+				$map_balloon = str_replace( ['<strong>#_LOCATIONNAME</strong><br />', '<strong>#_LOCATIONNAME</strong>'], '', $map_balloon );
+				update_option($opt, $map_balloon);
+			}
 		}
 		$pro_update = function() {
 			if ( defined('EMP_VERSION') && version_compare( EMP_VERSION, '3.7.2', '<' ) ) {

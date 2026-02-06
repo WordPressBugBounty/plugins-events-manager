@@ -456,7 +456,7 @@ class Recurrence_Set extends EM_Object {
 	 */
 	public function get_timeranges() {
 		if ( empty( $this->timeranges ) ) {
-			$this->timeranges = new Timeranges( 'recurrence_set_' . $this->recurrence_set_id, $this->get_event() );
+			$this->timeranges = new Timeranges( $this->recurrence_set_id ? 'recurrence_set_' . $this->recurrence_set_id : null, $this->get_event() );
 			$this->timeranges->load_timeranges();
 			// change start/end times so they match recurrence set rather than event
 			if ( $this->recurrence_set_id ) {
@@ -465,6 +465,10 @@ class Recurrence_Set extends EM_Object {
 					$this->timeranges = $this->get_event()->get_recurrence_set()->get_timeranges();
 				}
 			}
+		}
+		// double-check we have a group id set in case we just saved this recurrence set
+		if ( $this->timeranges->group_id === null && $this->recurrence_set_id ) {
+			$this->timeranges->set_group_id( 'recurrence_set_' . $this->recurrence_set_id );
 		}
 		return $this->timeranges;
 	}
@@ -663,6 +667,7 @@ class Recurrence_Set extends EM_Object {
 	public function get_post( $_DATA ) {
 		// Check rescheduling options
 		if ( $this->recurrence_set_id ) {
+			$this->reschedule_action = Recurrence_Sets::get_reschedule_action( $_DATA['reschedule']['action'] ?? null ); // excludes will likely hit a default, since they're global actions handled upstream
 			if ( !empty($_DATA['reschedule']['pattern']) ) {
 				$this->reschedule['pattern'] = (bool) wp_verify_nonce( $_DATA['reschedule']['pattern'], 'reschedule-pattern-'. $this->recurrence_set_id );
 			}
@@ -672,8 +677,8 @@ class Recurrence_Set extends EM_Object {
 			if ( !empty($_DATA['reschedule']['times']) ) {
 				$this->reschedule['times'] = (bool) wp_verify_nonce( $_DATA['reschedule']['times'], 'reschedule-times-'. $this->recurrence_set_id );
 				$this->get_timeranges()->allow_edit = $this->reschedule['times'];
+				$this->get_timeranges()->delete_action = $this->reschedule_action;
 			}
-			$this->reschedule_action = Recurrence_Sets::get_reschedule_action( $_DATA['reschedule']['action'] ?? null ); // excludes will likely hit a default, since they're global actions handled upstream
 		} else {
 			// we 'reschedule' i.e. create a new recurrence set
 			$this->reschedule['pattern'] = true;
@@ -712,7 +717,7 @@ class Recurrence_Set extends EM_Object {
 				} else if( $this->recurrence_freq == 'monthly' ){
 					// only new recurrence sets can save monthly byday, daily/yearly already dealt with by interval
 					$this->recurrence_byday = isset($_DATA['recurrence_byday']) ? absint($_DATA['recurrence_byday']) : null;
-					$this->recurrence_byweekno = !empty($_DATA['recurrence_byweekno']) ? absint($_DATA['recurrence_byweekno']) : null;
+					$this->recurrence_byweekno = !empty($_DATA['recurrence_byweekno']) ? (int) $_DATA['recurrence_byweekno'] : null;
 				}
 			}
 		}
@@ -1075,10 +1080,10 @@ class Recurrence_Set extends EM_Object {
 										) );
 									}
 								}
-								// save timeslots if there are any, switch the timerange object event_id
-								if ( $EM_Event->has_timeslots() ) {
-									// Clone timeranges for saving further on (maybe)
-									$EM_Event->get_timeranges()->save( $event );
+								// save timeslots if there are any, switch the timerange object event_id by supplying the $event context
+								if ( $this->get_timeranges()->has_timeslots() ) {
+									// copy delete and edit permissions from this
+									$this->get_timeranges()->save( $event, $this->reschedule_action );
 								}
 							}
 							//insert the metas in one go, faster than one by one
@@ -1174,7 +1179,6 @@ class Recurrence_Set extends EM_Object {
 				'scope' => 'all',
 				'status' => 'everything',
 				'array' => true,
-				'timeslots' => $this->get_event()->has_timeslots(),
 			] );
 
 			// Only process if we have existing events
@@ -1279,6 +1283,10 @@ class Recurrence_Set extends EM_Object {
 		if ( $is_repeating ) {
 			$this->update_recurrence_meta( $meta_inserts );
 		}
+		if ( $this->get_timeranges()->has_timeslots() && !$this->get_timeranges()->allow_edit ) {
+			// update status for timeslots
+			$this->get_timeranges()->set_status( $this->recurrence_status );
+		}
 	}
 
 	/**
@@ -1362,7 +1370,9 @@ class Recurrence_Set extends EM_Object {
 		}
 
 		if ( $this->get_timeranges()->has_timeslots() ) {
-			$this->get_timeranges()->save( $event );
+			if ( $this->get_timeranges()->allow_edit ) {
+				$this->get_timeranges()->save( $event );
+			}
 		}
 
 		// add this to the recurrences, we'd overwrite it if it already exists anyway, if we're rescheduling we'd have cleared earlier stuff
@@ -1679,10 +1689,21 @@ class Recurrence_Set extends EM_Object {
 	}
 
 	/**
+	 * Deletes all
+	 * @return bool
+	 */
+	public function delete() {
+		$this->delete_events();
+		$this->delete_bookings();
+		$this->get_timeranges()->delete();
+		return apply_filters('em_recurrence_set_delete', true, $this );
+	}
+
+	/**
 	 * Removes all recurrences of a recurring event.
 	 * @return null
 	 */
-	function delete_events(){
+	public function delete_events(){
 		global $wpdb;
 		$EM_Event = $this->get_event();
 		if ( $EM_Event ) {
@@ -1725,8 +1746,8 @@ class Recurrence_Set extends EM_Object {
 		foreach ( $this->get_recurrences() as $recurrence ) {
 			$event_id = $recurrence['event_id'];
 			// Delete bookings associated with the event
-			$query = $wpdb->prepare( "DELETE FROM " . EM_BOOKINGS_TABLE . " WHERE event_id = %d", $event_id );
-			if ( false === $wpdb->query( $query ) ) {
+			$EM_Bookings = new EM_Bookings( $event_id );
+			if ( !$EM_Bookings->delete() ) {
 				$this->add_error( esc_html__( 'There was a problem deleting bookings for the event.', 'events-manager' ) );
 				$result = false;
 			}
@@ -1893,6 +1914,8 @@ class Recurrence_Set extends EM_Object {
 				}
 			}
 			$result = ( $result ?? true ) && $wpdb->query( $wpdb->prepare( "UPDATE " . EM_EVENTS_TABLE . " SET event_status=%s WHERE recurrence_set_id = %d", [ $set_status, $this->recurrence_set_id ] ) ) !== false;
+			$timeslot_sql = 'UPDATE ' . EM_EVENT_TIMESLOTS_TABLE . ' SET timeslot_status=%s WHERE event_id IN ( SELECT event_id FROM ' . EM_EVENTS_TABLE . ' WHERE recurrence_set_id = %d )';
+			$result = $result && ( $wpdb->query( $wpdb->prepare( $timeslot_sql, [ $set_status, $this->recurrence_set_id ] ) ) !== false );
 			return apply_filters( 'em_recurrence_set_set_status_recurrences', $result, $status, $this );
 		}
 	}
