@@ -17,11 +17,11 @@ class Events_Manager extends App {
 	}
 
 	public static function get_description() {
-		return __('Integration with Events Manager Plugin', 'events-manager-for-thrive-automator');
+		return __( 'Integration with Events Manager Plugin', 'events-manager-for-thrive-automator' );
 	}
 
 	public static function get_logo() {
-		return trailingslashit(EM_DIR_URI).'includes/images/logo-160x160.png';
+		return trailingslashit( EM_DIR_URI ) . 'includes/images/logo-160x160.png';
 	}
 
 	/**
@@ -31,11 +31,10 @@ class Events_Manager extends App {
 	 * @return bool
 	 */
 	public static function has_access() {
-		return defined('EM_VERSION') && version_compare(EM_VERSION, '6.1.5.1', '>=');
+		return defined( 'EM_VERSION' ) && version_compare( EM_VERSION, '6.1.5.1', '>=' );
 	}
-	
+
 	public static function get_acccess_url() {
 		return 'https://wordpress.org/plugins/events-manager/';
 	}
-	
 }

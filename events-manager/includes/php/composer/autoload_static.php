@@ -4,45 +4,47 @@
 
 namespace Composer\Autoload;
 
-class ComposerStaticInit6b995c8f6749c411b9150fca924cb799
-{
-    public static $files = array (
-        '0e6d7bf4a5811bfa5cf40c5ccd6fae6a' => __DIR__ . '/..' . '/symfony/polyfill-mbstring/bootstrap.php',
-    );
+class ComposerStaticInit6b995c8f6749c411b9150fca924cb799 {
 
-    public static $prefixLengthsPsr4 = array (
-        'l' => 
-        array (
-            'libphonenumber\\' => 15,
-        ),
-        'S' => 
-        array (
-            'Symfony\\Polyfill\\Mbstring\\' => 26,
-        ),
-    );
+	public static $files = array(
+		'0e6d7bf4a5811bfa5cf40c5ccd6fae6a' => __DIR__ . '/..' . '/symfony/polyfill-mbstring/bootstrap.php',
+	);
 
-    public static $prefixDirsPsr4 = array (
-        'libphonenumber\\' => 
-        array (
-            0 => __DIR__ . '/..' . '/giggsey/libphonenumber-for-php-lite/src',
-        ),
-        'Symfony\\Polyfill\\Mbstring\\' => 
-        array (
-            0 => __DIR__ . '/..' . '/symfony/polyfill-mbstring',
-        ),
-    );
+	public static $prefixLengthsPsr4 = array(
+		'l' =>
+		array(
+			'libphonenumber\\' => 15,
+		),
+		'S' =>
+		array(
+			'Symfony\\Polyfill\\Mbstring\\' => 26,
+		),
+	);
 
-    public static $classMap = array (
-        'Composer\\InstalledVersions' => __DIR__ . '/..' . '/composer/InstalledVersions.php',
-    );
+	public static $prefixDirsPsr4 = array(
+		'libphonenumber\\'              =>
+		array(
+			0 => __DIR__ . '/..' . '/giggsey/libphonenumber-for-php-lite/src',
+		),
+		'Symfony\\Polyfill\\Mbstring\\' =>
+		array(
+			0 => __DIR__ . '/..' . '/symfony/polyfill-mbstring',
+		),
+	);
 
-    public static function getInitializer(ClassLoader $loader)
-    {
-        return \Closure::bind(function () use ($loader) {
-            $loader->prefixLengthsPsr4 = ComposerStaticInit6b995c8f6749c411b9150fca924cb799::$prefixLengthsPsr4;
-            $loader->prefixDirsPsr4 = ComposerStaticInit6b995c8f6749c411b9150fca924cb799::$prefixDirsPsr4;
-            $loader->classMap = ComposerStaticInit6b995c8f6749c411b9150fca924cb799::$classMap;
+	public static $classMap = array(
+		'Composer\\InstalledVersions' => __DIR__ . '/..' . '/composer/InstalledVersions.php',
+	);
 
-        }, null, ClassLoader::class);
-    }
+	public static function getInitializer( ClassLoader $loader ) {
+		return \Closure::bind(
+			function () use ( $loader ) {
+				$loader->prefixLengthsPsr4 = ComposerStaticInit6b995c8f6749c411b9150fca924cb799::$prefixLengthsPsr4;
+				$loader->prefixDirsPsr4    = ComposerStaticInit6b995c8f6749c411b9150fca924cb799::$prefixDirsPsr4;
+				$loader->classMap          = ComposerStaticInit6b995c8f6749c411b9150fca924cb799::$classMap;
+			},
+			null,
+			ClassLoader::class
+		);
+	}
 }

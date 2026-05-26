@@ -20,16 +20,16 @@
 			<div class="em-item-meta-line em-location-events">
 				<span class="em-icon-calendar em-icon"></span>
 				<div>
-					<p><?php esc_html_e('Next Event', 'events-manager'); ?></p>
+					<p><?php esc_html_e( 'Next Event', 'events-manager' ); ?></p>
 					<p>#_LOCATIONNEXTEVENT</p>
-					<p><a href="#_LOCATIONURL"><?php esc_html_e('See All', 'events-manager'); ?></a></p>
+					<p><a href="#_LOCATIONURL"><?php esc_html_e( 'See All', 'events-manager' ); ?></a></p>
 				</div>
 			</div>
 			{/has_events}
 			{no_events}
 			<div class="em-item-meta-line em-location-no-events">
 				<span class="em-icon-calendar em-icon"></span>
-				<div><?php esc_html_e('No upcoming events', 'events-manager'); ?></p></div>
+				<div><?php esc_html_e( 'No upcoming events', 'events-manager' ); ?></p></div>
 			</div>
 			{/no_events}
 		</div>

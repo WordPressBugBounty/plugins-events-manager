@@ -14,16 +14,16 @@
 			<div class="em-item-meta-line em-taxonomy-events em-tag-events">
 				<span class="em-icon-calendar em-icon"></span>
 				<div>
-					<p><?php esc_html_e('Next Event', 'events-manager'); ?></p>
+					<p><?php esc_html_e( 'Next Event', 'events-manager' ); ?></p>
 					<p>#_TAGNEXTEVENT</p>
-					<p><a href="#_TAGURL"><?php esc_html_e('See All', 'events-manager'); ?></a></p>
+					<p><a href="#_TAGURL"><?php esc_html_e( 'See All', 'events-manager' ); ?></a></p>
 				</div>
 			</div>
 			{/has_events}
 			{no_events}
 			<div class="em-item-meta-line em-taxonomy-no-events em-tag-no-events">
 				<span class="em-icon-calendar em-icon"></span>
-				<div><?php esc_html_e('No upcoming events', 'events-manager'); ?></p></div>
+				<div><?php esc_html_e( 'No upcoming events', 'events-manager' ); ?></p></div>
 			</div>
 			{/no_events}
 		</div>
@@ -31,7 +31,7 @@
 			#_TAGEXCERPT{25}
 		</div>
 		<div class="em-item-actions input">
-			<a class="em-item-read-more button" href="#_TAGURL"><?php esc_html_e('More Info', 'events-manager'); ?></a>
+			<a class="em-item-read-more button" href="#_TAGURL"><?php esc_html_e( 'More Info', 'events-manager' ); ?></a>
 		</div>
 	</div>
 </div>

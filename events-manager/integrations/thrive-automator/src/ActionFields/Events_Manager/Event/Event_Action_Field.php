@@ -22,7 +22,7 @@ class Event_Action_Field extends Action_Field {
 	public static function get_name() {
 		return 'Event Action Field';
 	}
-	
+
 	public static function get_id() {
 		return 'event_action_field';
 	}
@@ -51,7 +51,7 @@ class Event_Action_Field extends Action_Field {
 	public static function get_type() {
 		return Utils::FIELD_TYPE_TEXT;
 	}
-	
+
 	public static function allow_dynamic_data(): bool {
 		return true;
 	}

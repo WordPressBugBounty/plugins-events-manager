@@ -6,98 +6,97 @@
  * @internal
  */
 
-return  [
-  'generalDesc' =>
-   [
-    'NationalNumberPattern' => '8\\d{3}',
-    'PossibleLength' =>
-     [
-      0 => 4,
-    ],
-  ],
-  'fixedLine' =>
-   [
-    'NationalNumberPattern' => '8\\d{3}',
-    'ExampleNumber' => '8999',
-  ],
-  'mobile' =>
-   [
-    'PossibleLength' =>
-     [
-      0 => -1,
-    ],
-  ],
-  'tollFree' =>
-   [
-    'PossibleLength' =>
-     [
-      0 => -1,
-    ],
-  ],
-  'premiumRate' =>
-   [
-    'PossibleLength' =>
-     [
-      0 => -1,
-    ],
-  ],
-  'sharedCost' =>
-   [
-    'PossibleLength' =>
-     [
-      0 => -1,
-    ],
-  ],
-  'personalNumber' =>
-   [
-    'PossibleLength' =>
-     [
-      0 => -1,
-    ],
-  ],
-  'voip' =>
-   [
-    'PossibleLength' =>
-     [
-      0 => -1,
-    ],
-  ],
-  'pager' =>
-   [
-    'PossibleLength' =>
-     [
-      0 => -1,
-    ],
-  ],
-  'uan' =>
-   [
-    'PossibleLength' =>
-     [
-      0 => -1,
-    ],
-  ],
-  'voicemail' =>
-   [
-    'PossibleLength' =>
-     [
-      0 => -1,
-    ],
-  ],
-  'noInternationalDialling' =>
-   [
-    'PossibleLength' =>
-     [
-      0 => -1,
-    ],
-  ],
-  'id' => 'TA',
-  'countryCode' => 290,
-  'internationalPrefix' => '00',
-  'sameMobileAndFixedLinePattern' => false,
-  'numberFormat' =>
-   [
-  ],
-  'mainCountryForCode' => false,
-  'leadingDigits' => '8',
-  'mobileNumberPortableRegion' => false,
-];
+return array(
+	'generalDesc'                   =>
+	array(
+		'NationalNumberPattern' => '8\\d{3}',
+		'PossibleLength'        =>
+		array(
+			0 => 4,
+		),
+	),
+	'fixedLine'                     =>
+	array(
+		'NationalNumberPattern' => '8\\d{3}',
+		'ExampleNumber'         => '8999',
+	),
+	'mobile'                        =>
+	array(
+		'PossibleLength' =>
+		array(
+			0 => -1,
+		),
+	),
+	'tollFree'                      =>
+	array(
+		'PossibleLength' =>
+		array(
+			0 => -1,
+		),
+	),
+	'premiumRate'                   =>
+	array(
+		'PossibleLength' =>
+		array(
+			0 => -1,
+		),
+	),
+	'sharedCost'                    =>
+	array(
+		'PossibleLength' =>
+		array(
+			0 => -1,
+		),
+	),
+	'personalNumber'                =>
+	array(
+		'PossibleLength' =>
+		array(
+			0 => -1,
+		),
+	),
+	'voip'                          =>
+	array(
+		'PossibleLength' =>
+		array(
+			0 => -1,
+		),
+	),
+	'pager'                         =>
+	array(
+		'PossibleLength' =>
+		array(
+			0 => -1,
+		),
+	),
+	'uan'                           =>
+	array(
+		'PossibleLength' =>
+		array(
+			0 => -1,
+		),
+	),
+	'voicemail'                     =>
+	array(
+		'PossibleLength' =>
+		array(
+			0 => -1,
+		),
+	),
+	'noInternationalDialling'       =>
+	array(
+		'PossibleLength' =>
+		array(
+			0 => -1,
+		),
+	),
+	'id'                            => 'TA',
+	'countryCode'                   => 290,
+	'internationalPrefix'           => '00',
+	'sameMobileAndFixedLinePattern' => false,
+	'numberFormat'                  =>
+	array(),
+	'mainCountryForCode'            => false,
+	'leadingDigits'                 => '8',
+	'mobileNumberPortableRegion'    => false,
+);

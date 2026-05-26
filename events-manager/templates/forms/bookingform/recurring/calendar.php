@@ -7,18 +7,18 @@
 /* @var bool $id */
 ?>
 <?php
-$calendar_args = [
-	'id' => $id,
-	'recurrence' => $EM_Event->get_event_id(),
-	'calendar_size' => 'small',
-	'calendar_event_style' => 'dot',
-	'long_events' => false,
+$calendar_args = array(
+	'id'                    => $id,
+	'recurrence'            => $EM_Event->get_event_id(),
+	'calendar_size'         => 'small',
+	'calendar_event_style'  => 'dot',
+	'long_events'           => false,
 	'calendar_preview_mode' => 'booking',
-	'class' => 'em-booking-calendar',
-	'empty_months' => false,
-	'scope' => 'future',
-	'calendar_header' => 'centered',
-	'calendar_timezone' => $EM_Event->event_timezone,
-	'timeslots' => $EM_Event->has_timeslots(),
-];
+	'class'                 => 'em-booking-calendar',
+	'empty_months'          => false,
+	'scope'                 => 'future',
+	'calendar_header'       => 'centered',
+	'calendar_timezone'     => $EM_Event->event_timezone,
+	'timeslots'             => $EM_Event->has_timeslots(),
+);
 echo EM_Calendar::output( $calendar_args );

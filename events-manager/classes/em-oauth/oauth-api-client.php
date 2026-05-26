@@ -48,7 +48,7 @@ class OAuth_API_Client {
 	 * @var bool
 	 */
 	public $authorized = false;
-	
+
 	/**
 	 * The URL without trailing slash for the API base URL, to which endpoints can be appended to.
 	 * @var string
@@ -78,14 +78,14 @@ class OAuth_API_Client {
 	 * Required by child class unless it overrides the revoke_access_token() method.
 	 * @var string
 	 */
-	public $oauth_revoke_url = 'https://api.oauth.com/revoke';
+	public $oauth_revoke_url     = 'https://api.oauth.com/revoke';
 	public $oauth_authentication = 'parameters';
 	/**
 	 * Whether or not an OAuth Service should pass on the state param for security check
 	 * @var bool
 	 */
 	public $oauth_state = true;
-	
+
 	/**
 	 * Array of request arguments which would be supplied to wp_remote_* functions
 	 * @var array[]
@@ -97,52 +97,52 @@ class OAuth_API_Client {
 	 *
 	 * @throws EM_Exception
 	 */
-	public function __construct(){
+	public function __construct() {
 		// check credentials
 		$creds = array(
-			'id' => EM_Options::get( $this->option_name. '_app_id', '', $this->option_dataset),
-			'secret' => EM_Options::get( $this->option_name. '_app_secret', '', $this->option_dataset)
+			'id'     => EM_Options::get( $this->option_name . '_app_id', '', $this->option_dataset ),
+			'secret' => EM_Options::get( $this->option_name . '_app_secret', '', $this->option_dataset ),
 		);
-		foreach( array('id', 'secret') as $k ){
-			if( !empty($creds[$k]) ){
-				$this->$k = $creds[$k];
-			}elseif( empty($this->$k) ) { // constructors can be overriden to add any of the above
-				throw new EM_Exception( __('OAuth application information incomplete.', 'events-manager'), 'missing_creds' );
+		foreach ( array( 'id', 'secret' ) as $k ) {
+			if ( ! empty( $creds[ $k ] ) ) {
+				$this->$k = $creds[ $k ];
+			} elseif ( empty( $this->$k ) ) { // constructors can be overriden to add any of the above
+				throw new EM_Exception( __( 'OAuth application information incomplete.', 'events-manager' ), 'missing_creds' );
 			}
 		}
-		if( !$this->oauth_refresh_token_url ){
+		if ( ! $this->oauth_refresh_token_url ) {
 			$this->oauth_refresh_token_url = $this->oauth_request_token_url;
 		}
 	}
-	
+
 	/**
 	 * Shortcut for base class properties.
 	 * @param $name
 	 * @return mixed
 	 */
-	public function __get( $name ){
+	public function __get( $name ) {
 		$api = static::get_api_class();
-		if( $name == 'option_name' ){
+		if ( $name == 'option_name' ) {
 			return $api::get_option_name();
-		}elseif( $name == 'option_dataset' ){
+		} elseif ( $name == 'option_dataset' ) {
 			return $api::get_option_dataset();
-		}elseif( $name == 'authorization_scope' ){
+		} elseif ( $name == 'authorization_scope' ) {
 			return $api::get_authorization_scope();
-		}elseif( $name == 'multiple_tokens' ){
+		} elseif ( $name == 'multiple_tokens' ) {
 			return $api::supports_multiple_tokens();
-		}elseif( $name == 'token_class' ){
+		} elseif ( $name == 'token_class' ) {
 			return $api::get_token_class();
 		}
 		return null;
 	}
-	
+
 	/**
 	 * @return OAuth_API
 	 */
-	public static function get_api_class(){
+	public static function get_api_class() {
 		// set default API class name if not defined by parent
-		if( self::$api_class === static::$api_class && class_exists(str_replace('_Client', '', get_called_class())) ){
-			static::$api_class = str_replace('_Client', '', get_called_class());
+		if ( self::$api_class === static::$api_class && class_exists( str_replace( '_Client', '', get_called_class() ) ) ) {
+			static::$api_class = str_replace( '_Client', '', get_called_class() );
 		}
 		return static::$api_class;
 	}
@@ -150,15 +150,15 @@ class OAuth_API_Client {
 	/**
 	 * @return mixed
 	 */
-	public function get_oauth_url(){
-		$scope = is_array($this->scope) ? urlencode(implode('+', $this->scope)) : $this->scope;
-		$state_nonce = wp_create_nonce($this->option_name.'_authorize');
-		$replacements = array( urlencode($this->id), $scope, urlencode(static::get_oauth_callback_url()), $state_nonce );
-		$return = str_replace( array('CLIENT_ID','ACCESS_SCOPE','REDIRECT_URI', 'STATE'), $replacements, $this->oauth_authorize_url );
-		if( $this->oauth_state ){
+	public function get_oauth_url() {
+		$scope        = is_array( $this->scope ) ? urlencode( implode( '+', $this->scope ) ) : $this->scope;
+		$state_nonce  = wp_create_nonce( $this->option_name . '_authorize' );
+		$replacements = array( urlencode( $this->id ), $scope, urlencode( static::get_oauth_callback_url() ), $state_nonce );
+		$return       = str_replace( array( 'CLIENT_ID', 'ACCESS_SCOPE', 'REDIRECT_URI', 'STATE' ), $replacements, $this->oauth_authorize_url );
+		if ( $this->oauth_state ) {
 			// check there's a STATE value in the authorize url, otherwise add it proactively
-			if( !preg_match('/STATE/', $this->oauth_authorize_url) ){
-				$return = add_query_arg('state', $state_nonce, $return);
+			if ( ! preg_match( '/STATE/', $this->oauth_authorize_url ) ) {
+				$return = add_query_arg( 'state', $state_nonce, $return );
 			}
 		}
 		return $return;
@@ -167,26 +167,32 @@ class OAuth_API_Client {
 	/**
 	 * @return string
 	 */
-	public static function get_oauth_callback_url(){
-		$redirect_base_uri = defined('OAUTH_REDIRECT') ? OAUTH_REDIRECT : admin_url('admin-ajax.php'); // you can completely replace the oauth redirect link for testing locally via a proxy for example
-		if( defined('EM_OAUTH_TUNNEL') ){ // for local development or other reasons, you can replace the domain with a tunnel domain, which should be with http(s):// included
-			$redirect_base_uri = str_replace(get_home_url(), EM_OAUTH_TUNNEL, $redirect_base_uri);
+	public static function get_oauth_callback_url() {
+		$redirect_base_uri = defined( 'OAUTH_REDIRECT' ) ? OAUTH_REDIRECT : admin_url( 'admin-ajax.php' ); // you can completely replace the oauth redirect link for testing locally via a proxy for example
+		if ( defined( 'EM_OAUTH_TUNNEL' ) ) { // for local development or other reasons, you can replace the domain with a tunnel domain, which should be with http(s):// included
+			$redirect_base_uri = str_replace( get_home_url(), EM_OAUTH_TUNNEL, $redirect_base_uri );
 		}
-		$api = static::get_api_class();
-		$callback_action = 'em_oauth_'. $api::get_option_name();
-		return add_query_arg(array('action'=>strtolower($callback_action), 'callback'=>'authorize'), $redirect_base_uri);
+		$api             = static::get_api_class();
+		$callback_action = 'em_oauth_' . $api::get_option_name();
+		return add_query_arg(
+			array(
+				'action'   => strtolower( $callback_action ),
+				'callback' => 'authorize',
+			),
+			$redirect_base_uri
+		);
 	}
 
 	/**
 	 * Returns a native client for this service, in the event we want to load an SDK provided by the service.
 	 * @return stdClass
 	 */
-	public function client(){
+	public function client() {
 		return new stdClass();
 	}
-	
+
 	// GET, POST, PUT, PATCH, DELETE functions
-	
+
 	/**
 	 * @param $endpoint
 	 * @param array $request_args
@@ -194,43 +200,48 @@ class OAuth_API_Client {
 	 * @return array
 	 * @throws EM_Exception
 	 */
-	public function http_request( $endpoint, array $request_args = array(), $json_decode = true ){
+	public function http_request( $endpoint, array $request_args = array(), $json_decode = true ) {
 		// clean up whether endpoint or full URL is provided
-		$endpoint = str_replace($this->api_base, '', $endpoint);
+		$endpoint    = str_replace( $this->api_base, '', $endpoint );
 		$request_url = $this->api_base . $endpoint;
 		//$request_url = add_query_arg('access_token', $this->token->access_token, $request_url);
 		// add oauth and method heaeders
 		$request_args = array_merge( $this->default_request_args, $request_args );
-		if( empty($request_args['headers']) ) $request_args['headers'] = array();
-		$request_args['headers']['authorization'] = 'Bearer '.$this->token->access_token;
-		$request_args['method'] = in_array($request_args['method'], array('GET','POST','PUT','PATCH','DELETE')) ? $request_args['method'] : 'GET';
+		if ( empty( $request_args['headers'] ) ) {
+			$request_args['headers'] = array();
+		}
+		$request_args['headers']['authorization'] = 'Bearer ' . $this->token->access_token;
+		$request_args['method']                   = in_array( $request_args['method'], array( 'GET', 'POST', 'PUT', 'PATCH', 'DELETE' ) ) ? $request_args['method'] : 'GET';
 		// prepare JSON format if sending via that content type
-		if( !empty($request_args['headers']['Content-Type']) && $request_args['headers']['Content-Type'] == 'application/json' ){
-			if( !empty($request_args['body']) && (is_array($request_args['body']) || is_object($request_args['body'])) ){
-				$request_args['body'] = json_encode($request_args['body']);
+		if ( ! empty( $request_args['headers']['Content-Type'] ) && $request_args['headers']['Content-Type'] == 'application/json' ) {
+			if ( ! empty( $request_args['body'] ) && ( is_array( $request_args['body'] ) || is_object( $request_args['body'] ) ) ) {
+				$request_args['body'] = json_encode( $request_args['body'] );
 			}
 		}
 		// request and parse
-		$response = wp_remote_request($request_url, $request_args); /* @var \Requests_Response_Headers $response['headers'] */
-		if( is_wp_error($response) ){
-			throw new EM_Exception($response);
-		}elseif( $response['response']['code'] >= 300 ){ //anything not 20x will indicate an issue
-			$errors = json_decode($response['body']);
-			if( is_array($errors) ){
-				$error = current($errors);
-			}elseif( !empty($errors->code) ){
+		$response = wp_remote_request( $request_url, $request_args ); /* @var \Requests_Response_Headers $response['headers'] */
+		if ( is_wp_error( $response ) ) {
+			throw new EM_Exception( $response );
+		} elseif ( $response['response']['code'] >= 300 ) { //anything not 20x will indicate an issue
+			$errors = json_decode( $response['body'] );
+			if ( is_array( $errors ) ) {
+				$error = current( $errors );
+			} elseif ( ! empty( $errors->code ) ) {
 				$error = $errors;
-			}else{
-				$error = (object) array('code' => $response['response']['code'], 'message' => $response['body']);
+			} else {
+				$error = (object) array(
+					'code'    => $response['response']['code'],
+					'message' => $response['body'],
+				);
 			}
-			throw new EM_Exception($error->message, $error->code);
+			throw new EM_Exception( $error->message, $error->code );
 		}
-		if( $json_decode ){
-			$response['body'] = json_decode($response['body']);
+		if ( $json_decode ) {
+			$response['body'] = json_decode( $response['body'] );
 		}
 		return $response;
 	}
-	
+
 	/**
 	 * Fetches event data from the given endpoint with supplied arguments according to Meetup API v3
 	 *
@@ -240,12 +251,12 @@ class OAuth_API_Client {
 	 * @return array
 	 * @throws EM_Exception
 	 */
-	public function get($endpoint, $args = array(), array $request_args = array() ){
-		$request_url = add_query_arg( $args, $this->api_base.$endpoint );
+	public function get( $endpoint, $args = array(), array $request_args = array() ) {
+		$request_url            = add_query_arg( $args, $this->api_base . $endpoint );
 		$request_args['method'] = 'GET';
 		return static::http_request( $request_url, $request_args );
 	}
-	
+
 	/**
 	 * @param $endpoint
 	 * @param array|object $vars
@@ -254,19 +265,21 @@ class OAuth_API_Client {
 	 * @return array|mixed
 	 * @throws EM_Exception
 	 */
-	public function post($endpoint, $vars = array(), array $request_args = array(), $json = false ){
-		if( !empty($vars) || empty($request_args['body']) ) {
+	public function post( $endpoint, $vars = array(), array $request_args = array(), $json = false ) {
+		if ( ! empty( $vars ) || empty( $request_args['body'] ) ) {
 			// if vars supplied and/or no body defined
 			$request_args['body'] = $vars;
 		}
-		$request_args = array_merge(array('method' => 'POST'), $request_args);
-		if( $json ){
-			if( empty($request_args['headers'])) $request_args['headers'] = array();
+		$request_args = array_merge( array( 'method' => 'POST' ), $request_args );
+		if ( $json ) {
+			if ( empty( $request_args['headers'] ) ) {
+				$request_args['headers'] = array();
+			}
 			$request_args['headers']['Content-Type'] = 'application/json';
 		}
-		return static::http_request($endpoint, $request_args, $json);
+		return static::http_request( $endpoint, $request_args, $json );
 	}
-	
+
 	/**
 	 * @param $endpoint
 	 * @param array $vars
@@ -275,11 +288,11 @@ class OAuth_API_Client {
 	 * @return array|mixed
 	 * @throws EM_Exception
 	 */
-	public function patch($endpoint, array $vars = array(), array $request_args = array(), $json = false ){
+	public function patch( $endpoint, array $vars = array(), array $request_args = array(), $json = false ) {
 		$request_args['method'] = 'PATCH';
-		return static::post($endpoint, $vars, $request_args, $json);
+		return static::post( $endpoint, $vars, $request_args, $json );
 	}
-	
+
 	/**
 	 * @param $endpoint
 	 * @param array $vars
@@ -288,11 +301,11 @@ class OAuth_API_Client {
 	 * @return array|mixed
 	 * @throws EM_Exception
 	 */
-	public function put($endpoint, array $vars = array(), array $request_args = array(), $json = false ){
+	public function put( $endpoint, array $vars = array(), array $request_args = array(), $json = false ) {
 		$request_args['method'] = 'PUT';
-		return static::post($endpoint, $vars, $request_args, $json);
+		return static::post( $endpoint, $vars, $request_args, $json );
 	}
-	
+
 	/**
 	 * @param $endpoint
 	 * @param array $args
@@ -300,8 +313,8 @@ class OAuth_API_Client {
 	 * @return array|mixed
 	 * @throws EM_Exception
 	 */
-	public function delete($endpoint, array $args = array(), array $request_args = array() ){
-		$request_url = add_query_arg( $args, $this->api_base.$endpoint );
+	public function delete( $endpoint, array $args = array(), array $request_args = array() ) {
+		$request_url            = add_query_arg( $args, $this->api_base . $endpoint );
 		$request_args['method'] = 'DELETE';
 		return static::http_request( $request_url, $request_args );
 	}
@@ -313,21 +326,25 @@ class OAuth_API_Client {
 	 * @param int $account_id
 	 * @throws EM_Exception
 	 */
-	public function load_token( $account_id = null, $user_id = null ){
-		if( $this->authorization_scope !== 'user' ) $user_id = null; // user id is not relevant
+	public function load_token( $account_id = null, $user_id = null ) {
+		if ( $this->authorization_scope !== 'user' ) {
+			$user_id = null; // user id is not relevant
+		}
 		// return value if already authorized
-		if( $this->authorized && $this->authorized = $user_id.'|'.$account_id && $this->user_id == $user_id && $this->token->id == $account_id) return;
+		if ( $this->authorized && $this->authorized = $user_id . '|' . $account_id && $this->user_id == $user_id && $this->token->id == $account_id ) {
+			return;
+		}
 		// not authorized, re/load token
 		$this->authorized = $this->token = false;
-		$this->user_id = $user_id;
+		$this->user_id    = $user_id;
 		// get token information from user account
 		$this->get_access_token( $account_id );
 		// renew token if expired
 		if ( $this->token->is_expired() ) {
 			// Refresh the token if it's expired and update WP user meta.
 			$this->refresh();
-		}else{
-			$this->authorized = $user_id .'|'. $this->token->id;
+		} else {
+			$this->authorized = $user_id . '|' . $this->token->id;
 		}
 	}
 
@@ -340,24 +357,26 @@ class OAuth_API_Client {
 	 * @var int $user_id
 	 * @throws EM_Exception
 	 */
-	public function request($code, $user_id = null ){
-		if( $this->authorization_scope == 'user' ){
-			$this->user_id = empty($user_id) ? get_current_user_id() : $user_id; // used in $this->save_access_token()
-		}else{
+	public function request( $code, $user_id = null ) {
+		if ( $this->authorization_scope == 'user' ) {
+			$this->user_id = empty( $user_id ) ? get_current_user_id() : $user_id; // used in $this->save_access_token()
+		} else {
 			$this->user_id = null;
 		}
-		$access_token = $this->request_access_token($code);
-		$this->token = new $this->token_class($access_token);
-		if( $this->token->refresh_token === true ) $this->token->refresh_token = false; // if no token was provided, we may be able to obtain it here, otherwise validation will fail upon refresh.
+		$access_token = $this->request_access_token( $code );
+		$this->token  = new $this->token_class( $access_token );
+		if ( $this->token->refresh_token === true ) {
+			$this->token->refresh_token = false; // if no token was provided, we may be able to obtain it here, otherwise validation will fail upon refresh.
+		}
 		// verify the access token so we can establish the id of this account and then save it to user profile
 		$access_token_meta = $this->verify_access_token();
 		// now, check for previous tokens and save to it instead of overwriting (we do this in case ppl reauthorize the same account and get a new token with no refresh_token)
-		if( empty($this->token->id) ){
+		if ( empty( $this->token->id ) ) {
 			$token = $this->token;
-			try{
-				$this->get_access_token($access_token_meta['id']);
+			try {
+				$this->get_access_token( $access_token_meta['id'] );
 				$this->token->refresh( $token->to_array() ); // merge in new token info to old token
-			} catch ( EM_Exception $ex ){
+			} catch ( EM_Exception $ex ) {
 				$this->token = $token; // revert back to new token
 			}
 		}
@@ -369,20 +388,22 @@ class OAuth_API_Client {
 	/**
 	 * @throws EM_Exception
 	 */
-	public function refresh(){
+	public function refresh() {
 		if ( $this->token->refresh_token ) {
-			try{
+			try {
 				$access_token = $this->refresh_access_token();
-				$this->token->refresh($access_token, true);
+				$this->token->refresh( $access_token, true );
 				$this->save_access_token();
-				$this->authorized = $this->user_id .'|'. $this->token->id;
-			}catch( EM_Exception $ex ){
-				throw new EM_Exception( array(
-					$this->option_name.'-error' => sprintf(esc_html__( 'There was an error connecting to %s: %s', 'events-manager' ), $this->service_name, "<code>{$ex->getMessage()}</code>"),
-					$this->option_name.'-token-expired' => $this->reauthorize_error_string()
-				));
+				$this->authorized = $this->user_id . '|' . $this->token->id;
+			} catch ( EM_Exception $ex ) {
+				throw new EM_Exception(
+					array(
+						$this->option_name . '-error' => sprintf( esc_html__( 'There was an error connecting to %1$s: %2$s', 'events-manager' ), $this->service_name, "<code>{$ex->getMessage()}</code>" ),
+						$this->option_name . '-token-expired' => $this->reauthorize_error_string(),
+					)
+				);
 			}
-		}else{
+		} else {
 			throw new EM_Exception( $this->reauthorize_error_string() );
 		}
 	}
@@ -393,11 +414,13 @@ class OAuth_API_Client {
 	 * @return boolean
 	 * @throws EM_Exception
 	 */
-	public function verify( $update_token = true ){
+	public function verify( $update_token = true ) {
 		$access_token_meta = $this->verify_access_token();
 		// refresh current or new token with the meta info and save
 		$updated = $this->token->refresh( $access_token_meta );
-		if( $updated && $update_token ) $this->save_access_token();
+		if ( $updated && $update_token ) {
+			$this->save_access_token();
+		}
 		return true; // if we get here, verification passed.
 	}
 
@@ -405,7 +428,7 @@ class OAuth_API_Client {
 	 * @return boolean
 	 * @throws EM_Exception
 	 */
-	public function revoke(){
+	public function revoke() {
 		return $this->revoke_access_token();
 	}
 
@@ -419,14 +442,14 @@ class OAuth_API_Client {
 	 * @return array
 	 * @throws EM_Exception
 	 */
-	public function request_access_token( $code ){
+	public function request_access_token( $code ) {
 		$args = array(
 			'body' => array(
-				'client_id' => $this->id,
-				'grant_type' => 'authorization_code',
+				'client_id'    => $this->id,
+				'grant_type'   => 'authorization_code',
 				'redirect_uri' => static::get_oauth_callback_url(),
-				'code' => $code
-			)
+				'code'         => $code,
+			),
 		);
 		return $this->oauth_request( 'post', $this->oauth_request_token_url, $args );
 	}
@@ -435,14 +458,14 @@ class OAuth_API_Client {
 	 * @return array
 	 * @throws EM_Exception
 	 */
-	public function refresh_access_token(){
+	public function refresh_access_token() {
 		$args = array(
 			'body' => array(
-				'grant_type' => 'refresh_token',
+				'grant_type'    => 'refresh_token',
 				'refresh_token' => $this->token->refresh_token,
-			)
+			),
 		);
-		return $this->oauth_request('post', $this->oauth_refresh_token_url, $args);
+		return $this->oauth_request( 'post', $this->oauth_refresh_token_url, $args );
 	}
 
 	/**
@@ -453,12 +476,12 @@ class OAuth_API_Client {
 	 * @return array
 	 * @throws EM_Exception
 	 */
-	public function verify_access_token(){
-		if( preg_match('/ACCESS_TOKEN/', $this->oauth_verification_url) ){
-			$request_url = str_replace('ACCESS_TOKEN', $this->token->access_token, $this->oauth_verification_url);
-			$access_token = $this->oauth_request('get', $request_url);
-		}else{
-			$response = $this->get($this->oauth_verification_url);
+	public function verify_access_token() {
+		if ( preg_match( '/ACCESS_TOKEN/', $this->oauth_verification_url ) ) {
+			$request_url  = str_replace( 'ACCESS_TOKEN', $this->token->access_token, $this->oauth_verification_url );
+			$access_token = $this->oauth_request( 'get', $request_url );
+		} else {
+			$response     = $this->get( $this->oauth_verification_url );
 			$access_token = (array) $response['body'];
 		}
 		return $access_token; // we may want to override this depending on what's returned
@@ -470,22 +493,24 @@ class OAuth_API_Client {
 	 * @return bool
 	 * @throws EM_Exception
 	 */
-	public function revoke_access_token(){
-		if( empty($this->oauth_revoke_url) ) return false;
-		if( preg_match('/ACCESS_TOKEN/', $this->oauth_revoke_url) ){
-			$request_url = str_replace('ACCESS_TOKEN', $this->token->access_token, $this->oauth_revoke_url);
-			$result = $this->oauth_request('get', $request_url);
-		}else{
+	public function revoke_access_token() {
+		if ( empty( $this->oauth_revoke_url ) ) {
+			return false;
+		}
+		if ( preg_match( '/ACCESS_TOKEN/', $this->oauth_revoke_url ) ) {
+			$request_url = str_replace( 'ACCESS_TOKEN', $this->token->access_token, $this->oauth_revoke_url );
+			$result      = $this->oauth_request( 'get', $request_url );
+		} else {
 			$request_args = array(
 				'body' => array(
-					'token' => $this->token->access_token
-				)
+					'token' => $this->token->access_token,
+				),
 			);
-			$result = $this->oauth_request('post', $this->oauth_revoke_url, $request_args);
+			$result       = $this->oauth_request( 'post', $this->oauth_revoke_url, $request_args );
 		}
 		return $result;
 	}
-	
+
 	/**
 	 * @param string $method
 	 * @param $request_url
@@ -493,59 +518,65 @@ class OAuth_API_Client {
 	 * @return mixed
 	 * @throws EM_Exception
 	 */
-	public function oauth_request($method, $request_url, $args = array() ){
-		$args = array_merge( array('headers' => array(), 'body' => array()), $args );
-		if( $this->oauth_authentication == 'basic' ){
-			$args['headers']['authorization'] = 'Basic '.base64_encode($this->id.':'.$this->secret);
+	public function oauth_request( $method, $request_url, $args = array() ) {
+		$args = array_merge(
+			array(
+				'headers' => array(),
+				'body'    => array(),
+			),
+			$args
+		);
+		if ( $this->oauth_authentication == 'basic' ) {
+			$args['headers']['authorization'] = 'Basic ' . base64_encode( $this->id . ':' . $this->secret );
 		}
-		if( $method === 'get'){
-			if( $this->oauth_authentication == 'parameters' ){
+		if ( $method === 'get' ) {
+			if ( $this->oauth_authentication == 'parameters' ) {
 				// add client params to URL if using get
-				$request_url = add_query_arg( array('client_id' => $this->id), $request_url );
+				$request_url = add_query_arg( array( 'client_id' => $this->id ), $request_url );
 			}
-			$response = wp_remote_get($request_url, $args);
-		}elseif( $method === 'post' ){
-			if( $this->oauth_authentication == 'parameters' ){
+			$response = wp_remote_get( $request_url, $args );
+		} elseif ( $method === 'post' ) {
+			if ( $this->oauth_authentication == 'parameters' ) {
 				// add auth params to body if using post
-				$args['body']['client_id'] = $this->id;
+				$args['body']['client_id']     = $this->id;
 				$args['body']['client_secret'] = $this->secret;
 			}
-			if( empty($args['Content-Type'])){
+			if ( empty( $args['Content-Type'] ) ) {
 				// by defaulut post will send this content type
 				$args['headers']['Content-Type'] = 'application/x-www-form-urlencoded';
 			}
-			$response = wp_remote_post($request_url, $args);
-		}else{
-			throw new EM_Exception('Unknown request method.');
+			$response = wp_remote_post( $request_url, $args );
+		} else {
+			throw new EM_Exception( 'Unknown request method.' );
 		}
-		if( is_wp_error($response) ){
-			throw new EM_Exception($response->get_error_messages());
-		}elseif( $response['response']['code'] != '200' ){
-			$errors = json_decode($response['body']);
-			if( is_array($errors) ){
-				$error = current($errors);
-			}elseif( is_object($errors) ){
+		if ( is_wp_error( $response ) ) {
+			throw new EM_Exception( $response->get_error_messages() );
+		} elseif ( $response['response']['code'] != '200' ) {
+			$errors = json_decode( $response['body'] );
+			if ( is_array( $errors ) ) {
+				$error = current( $errors );
+			} elseif ( is_object( $errors ) ) {
 				$error = $errors;
-			}else{
+			} else {
 				$error = "Unknown error occurred with status {$response['response']['code']} - {$response['response']['message']}";
 			}
-			if( !empty($error->message) ){
+			if ( ! empty( $error->message ) ) {
 				$message = $error->message;
-			}elseif( !empty($error->error) ){
+			} elseif ( ! empty( $error->error ) ) {
 				$message = $error->error;
-			}elseif( !empty($error->reason) ){
+			} elseif ( ! empty( $error->reason ) ) {
 				$message = $error->reason;
-			}elseif( is_string($error) ){
+			} elseif ( is_string( $error ) ) {
 				$message = $error;
-			}elseif( is_string($errors) ){
+			} elseif ( is_string( $errors ) ) {
 				$message = $errors;
-			}else{
-				$message = var_export($errors);
+			} else {
+				$message = var_export( $errors );
 			}
-			$error_code = !empty($error->code) ? $error->code : 'oauth-error';
-			throw new EM_Exception($message, $error_code);
+			$error_code = ! empty( $error->code ) ? $error->code : 'oauth-error';
+			throw new EM_Exception( $message, $error_code );
 		}
-		return json_decode($response['body'], true); // we may want to override this depending on what's returned
+		return json_decode( $response['body'], true ); // we may want to override this depending on what's returned
 	}
 
 	/* END OVERRIDABLE FUNCTIONS */
@@ -554,15 +585,15 @@ class OAuth_API_Client {
 	 * @param int $api_user_id
 	 * @return string
 	 */
-	public function reauthorize_error_string($api_user_id = 0 ){
-		$settings_page_url = '<a href="'.admin_url('admin.php?page=events-manager-options').'">'. esc_html__('settings page', 'events-manager-google').'</a>';
-		if( !$api_user_id && !empty($this->token->id) ){
-			$api_user_id = !empty($this->token->email) ? $this->token->email : $this->token->id;
+	public function reauthorize_error_string( $api_user_id = 0 ) {
+		$settings_page_url = '<a href="' . admin_url( 'admin.php?page=events-manager-options' ) . '">' . esc_html__( 'settings page', 'events-manager-google' ) . '</a>';
+		if ( ! $api_user_id && ! empty( $this->token->id ) ) {
+			$api_user_id = ! empty( $this->token->email ) ? $this->token->email : $this->token->id;
 		}
-		if( $api_user_id ){
-			return sprintf(__('You need to reauthorize access to account %s by visiting the %s page.', 'events-manager-google'), $api_user_id, $settings_page_url);
+		if ( $api_user_id ) {
+			return sprintf( __( 'You need to reauthorize access to account %1$s by visiting the %2$s page.', 'events-manager-google' ), $api_user_id, $settings_page_url );
 		}
-		return sprintf(__('You need to authorize access to your %s account by visiting the %s page.', 'events-manager-google'), $this->service_name, $settings_page_url);
+		return sprintf( __( 'You need to authorize access to your %1$s account by visiting the %2$s page.', 'events-manager-google' ), $this->service_name, $settings_page_url );
 	}
 
 	/**
@@ -572,57 +603,63 @@ class OAuth_API_Client {
 	 * @return OAuth_API_Token
 	 * @throws EM_Exception
 	 */
-	public function get_access_token( $api_user_id = 0 ){
-		if( $this->authorization_scope == 'site' ){
-			$site_tokens = EM_Options::get($this->option_name.'_token', array(), $this->option_dataset);
-			if( !empty($site_tokens) ){
-				if( $this->multiple_tokens && !empty($api_user_id) && !empty($site_tokens[$api_user_id]) ){
-					$token_data = $site_tokens[$api_user_id];
+	public function get_access_token( $api_user_id = 0 ) {
+		if ( $this->authorization_scope == 'site' ) {
+			$site_tokens = EM_Options::get( $this->option_name . '_token', array(), $this->option_dataset );
+			if ( ! empty( $site_tokens ) ) {
+				if ( $this->multiple_tokens && ! empty( $api_user_id ) && ! empty( $site_tokens[ $api_user_id ] ) ) {
+					$token_data       = $site_tokens[ $api_user_id ];
 					$token_data['id'] = $api_user_id;
-				}else{
-					$token_data = current($site_tokens);
-					$token_data['id'] = key($site_tokens);
+				} else {
+					$token_data       = current( $site_tokens );
+					$token_data['id'] = key( $site_tokens );
 				}
 			}
-		}elseif( $this->authorization_scope == 'user' ){
-			$user_tokens = get_user_meta( $this->user_id, $this->option_dataset.'_'.$this->option_name, true );
-			if( !empty($user_tokens) ){
-				if( $api_user_id ){
-					if( !empty($user_tokens[$api_user_id]) ){
-						$token_data = $user_tokens[$api_user_id];
+		} elseif ( $this->authorization_scope == 'user' ) {
+			$user_tokens = get_user_meta( $this->user_id, $this->option_dataset . '_' . $this->option_name, true );
+			if ( ! empty( $user_tokens ) ) {
+				if ( $api_user_id ) {
+					if ( ! empty( $user_tokens[ $api_user_id ] ) ) {
+						$token_data       = $user_tokens[ $api_user_id ];
 						$token_data['id'] = $api_user_id;
 					}
-				}elseif( !empty($user_tokens) ){
-					$token_data = current($user_tokens);
-					$token_data['id'] = key($user_tokens);
+				} elseif ( ! empty( $user_tokens ) ) {
+					$token_data       = current( $user_tokens );
+					$token_data['id'] = key( $user_tokens );
 				}
 			}
 		}
-		if( empty($token_data) ) throw new EM_Exception( $this->reauthorize_error_string($api_user_id) );
-		$this->token = new $this->token_class($token_data);
+		if ( empty( $token_data ) ) {
+			throw new EM_Exception( $this->reauthorize_error_string( $api_user_id ) );
+		}
+		$this->token = new $this->token_class( $token_data );
 		return $this->token;
 	}
 
 	/**
 	 * Sets the access token to the user meta storage where all connected accounts for the user of that token are stored.
 	 */
-	public function save_access_token(){
-		if( $this->authorization_scope == 'site' ){
+	public function save_access_token() {
+		if ( $this->authorization_scope == 'site' ) {
 			$token = $this->token->to_array();
-			if( $this->multiple_tokens ){
-				$site_tokens = EM_Options::get($this->option_name.'_token', array(), $this->option_dataset);
+			if ( $this->multiple_tokens ) {
+				$site_tokens = EM_Options::get( $this->option_name . '_token', array(), $this->option_dataset );
 			}
-			if( empty($site_tokens) ) $site_tokens = array();
-			$site_tokens[$this->token->id] = $token;
-			EM_Options::set($this->option_name.'_token', $site_tokens, $this->option_dataset);
-		}elseif( $this->authorization_scope == 'user' ){
-			if( $this->multiple_tokens ){
-				$user_tokens = get_user_meta($this->user_id, $this->option_dataset.'_'.$this->option_name, true);
+			if ( empty( $site_tokens ) ) {
+				$site_tokens = array();
 			}
-			if( empty($user_tokens) ) $user_tokens = array();
-			$token = $this->token->to_array();
-			$user_tokens[$this->token->id] = $token;
-			update_user_meta($this->user_id, $this->option_dataset.'_'.$this->option_name, $user_tokens);
+			$site_tokens[ $this->token->id ] = $token;
+			EM_Options::set( $this->option_name . '_token', $site_tokens, $this->option_dataset );
+		} elseif ( $this->authorization_scope == 'user' ) {
+			if ( $this->multiple_tokens ) {
+				$user_tokens = get_user_meta( $this->user_id, $this->option_dataset . '_' . $this->option_name, true );
+			}
+			if ( empty( $user_tokens ) ) {
+				$user_tokens = array();
+			}
+			$token                           = $this->token->to_array();
+			$user_tokens[ $this->token->id ] = $token;
+			update_user_meta( $this->user_id, $this->option_dataset . '_' . $this->option_name, $user_tokens );
 		}
 	}
 }

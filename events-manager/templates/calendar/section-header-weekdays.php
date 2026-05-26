@@ -6,22 +6,22 @@
 <section class="em-cal-head em-cal-week-days em-cal-days size-large">
 	<?php
 	$i = 0;
-	foreach( $calendar['row_headers_large'] as $header ){
+	foreach ( $calendar['row_headers_large'] as $header ) {
 		?>
 		<div class="em-cal-day em-cal-col-<?php echo $i; ?>"><?php echo $header; ?></div>
 		<?php
-		$i++;
+		++$i;
 	}
 	?>
 </section>
 <section class="em-cal-head em-cal-week-days em-cal-days size-small size-medium">
 	<?php
 	$i = 0;
-	foreach( $calendar['row_headers_small'] as $header ){
+	foreach ( $calendar['row_headers_small'] as $header ) {
 		?>
 		<div class="em-cal-day em-cal-col-<?php echo $i; ?>"><?php echo $header; ?></div>
 		<?php
-		$i++;
+		++$i;
 	}
 	?>
 </section>

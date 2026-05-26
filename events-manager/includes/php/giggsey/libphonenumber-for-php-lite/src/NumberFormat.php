@@ -9,244 +9,219 @@ namespace libphonenumber;
  * @interal
  * @phpstan-type NumberFormatArray array{pattern:string|null,format:string|null,leadingDigitsPatterns:array<string>,nationalPrefixFormattingRule?:string,domesticCarrierCodeFormattingRule?:string,nationalPrefixOptionalWhenFormatting?:bool}
  */
-class NumberFormat
-{
-    protected ?string $pattern;
-    protected bool $hasPattern = false;
-    protected ?string $format;
-    protected bool $hasFormat = false;
-    /**
-     * @var array<string>
-     */
-    protected array $leadingDigitsPattern = [];
-    protected string $nationalPrefixFormattingRule = '';
-    protected bool $hasNationalPrefixFormattingRule = false;
-    protected bool $nationalPrefixOptionalWhenFormatting = false;
-    protected bool $hasNationalPrefixOptionalWhenFormatting = false;
-    protected string $domesticCarrierCodeFormattingRule = '';
-    protected bool $hasDomesticCarrierCodeFormattingRule = false;
+class NumberFormat {
 
-    public function __construct()
-    {
-        $this->clear();
-    }
+	protected ?string $pattern;
+	protected bool $hasPattern = false;
+	protected ?string $format;
+	protected bool $hasFormat = false;
+	/**
+	 * @var array<string>
+	 */
+	protected array $leadingDigitsPattern                   = array();
+	protected string $nationalPrefixFormattingRule          = '';
+	protected bool $hasNationalPrefixFormattingRule         = false;
+	protected bool $nationalPrefixOptionalWhenFormatting    = false;
+	protected bool $hasNationalPrefixOptionalWhenFormatting = false;
+	protected string $domesticCarrierCodeFormattingRule     = '';
+	protected bool $hasDomesticCarrierCodeFormattingRule    = false;
 
-    /**
-     * @return NumberFormat
-     */
-    public function clear(): NumberFormat
-    {
-        $this->hasPattern = false;
-        $this->pattern = null;
+	public function __construct() {
+		$this->clear();
+	}
 
-        $this->hasFormat = false;
-        $this->format = null;
+	/**
+	 * @return NumberFormat
+	 */
+	public function clear(): NumberFormat {
+		$this->hasPattern = false;
+		$this->pattern    = null;
 
-        $this->leadingDigitsPattern = [];
+		$this->hasFormat = false;
+		$this->format    = null;
 
-        $this->hasNationalPrefixFormattingRule = false;
-        $this->nationalPrefixFormattingRule = '';
+		$this->leadingDigitsPattern = array();
 
-        $this->hasNationalPrefixOptionalWhenFormatting = false;
-        $this->nationalPrefixOptionalWhenFormatting = false;
+		$this->hasNationalPrefixFormattingRule = false;
+		$this->nationalPrefixFormattingRule    = '';
 
-        $this->hasDomesticCarrierCodeFormattingRule = false;
-        $this->domesticCarrierCodeFormattingRule = '';
+		$this->hasNationalPrefixOptionalWhenFormatting = false;
+		$this->nationalPrefixOptionalWhenFormatting    = false;
 
-        return $this;
-    }
+		$this->hasDomesticCarrierCodeFormattingRule = false;
+		$this->domesticCarrierCodeFormattingRule    = '';
 
-    public function hasPattern(): bool
-    {
-        return $this->hasPattern;
-    }
+		return $this;
+	}
 
-    public function getPattern(): ?string
-    {
-        return $this->pattern;
-    }
+	public function hasPattern(): bool {
+		return $this->hasPattern;
+	}
 
-    public function setPattern(string $value): NumberFormat
-    {
-        $this->hasPattern = true;
-        $this->pattern = $value;
+	public function getPattern(): ?string {
+		return $this->pattern;
+	}
 
-        return $this;
-    }
+	public function setPattern( string $value ): NumberFormat {
+		$this->hasPattern = true;
+		$this->pattern    = $value;
 
-    public function hasNationalPrefixOptionalWhenFormatting(): bool
-    {
-        return $this->hasNationalPrefixOptionalWhenFormatting;
-    }
+		return $this;
+	}
 
-    public function getNationalPrefixOptionalWhenFormatting(): bool
-    {
-        return $this->nationalPrefixOptionalWhenFormatting;
-    }
+	public function hasNationalPrefixOptionalWhenFormatting(): bool {
+		return $this->hasNationalPrefixOptionalWhenFormatting;
+	}
 
-    public function setNationalPrefixOptionalWhenFormatting(bool $nationalPrefixOptionalWhenFormatting): void
-    {
-        $this->hasNationalPrefixOptionalWhenFormatting = true;
-        $this->nationalPrefixOptionalWhenFormatting = $nationalPrefixOptionalWhenFormatting;
-    }
+	public function getNationalPrefixOptionalWhenFormatting(): bool {
+		return $this->nationalPrefixOptionalWhenFormatting;
+	}
 
-    public function hasFormat(): bool
-    {
-        return $this->hasFormat;
-    }
+	public function setNationalPrefixOptionalWhenFormatting( bool $nationalPrefixOptionalWhenFormatting ): void {
+		$this->hasNationalPrefixOptionalWhenFormatting = true;
+		$this->nationalPrefixOptionalWhenFormatting    = $nationalPrefixOptionalWhenFormatting;
+	}
 
-    public function getFormat(): ?string
-    {
-        return $this->format;
-    }
+	public function hasFormat(): bool {
+		return $this->hasFormat;
+	}
 
-    public function setFormat(string $value): NumberFormat
-    {
-        $this->hasFormat = true;
-        $this->format = $value;
+	public function getFormat(): ?string {
+		return $this->format;
+	}
 
-        return $this;
-    }
+	public function setFormat( string $value ): NumberFormat {
+		$this->hasFormat = true;
+		$this->format    = $value;
 
-    /**
-     * @return string[]
-     */
-    public function leadingDigitPatterns(): array
-    {
-        return $this->leadingDigitsPattern;
-    }
+		return $this;
+	}
 
-    public function leadingDigitsPatternSize(): int
-    {
-        return count($this->leadingDigitsPattern);
-    }
+	/**
+	 * @return string[]
+	 */
+	public function leadingDigitPatterns(): array {
+		return $this->leadingDigitsPattern;
+	}
 
-    public function getLeadingDigitsPattern(int $index): string
-    {
-        return $this->leadingDigitsPattern[$index];
-    }
+	public function leadingDigitsPatternSize(): int {
+		return count( $this->leadingDigitsPattern );
+	}
 
-    public function addLeadingDigitsPattern(string $value): NumberFormat
-    {
-        $this->leadingDigitsPattern[] = $value;
+	public function getLeadingDigitsPattern( int $index ): string {
+		return $this->leadingDigitsPattern[ $index ];
+	}
 
-        return $this;
-    }
+	public function addLeadingDigitsPattern( string $value ): NumberFormat {
+		$this->leadingDigitsPattern[] = $value;
 
-    public function hasNationalPrefixFormattingRule(): bool
-    {
-        return $this->hasNationalPrefixFormattingRule;
-    }
+		return $this;
+	}
 
-    public function getNationalPrefixFormattingRule(): string
-    {
-        return $this->nationalPrefixFormattingRule;
-    }
+	public function hasNationalPrefixFormattingRule(): bool {
+		return $this->hasNationalPrefixFormattingRule;
+	}
 
-    public function setNationalPrefixFormattingRule(string $value): NumberFormat
-    {
-        $this->hasNationalPrefixFormattingRule = true;
-        $this->nationalPrefixFormattingRule = $value;
+	public function getNationalPrefixFormattingRule(): string {
+		return $this->nationalPrefixFormattingRule;
+	}
 
-        return $this;
-    }
+	public function setNationalPrefixFormattingRule( string $value ): NumberFormat {
+		$this->hasNationalPrefixFormattingRule = true;
+		$this->nationalPrefixFormattingRule    = $value;
 
-    public function clearNationalPrefixFormattingRule(): NumberFormat
-    {
-        $this->nationalPrefixFormattingRule = '';
+		return $this;
+	}
 
-        return $this;
-    }
+	public function clearNationalPrefixFormattingRule(): NumberFormat {
+		$this->nationalPrefixFormattingRule = '';
 
-    public function hasDomesticCarrierCodeFormattingRule(): bool
-    {
-        return $this->hasDomesticCarrierCodeFormattingRule;
-    }
+		return $this;
+	}
 
-    public function getDomesticCarrierCodeFormattingRule(): string
-    {
-        return $this->domesticCarrierCodeFormattingRule;
-    }
+	public function hasDomesticCarrierCodeFormattingRule(): bool {
+		return $this->hasDomesticCarrierCodeFormattingRule;
+	}
 
-    public function setDomesticCarrierCodeFormattingRule(string $value): NumberFormat
-    {
-        $this->hasDomesticCarrierCodeFormattingRule = true;
-        $this->domesticCarrierCodeFormattingRule = $value;
+	public function getDomesticCarrierCodeFormattingRule(): string {
+		return $this->domesticCarrierCodeFormattingRule;
+	}
 
-        return $this;
-    }
+	public function setDomesticCarrierCodeFormattingRule( string $value ): NumberFormat {
+		$this->hasDomesticCarrierCodeFormattingRule = true;
+		$this->domesticCarrierCodeFormattingRule    = $value;
 
-    public function mergeFrom(NumberFormat $other): NumberFormat
-    {
-        if ($other->hasPattern()) {
-            $this->setPattern($other->getPattern());
-        }
-        if ($other->hasFormat()) {
-            $this->setFormat($other->getFormat());
-        }
-        $leadingDigitsPatternSize = $other->leadingDigitsPatternSize();
-        for ($i = 0; $i < $leadingDigitsPatternSize; $i++) {
-            $this->addLeadingDigitsPattern($other->getLeadingDigitsPattern($i));
-        }
-        if ($other->hasNationalPrefixFormattingRule()) {
-            $this->setNationalPrefixFormattingRule($other->getNationalPrefixFormattingRule());
-        }
-        if ($other->hasDomesticCarrierCodeFormattingRule()) {
-            $this->setDomesticCarrierCodeFormattingRule($other->getDomesticCarrierCodeFormattingRule());
-        }
-        if ($other->hasNationalPrefixOptionalWhenFormatting()) {
-            $this->setNationalPrefixOptionalWhenFormatting($other->getNationalPrefixOptionalWhenFormatting());
-        }
+		return $this;
+	}
 
-        return $this;
-    }
+	public function mergeFrom( NumberFormat $other ): NumberFormat {
+		if ( $other->hasPattern() ) {
+			$this->setPattern( $other->getPattern() );
+		}
+		if ( $other->hasFormat() ) {
+			$this->setFormat( $other->getFormat() );
+		}
+		$leadingDigitsPatternSize = $other->leadingDigitsPatternSize();
+		for ( $i = 0; $i < $leadingDigitsPatternSize; $i++ ) {
+			$this->addLeadingDigitsPattern( $other->getLeadingDigitsPattern( $i ) );
+		}
+		if ( $other->hasNationalPrefixFormattingRule() ) {
+			$this->setNationalPrefixFormattingRule( $other->getNationalPrefixFormattingRule() );
+		}
+		if ( $other->hasDomesticCarrierCodeFormattingRule() ) {
+			$this->setDomesticCarrierCodeFormattingRule( $other->getDomesticCarrierCodeFormattingRule() );
+		}
+		if ( $other->hasNationalPrefixOptionalWhenFormatting() ) {
+			$this->setNationalPrefixOptionalWhenFormatting( $other->getNationalPrefixOptionalWhenFormatting() );
+		}
 
-    /**
-     * @return NumberFormatArray
-     */
-    public function toArray(): array
-    {
-        $output = [];
-        $output['pattern'] = $this->getPattern();
-        $output['format'] = $this->getFormat();
+		return $this;
+	}
 
-        $output['leadingDigitsPatterns'] = $this->leadingDigitPatterns();
+	/**
+	 * @return NumberFormatArray
+	 */
+	public function toArray(): array {
+		$output            = array();
+		$output['pattern'] = $this->getPattern();
+		$output['format']  = $this->getFormat();
 
-        if ($this->hasNationalPrefixFormattingRule()) {
-            $output['nationalPrefixFormattingRule'] = $this->getNationalPrefixFormattingRule();
-        }
+		$output['leadingDigitsPatterns'] = $this->leadingDigitPatterns();
 
-        if ($this->hasDomesticCarrierCodeFormattingRule()) {
-            $output['domesticCarrierCodeFormattingRule'] = $this->getDomesticCarrierCodeFormattingRule();
-        }
+		if ( $this->hasNationalPrefixFormattingRule() ) {
+			$output['nationalPrefixFormattingRule'] = $this->getNationalPrefixFormattingRule();
+		}
 
-        if ($this->hasNationalPrefixOptionalWhenFormatting()) {
-            $output['nationalPrefixOptionalWhenFormatting'] = $this->getNationalPrefixOptionalWhenFormatting();
-        }
+		if ( $this->hasDomesticCarrierCodeFormattingRule() ) {
+			$output['domesticCarrierCodeFormattingRule'] = $this->getDomesticCarrierCodeFormattingRule();
+		}
 
-        return $output;
-    }
+		if ( $this->hasNationalPrefixOptionalWhenFormatting() ) {
+			$output['nationalPrefixOptionalWhenFormatting'] = $this->getNationalPrefixOptionalWhenFormatting();
+		}
 
-    /**
-     * @param NumberFormatArray $input
-     */
-    public function fromArray(array $input): void
-    {
-        $this->setPattern($input['pattern']);
-        $this->setFormat($input['format']);
-        foreach ($input['leadingDigitsPatterns'] as $leadingDigitsPattern) {
-            $this->addLeadingDigitsPattern($leadingDigitsPattern);
-        }
+		return $output;
+	}
 
-        if (isset($input['nationalPrefixFormattingRule']) && $input['nationalPrefixFormattingRule'] !== '') {
-            $this->setNationalPrefixFormattingRule($input['nationalPrefixFormattingRule']);
-        }
-        if (isset($input['domesticCarrierCodeFormattingRule']) && $input['domesticCarrierCodeFormattingRule'] !== '') {
-            $this->setDomesticCarrierCodeFormattingRule($input['domesticCarrierCodeFormattingRule']);
-        }
+	/**
+	 * @param NumberFormatArray $input
+	 */
+	public function fromArray( array $input ): void {
+		$this->setPattern( $input['pattern'] );
+		$this->setFormat( $input['format'] );
+		foreach ( $input['leadingDigitsPatterns'] as $leadingDigitsPattern ) {
+			$this->addLeadingDigitsPattern( $leadingDigitsPattern );
+		}
 
-        if (isset($input['nationalPrefixOptionalWhenFormatting'])) {
-            $this->setNationalPrefixOptionalWhenFormatting($input['nationalPrefixOptionalWhenFormatting']);
-        }
-    }
+		if ( isset( $input['nationalPrefixFormattingRule'] ) && $input['nationalPrefixFormattingRule'] !== '' ) {
+			$this->setNationalPrefixFormattingRule( $input['nationalPrefixFormattingRule'] );
+		}
+		if ( isset( $input['domesticCarrierCodeFormattingRule'] ) && $input['domesticCarrierCodeFormattingRule'] !== '' ) {
+			$this->setDomesticCarrierCodeFormattingRule( $input['domesticCarrierCodeFormattingRule'] );
+		}
+
+		if ( isset( $input['nationalPrefixOptionalWhenFormatting'] ) ) {
+			$this->setNationalPrefixOptionalWhenFormatting( $input['nationalPrefixOptionalWhenFormatting'] );
+		}
+	}
 }

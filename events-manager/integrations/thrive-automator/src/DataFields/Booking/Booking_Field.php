@@ -12,13 +12,13 @@ class Booking_Field extends Data_Field {
 	public static function get_id() {
 		return 'em_booking';
 	}
-	
+
 	/**
 	 * Array of filters that are supported by the field
 	 * @return array
 	 */
 	public static function get_supported_filters() {
-		return [];
+		return array();
 	}
 
 	public static function get_name() {
@@ -36,13 +36,13 @@ class Booking_Field extends Data_Field {
 	public static function get_dummy_value() {
 		return '1';
 	}
-	
+
 	/**
 	 * We plan attach this data field to the em_booking_data object
 	 * @return string[]
 	 */
 	public static function get_compatible_data_objects() {
-		return [ 'em_booking_data' ];
+		return array( 'em_booking_data' );
 	}
 
 	/**
@@ -62,16 +62,16 @@ class Booking_Field extends Data_Field {
 			} elseif ( is_numeric( $raw_data ) ) {
 				$EM_Booking = \em_get_booking( $raw_data );
 			}
-			if( !empty($EM_Booking) ){
+			if ( ! empty( $EM_Booking ) ) {
 				$data_object[ static::get_id() ] = static::return_data_from_booking( $EM_Booking );
-			}else{
+			} else {
 				$data_object[ static::get_id() ] = null;
 			}
 		}
 
 		return $data_object;
 	}
-	
+
 	/**
 	 * Return data from the booking that this field needs.
 	 *
@@ -79,15 +79,15 @@ class Booking_Field extends Data_Field {
 	 *
 	 * @return mixed
 	 */
-	public static function return_data_from_booking( $EM_Booking ){
+	public static function return_data_from_booking( $EM_Booking ) {
 		return $EM_Booking->to_api();
 	}
-	
+
 	public static function get_field_value_type() {
 		return static::TYPE_STRING;
 	}
-	
+
 	public static function get_validators() {
-		return [];
+		return array();
 	}
 }

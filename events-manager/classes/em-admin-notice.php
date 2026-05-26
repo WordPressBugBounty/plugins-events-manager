@@ -4,7 +4,7 @@
  * @since 5.8.2.0
  */
 class EM_Admin_Notice {
-	
+
 	/**
 	 * Notice key
 	 * @var string
@@ -60,127 +60,166 @@ class EM_Admin_Notice {
 	 * @var bool
 	 */
 	public $raw_output = false;
-	
-	public function __construct( $key, $type = false, $message = false, $where = false ){
+
+	public function __construct( $key, $type = false, $message = false, $where = false ) {
 		//process the supplied data
-		if( empty($message) ){
-			if( empty($type) && is_array($key) ){
+		if ( empty( $message ) ) {
+			if ( empty( $type ) && is_array( $key ) ) {
 				$notice = $key;
-			}elseif( is_array($type) ){
+			} elseif ( is_array( $type ) ) {
 				$this->name = $key;
-				$notice = $type;
-			}elseif( is_array($key) ){
+				$notice     = $type;
+			} elseif ( is_array( $key ) ) {
 				$notice = $key;
-			}else{
+			} else {
 				//we may even have simply a key/name for this notice, for hooking later on
-				if( is_string($key) ) $this->name = $key;
+				if ( is_string( $key ) ) {
+					$this->name = $key;
+				}
 				$notice = array();
 			}
-		}else{
+		} else {
 			//here we expect a string for eveything
-			$notice = array('name'=> (string) $key, 'what' => (string) $type, 'message' => (string) $message) ;
+			$notice = array(
+				'name'    => (string) $key,
+				'what'    => (string) $type,
+				'message' => (string) $message,
+			);
 		}
 		//we should have an array to process at this point
-		foreach( $notice as $key => $value ){
+		foreach ( $notice as $key => $value ) {
 			$this->$key = $value;
 		}
 		//add where if defined
-		if( !empty($where) ) $this->where = $where;
+		if ( ! empty( $where ) ) {
+			$this->where = $where;
+		}
 		//call a hook
-		do_action('em_admin_notice_'.$this->name, $this);
-		if( !is_multisite() && $this->where == 'network_admin' ) $this->where = 'settings';
+		do_action( 'em_admin_notice_' . $this->name, $this );
+		if ( ! is_multisite() && $this->where == 'network_admin' ) {
+			$this->where = 'settings';
+		}
 	}
-	
-	public function __set( $prop, $val ){
+
+	public function __set( $prop, $val ) {
 		$this->$prop = $val;
 	}
-	
-	public function __get( $prop ){
-		if( $prop == 'user_notice' ){
+
+	public function __get( $prop ) {
+		if ( $prop == 'user_notice' ) {
 			return $this->is_user_notice();
 		}
 	}
-	
+
 	/**
 	 * Returns whether or not this object should be dismissed on a per-user basis.
 	 * @return boolean
 	 */
-	public function is_user_notice(){
-		if( $this->who != 'admin' && $this->user_notice === null ){
+	public function is_user_notice() {
+		if ( $this->who != 'admin' && $this->user_notice === null ) {
 			//user_notice was not specifically set, so if notice is dismissible and not targetted at admins we assume it's dismissed at per-user basis
 			return $this->dismissible;
 		}
 		return $this->user_notice;
 	}
-	
+
 	/**
 	 * Returns notice as an array with non-default values.
 	 * @return array
 	 */
-	public function to_array(){
-		$default = new EM_Admin_Notice('default');
-		$notice = array();
-		foreach( get_class_vars('EM_Admin_Notice') as $var => $val ){
-			if( $this->$var != $default->$var ) $notice[$var] = $this->$var;
+	public function to_array() {
+		$default = new EM_Admin_Notice( 'default' );
+		$notice  = array();
+		foreach ( get_class_vars( 'EM_Admin_Notice' ) as $var => $val ) {
+			if ( $this->$var != $default->$var ) {
+				$notice[ $var ] = $this->$var;
+			}
 		}
 		return $notice;
 	}
-	
-	public function can_show(){
+
+	public function can_show() {
 		//check that we have at least a notice to show
-		if( empty($this->name) ) return false;
+		if ( empty( $this->name ) ) {
+			return false;
+		}
 		//can we display due to time?
-		$return = ( empty($this->when) || $this->when <= time() );
+		$return = ( empty( $this->when ) || $this->when <= time() );
 		//who to display it to
-		if( $return && !empty($this->who) && $this->who != 'all' ){
+		if ( $return && ! empty( $this->who ) && $this->who != 'all' ) {
 			$return = false; //unless this test passes, don't show it
-			if( $this->who == 'all' ) $return = true;
-			elseif ( $this->who == 'admin' ){
-				if( $this->network && em_wp_is_super_admin() ) $return = true;
-				elseif( current_user_can('manage_options') ) $return = true;
+			if ( $this->who == 'all' ) {
+				$return = true;
+			} elseif ( $this->who == 'admin' ) {
+				if ( $this->network && em_wp_is_super_admin() ) {
+					$return = true;
+				} elseif ( current_user_can( 'manage_options' ) ) {
+					$return = true;
+				}
+			} elseif ( $this->who == 'blog_admin' && current_user_can( 'manage_options' ) ) {
+				$return = true;
+			} elseif ( ! $return && current_user_can( $this->who ) ) {
+				$return = true;
 			}
-			elseif( $this->who == 'blog_admin' && current_user_can('manage_options') ) $return = true;
-			elseif( !$return && current_user_can($this->who) ) $return = true;
 		}
 		//can we display due to location?
-		if( $return ){
+		if ( $return ) {
 			$return = false; //unless this test passes, don't show it
-			if( empty($this->where) || $this->where == 'all' ){
+			if ( empty( $this->where ) || $this->where == 'all' ) {
 				$return = true;
-			}elseif( !empty($_REQUEST['post_type']) && in_array($_REQUEST['post_type'], \EM\Archetypes::get_cpts()) ){
-				if( $this->where == 'plugin' ) $return = true;
-				elseif( empty($_REQUEST['page']) && in_array($this->where, array(EM_POST_TYPE_EVENT, EM_POST_TYPE_LOCATION, 'event-recurring')) ) $return = true;
-				elseif( $this->where == 'settings' && !empty($_REQUEST['page']) && $_REQUEST['page'] == 'events-manager-options' ) $return = true;
-				elseif( !empty($_REQUEST['page']) && ($this->where == $_REQUEST['page'] || (is_array($this->where) && in_array($_REQUEST['page'], $this->where))) ) $return = true;
-			}elseif( is_network_admin() && !empty($_REQUEST['page']) && preg_match('/^events\-manager\-/', $_REQUEST['page']) ){
+			} elseif ( ! empty( $_REQUEST['post_type'] ) && in_array( $_REQUEST['post_type'], \EM\Archetypes::get_cpts() ) ) {
+				if ( $this->where == 'plugin' ) {
+					$return = true;
+				} elseif ( empty( $_REQUEST['page'] ) && in_array( $this->where, array( EM_POST_TYPE_EVENT, EM_POST_TYPE_LOCATION, 'event-recurring' ) ) ) {
+					$return = true;
+				} elseif ( $this->where == 'settings' && ! empty( $_REQUEST['page'] ) && $_REQUEST['page'] == 'events-manager-options' ) {
+					$return = true;
+				} elseif ( ! empty( $_REQUEST['page'] ) && ( $this->where == $_REQUEST['page'] || ( is_array( $this->where ) && in_array( $_REQUEST['page'], $this->where ) ) ) ) {
+					$return = true;
+				}
+			} elseif ( is_network_admin() && ! empty( $_REQUEST['page'] ) && preg_match( '/^events\-manager\-/', $_REQUEST['page'] ) ) {
 				$return = $this->where == 'plugin' || $this->where == 'settings' || $this->where == 'network_admin';
-			}elseif( !empty($_REQUEST['page']) && ($this->where == $_REQUEST['page'] || (is_array($this->where) && in_array($_REQUEST['page'], $this->where))) ){
+			} elseif ( ! empty( $_REQUEST['page'] ) && ( $this->where == $_REQUEST['page'] || ( is_array( $this->where ) && in_array( $_REQUEST['page'], $this->where ) ) ) ) {
 				$return = true;
 			}
 		}
 		//does this even have a message we can display?
-		if( $return && empty($this->message)){
-			$this->message = apply_filters('em_admin_notice_'.$this->name .'_message', false, $this);
-			$return = !empty($this->message);
+		if ( $return && empty( $this->message ) ) {
+			$this->message = apply_filters( 'em_admin_notice_' . $this->name . '_message', false, $this );
+			$return        = ! empty( $this->message );
 		}
 		//is this user-dismissable, and if so, did this user dismiss it?
-		if( $return && $this->is_user_notice() ){
-			$user_id = get_current_user_id();
-			$dismissed_notices = get_user_meta( $user_id, '_em_dismissed_notices', true);
-			$return = empty($dismissed_notices) || !in_array($this->name, $dismissed_notices);
+		if ( $return && $this->is_user_notice() ) {
+			$user_id           = get_current_user_id();
+			$dismissed_notices = get_user_meta( $user_id, '_em_dismissed_notices', true );
+			$return            = empty( $dismissed_notices ) || ! in_array( $this->name, $dismissed_notices );
 		}
 		return $return;
 	}
-	
-	public function output(){
-		if( empty($this->message) ) return false;
-		$action = $this->network ? 'em_dismiss_network_admin_notice':'em_dismiss_admin_notice';
-		$url = add_query_arg( array('action' => $action, 'notice' => $this->name, 'nonce' => wp_create_nonce($action.$this->name.get_current_user_id()) ), admin_url('admin-ajax.php') );
+
+	public function output() {
+		if ( empty( $this->message ) ) {
+			return false;
+		}
+		$action = $this->network ? 'em_dismiss_network_admin_notice' : 'em_dismiss_admin_notice';
+		$url    = add_query_arg(
+			array(
+				'action' => $action,
+				'notice' => $this->name,
+				'nonce'  => wp_create_nonce( $action . $this->name . get_current_user_id() ),
+			),
+			admin_url( 'admin-ajax.php' )
+		);
 		?>
-		<div class="em-admin-notice notice notice-<?php echo esc_attr($this->what); ?> <?php if($this->dismissible) echo 'is-dismissible'?>" id="notice-<?php echo esc_attr($this->name); ?>" data-url="<?php echo esc_url($url); ?>">
+		<div class="em-admin-notice notice notice-<?php echo esc_attr( $this->what ); ?>
+		<?php
+		if ( $this->dismissible ) {
+			echo 'is-dismissible';}
+		?>
+		" id="notice-<?php echo esc_attr( $this->name ); ?>" data-url="<?php echo esc_url( $url ); ?>">
 			<?php if ( $this->raw_output ) : ?>
 				<?php echo $this->message; ?>
-			<?php else: ?>
+			<?php else : ?>
 				<p><?php echo $this->message; ?></p>
 			<?php endif; ?>
 		</div>

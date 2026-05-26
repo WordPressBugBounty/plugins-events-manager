@@ -9,44 +9,40 @@ namespace libphonenumber;
  * @package libphonenumber
  * @internal
  */
-class RegexBasedMatcher implements MatcherAPIInterface
-{
-    public static function create(): static
-    {
-        return new static();
-    }
+class RegexBasedMatcher implements MatcherAPIInterface {
 
-    // Keep PHPStan happy (Unsafe usage of new static())
-    final public function __construct()
-    {
-    }
+	public static function create(): static {
+		return new static();
+	}
 
-    /**
-     * Returns whether the given national number (a string containing only decimal digits) matches
-     * the national number pattern defined in the given {@code PhoneNumberDesc} message.
-     */
-    public function matchNationalNumber(string $number, PhoneNumberDesc $numberDesc, bool $allowPrefixMatch): bool
-    {
-        $nationalNumberPattern = $numberDesc->getNationalNumberPattern();
+	// Keep PHPStan happy (Unsafe usage of new static())
+	final public function __construct() {
+	}
 
-        // We don't want to consider it a prefix match when matching non-empty input against an empty
-        // pattern
+	/**
+	 * Returns whether the given national number (a string containing only decimal digits) matches
+	 * the national number pattern defined in the given {@code PhoneNumberDesc} message.
+	 */
+	public function matchNationalNumber( string $number, PhoneNumberDesc $numberDesc, bool $allowPrefixMatch ): bool {
+		$nationalNumberPattern = $numberDesc->getNationalNumberPattern();
 
-        if ($nationalNumberPattern === '') {
-            return false;
-        }
+		// We don't want to consider it a prefix match when matching non-empty input against an empty
+		// pattern
 
-        return $this->match($number, $nationalNumberPattern, $allowPrefixMatch);
-    }
+		if ( $nationalNumberPattern === '' ) {
+			return false;
+		}
 
-    private function match(string $number, string $pattern, bool $allowPrefixMatch): bool
-    {
-        $matcher = new Matcher($pattern, $number);
+		return $this->match( $number, $nationalNumberPattern, $allowPrefixMatch );
+	}
 
-        if (!$matcher->lookingAt()) {
-            return false;
-        }
+	private function match( string $number, string $pattern, bool $allowPrefixMatch ): bool {
+		$matcher = new Matcher( $pattern, $number );
 
-        return $matcher->matches() ? true : $allowPrefixMatch;
-    }
+		if ( ! $matcher->lookingAt() ) {
+			return false;
+		}
+
+		return $matcher->matches() ? true : $allowPrefixMatch;
+	}
 }

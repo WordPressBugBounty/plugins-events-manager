@@ -24,8 +24,8 @@ class Exception extends \Exception {
 
 	public static function init() {
 		//in case we include it in EM core code
-		if( !class_exists('\EM_Exception') ){
-			class_alias( static::class, '\EM_Exception');
+		if ( ! class_exists( '\EM_Exception' ) ) {
+			class_alias( static::class, '\EM_Exception' );
 		}
 	}
 
@@ -35,30 +35,30 @@ class Exception extends \Exception {
 	 * @param int $code
 	 * @param null $previous
 	 */
-	public function __construct($error = '', $code = 0, $previous = null ){
-		if( is_array($error) ) {
+	public function __construct( $error = '', $code = 0, $previous = null ) {
+		if ( is_array( $error ) ) {
 			$this->error_messages = $error;
-			$message = $this->get_message();
-		}elseif( is_wp_error($error) ){ /* @var \WP_Error $error */
+			$message              = $this->get_message();
+		} elseif ( is_wp_error( $error ) ) { /* @var \WP_Error $error */
 			$this->wp_error = $error;
-			$code = $error->get_error_code();
-			$message = $error->get_error_message();
-		}else{
+			$code           = $error->get_error_code();
+			$message        = $error->get_error_message();
+		} else {
 			$message = $error;
 		}
-		if( !is_numeric($code) ){
+		if ( ! is_numeric( $code ) ) {
 			$this->error_code = $code;
-			$code = 0;
+			$code             = 0;
 		}
-		parent::__construct($message, $code, $previous);
+		parent::__construct( $message, $code, $previous );
 	}
 
 	/**
 	 * Returns either a string code reference, or a regular Exception code number.
 	 * @return int|string
 	 */
-	public function get_error_code(){
-		if( $this->error_code ){
+	public function get_error_code() {
+		if ( $this->error_code ) {
 			return $this->error_code;
 		}
 		return $this->getCode();
@@ -68,12 +68,12 @@ class Exception extends \Exception {
 	 * Provides a paragraph-formatted message which may contain multiple paragraphs for multiple errors.
 	 * @return string
 	 */
-	public function get_message(){
-		if( $this->is_wp_error() ){
-			$message = '<p>' . implode('</p><p>', $this->wp_error->get_error_messages()) . '</p>';
-		}elseif( !empty($this->error_messages) ){
-			$message = '<p>' . implode('</p><p>', $this->error_messages) . '</p>';
-		}else{
+	public function get_message() {
+		if ( $this->is_wp_error() ) {
+			$message = '<p>' . implode( '</p><p>', $this->wp_error->get_error_messages() ) . '</p>';
+		} elseif ( ! empty( $this->error_messages ) ) {
+			$message = '<p>' . implode( '</p><p>', $this->error_messages ) . '</p>';
+		} else {
 			$message = '<p>' . $this->getMessage() . '</p>';
 		}
 		return $message;
@@ -82,13 +82,13 @@ class Exception extends \Exception {
 	/**
 	 * @return array|string
 	 */
-	public function get_messages(){
-		if( $this->is_wp_error() ){
+	public function get_messages() {
+		if ( $this->is_wp_error() ) {
 			return $this->wp_error->get_error_messages();
-		}elseif( !empty($this->error_messages) ){
+		} elseif ( ! empty( $this->error_messages ) ) {
 			return $this->error_messages;
-		}else{
-			return array($this->getMessage());
+		} else {
+			return array( $this->getMessage() );
 		}
 	}
 
@@ -96,7 +96,7 @@ class Exception extends \Exception {
 	 * Whether or not this exception was triggered by a WP_Error
 	 * @return bool
 	 */
-	public function is_wp_error(){
+	public function is_wp_error() {
 		return is_wp_error( $this->wp_error );
 	}
 
@@ -104,8 +104,8 @@ class Exception extends \Exception {
 	 * Returns exception in WP_Error format, whether or not it was originally a WP_Error in the first place.
 	 * @return \WP_Error
 	 */
-	public function get_wp_error(){
-		if( $this->is_wp_error() ){
+	public function get_wp_error() {
+		if ( $this->is_wp_error() ) {
 			return $this->wp_error;
 		}
 		$WP_Error = new WP_Error();
