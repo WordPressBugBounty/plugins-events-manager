@@ -42,41 +42,41 @@ class Timeslot extends \EM_Object {
 	 */
 	public function __construct( $args ) {
 		$start = $args['start'] ?? $args['timeslot_start'];
-		$end   = $args['end'] ?? $args['timeslot_end'];
+		$end = $args['end'] ?? $args['timeslot_end'];
 		if ( $start instanceof EM_DateTime ) {
 			$this->start = $start;
-			$this->end   = $end;
+			$this->end = $end;
 		} elseif ( is_numeric( $start ) ) {
 			// timestamp, which is UTC
 			$this->start = new EM_DateTime( '@' . $start, 'UTC' );
-			$this->end   = new EM_DateTime( '@' . $end, 'UTC' );
-			if ( ! empty( $args['timezone'] ) ) {
+			$this->end = new EM_DateTime( '@' . $end, 'UTC' );
+			if ( !empty($args['timezone']) ) {
 				// but we're expecting it to be in timezone supplied, therefore we "transcribe" the UTC time first into a relative string, and build it as a string with timezone
-				$start_time  = $this->start->getTime();
-				$end_time    = $this->end->getTime();
+				$start_time = $this->start->getTime();
+				$end_time = $this->end->getTime();
 				$this->start = new EM_DateTime( "1970-01-01 $start_time", $args['timezone'] );
-				$this->end   = new EM_DateTime( "1970-01-01 $end_time", $args['timezone'] );
+				$this->end = new EM_DateTime( "1970-01-01 $end_time", $args['timezone'] );
 			}
 			// check if it's a datetime format
 		} elseif ( preg_match( '/^[0-9]{4}\-[0-9]{2}\-[0-9]{2} ([0-9]{2}:){2}00$/', $start ) && preg_match( '/^[0-9]{4}\-[0-9]{2}\-[0-9]{2} ([0-9]{2}:){2}00$/', $end ) ) {
 			$this->start = new EM_DateTime( $start, 'UTC' );
-			$this->end   = new EM_DateTime( $end, 'UTC' );
+			$this->end = new EM_DateTime( $end, 'UTC' );
 			if ( $args['timezone'] ) {
 				$this->start->setTimezone( $args['timezone'] );
 				$this->end->setTimezone( $args['timezone'] );
 			}
 		} else {
 			$this->start = new EM_DateTime( '1970-01-01 ' . $start, $args['timezone'] ?? 'UTC' );
-			$this->end   = new EM_DateTime( '1970-01-01 ' . $end, $args['timezone'] ?? 'UTC' );
+			$this->end = new EM_DateTime( '1970-01-01 ' . $end, $args['timezone'] ?? 'UTC' );
 		}
 		$this->timerange_id = $args['timerange_id'] ?? null;
 	}
 
 	public function to_array( $db = false ) {
-		return array(
+		return [
 			'timerange_id' => $this->timerange_id,
-			'start'        => $this->start->getTime(),
-			'end'          => $this->end->getTime(),
-		);
+			'start' => $this->start->getTime(),
+			'end' => $this->end->getTime(),
+		];
 	}
 }

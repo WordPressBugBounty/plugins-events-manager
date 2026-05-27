@@ -12,13 +12,13 @@ class Event_Field extends Data_Field {
 	public static function get_id() {
 		return 'EM_Event';
 	}
-
+	
 	/**
 	 * Array of filters that are supported by the field
 	 * @return array
 	 */
 	public static function get_supported_filters() {
-		return array();
+		return [];
 	}
 
 	public static function get_name() {
@@ -36,13 +36,13 @@ class Event_Field extends Data_Field {
 	public static function get_dummy_value() {
 		return '1';
 	}
-
+	
 	/**
 	 * We plan attach this data field to the em_event_data object
 	 * @return string[]
 	 */
 	public static function get_compatible_data_objects() {
-		return array( 'em_event_data' );
+		return [ 'em_event_data' ];
 	}
 
 	/**
@@ -62,16 +62,16 @@ class Event_Field extends Data_Field {
 			} elseif ( is_numeric( $raw_data ) ) {
 				$EM_Event = \em_get_event( $raw_data );
 			}
-			if ( ! empty( $EM_Event ) ) {
+			if( !empty($EM_Event) ){
 				$data_object[ static::get_id() ] = static::return_data_from_event( $EM_Event );
-			} else {
+			}else{
 				$data_object[ static::get_id() ] = null;
 			}
 		}
 
 		return $data_object;
 	}
-
+	
 	/**
 	 * Return data from the event that this field needs.
 	 *
@@ -79,15 +79,15 @@ class Event_Field extends Data_Field {
 	 *
 	 * @return mixed
 	 */
-	public static function return_data_from_event( $EM_Event ) {
+	public static function return_data_from_event( $EM_Event ){
 		return $EM_Event->to_api();
 	}
-
+	
 	public static function get_field_value_type() {
 		return static::TYPE_STRING;
 	}
-
+	
 	public static function get_validators() {
-		return array();
+		return [];
 	}
 }

@@ -6,7 +6,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 class Event_Added extends Event_Trigger {
-
+	
 	public $event_param_key = 0;
 
 	public static function get_id() {
@@ -18,10 +18,10 @@ class Event_Added extends Event_Trigger {
 	}
 
 	public static function get_name() {
-		return __( 'Event Created', 'events-manager-thrive-automator' );
+		return __('Event Created', 'events-manager-thrive-automator');
 	}
 
 	public static function get_description() {
-		return __( 'When an event has been created, published or not.', 'events-manager-thrive-automator' );
+		return __('When an event has been created, published or not.', 'events-manager-thrive-automator');
 	}
 }

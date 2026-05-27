@@ -1069,7 +1069,7 @@ class EM_Event extends EM_Object{
 		// Get times and make sure they are valid
 		foreach( $times_array as $timeName ){
 			$match = array();
-			if( !empty($_POST[$timeName]) && preg_match ( '/^([01]\d|[0-9]|2[0-3])(:([0-5]\d))? ?(AM|PM)?$/', $_POST[$timeName], $match ) ){
+			if( !empty($_POST[$timeName]) && preg_match ( '/^([01]\d|[0-9]|2[0-3])(:([0-5]\d))?(?::[0-5]\d)? ?(AM|PM)?$/', $_POST[$timeName], $match ) ){
 				if( empty($match[3]) ) $match[3] = '00';
 				if( strlen($match[1]) == 1 ) $match[1] = '0'.$match[1];
 				if( !empty($match[4]) && $match[4] == 'PM' && $match[1] != 12 ){
@@ -3854,6 +3854,44 @@ class EM_Event extends EM_Object{
 	}
 	
 	/**
+	 * Returns the $_POST-shape array that EM_Event::get_post() expects.
+	 * Used by API consumers to pre-load $_REQUEST before applying partial updates,
+	 * so that get_post() (which is destructive on missing keys) doesn't wipe fields
+	 * the caller didn't intend to touch.
+	 * @return array
+	 */
+	function to_request_data() {
+		$data = array(
+			'event_name'         => $this->event_name,
+			'content'            => $this->post_content,
+			'event_type'         => $this->event_type,
+			'event_archetype'    => $this->event_archetype,
+			'event_start_date'   => $this->event_start_date,
+			'event_end_date'     => $this->event_end_date,
+			'event_rsvp_date'    => $this->event_rsvp_date,
+			'event_rsvp_time'    => $this->event_rsvp_time,
+			'event_timezone'     => $this->event_timezone,
+			'event_rsvp'         => $this->event_rsvp,
+			'event_rsvp_spaces'  => $this->event_rsvp_spaces,
+			'event_spaces'       => $this->event_spaces,
+			'event_active_status'=> $this->event_active_status,
+			'event_private'      => $this->event_private,
+			'location_id'        => $this->location_id,
+		);
+		// Times go through the timeranges subsystem, not flat $_POST['event_start_time'].
+		// Format start/end as HH:MM to satisfy Timerange::get_post()'s regex.
+		if ( $this->event_all_day ) {
+			$data['event_timeranges'] = array( 0 => array( 'all_day' => '1' ) );
+		} else {
+			$data['event_timeranges'] = array( 0 => array(
+				'start' => $this->event_start_time ? substr( $this->event_start_time, 0, 5 ) : '00:00',
+				'end'   => $this->event_end_time   ? substr( $this->event_end_time, 0, 5 )   : '00:00',
+			) );
+		}
+		return $data;
+	}
+
+	/**
 	 * Outputs a JSON-encodable associative array of data to output to REST or other remote operations
 	 * @return array
 	 */
@@ -3868,9 +3906,13 @@ class EM_Event extends EM_Object{
 			'blog_id' => $this->blog_id,
 			'group_id' => $this->group_id,
 			'slug' => $this->event_slug,
-			'status' => $this->event_private,
+			'status' => $this->post_status ?: ( $this->post_id ? get_post_status( $this->post_id ) : null ),
+			'private' => !empty( $this->event_private ),
+			'active' => (bool) $this->event_active_status,
+			'active_status' => absint( $this->event_active_status ),
 			'content' => $this->post_content,
 			'bookings' => array (
+				'enabled' => !empty( $this->event_rsvp ),
 				'end_date' => $this->event_rsvp_date,
 				'end_time' => $this->event_rsvp_time,
 				'rsvp_spaces' => $this->event_rsvp_spaces,
@@ -3895,15 +3937,15 @@ class EM_Event extends EM_Object{
 		if ( $this->is_recurring( true ) ) {
 			$event['recurrences'] = $this->get_recurrence_sets()->to_api();
 		}
-		if( $this->event_owner ){
-			// anonymous
+		if( !empty( $this->event_owner_anonymous ) || empty( $this->event_owner ) ){
+			// anonymous or guest-submitted event
 			$event['owner'] = array(
 				'guest' => true,
 				'email' => $this->get_contact()->user_email,
 				'name' => $this->get_contact()->get_name(),
 			);
 		}else{
-			// user
+			// registered user
 			$event['owner'] = array(
 				'guest' => false,
 				'email' => $this->get_contact()->user_email,

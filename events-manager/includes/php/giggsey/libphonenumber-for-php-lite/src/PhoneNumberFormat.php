@@ -14,10 +14,10 @@ namespace libphonenumber;
  * Note: If you are considering storing the number in a neutral format, you are highly advised to
  * use the PhoneNumber class.
  */
-class PhoneNumberFormat {
-
-	public const E164          = 0;
-	public const INTERNATIONAL = 1;
-	public const NATIONAL      = 2;
-	public const RFC3966       = 3;
+class PhoneNumberFormat
+{
+    public const E164 = 0;
+    public const INTERNATIONAL = 1;
+    public const NATIONAL = 2;
+    public const RFC3966 = 3;
 }

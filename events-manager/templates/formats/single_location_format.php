@@ -7,7 +7,7 @@
 	<div class="em-item-meta">
 		<section class="em-item-meta-column">
 			<section class="em-location-where">
-				<h3><?php esc_html_e( 'Location', 'events-manager' ); ?></h3>
+				<h3><?php esc_html_e('Location', 'events-manager'); ?></h3>
 				<div class="em-item-meta-line em-location-address">
 					<span class="em-icon-location em-icon"></span>
 					#_LOCATIONFULLBR
@@ -18,7 +18,7 @@
 		<section class="em-item-meta-column">
 			{/no_loc_image}
 			<section class="em-location-next-event">
-				<h3><?php esc_html_e( 'Next Event', 'events-manager' ); ?></h3>
+				<h3><?php esc_html_e('Next Event', 'events-manager'); ?></h3>
 				{has_events}
 				<div class="em-item-meta-line em-location-events">
 					<span class="em-icon-calendar em-icon"></span>
@@ -28,7 +28,7 @@
 				{no_events}
 				<div class="em-item-meta-line em-location-no-events">
 					<span class="em-icon-calendar em-icon"></span>
-					<div><?php esc_html_e( 'No upcoming events', 'events-manager' ); ?></div>
+					<div><?php esc_html_e('No upcoming events', 'events-manager'); ?></div>
 				</div>
 				{/no_events}
 			</section>
@@ -43,6 +43,6 @@
 </section>
 <section class="em-location-events">
 	<a name="upcoming-events"></a>
-	<h3><?php esc_html_e( 'Upcoming Events', 'events-manager' ); ?></h3>
+	<h3><?php esc_html_e('Upcoming Events', 'events-manager'); ?></h3>
 	#_LOCATIONNEXTEVENTS
 </section>

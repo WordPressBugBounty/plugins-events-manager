@@ -9,27 +9,27 @@
 /* @var array       $args       The $args passed onto the calendar template via EM_Calendar  */
 /* @var array       $calendar   The $calendar array of data passed on by EM_Calendar         */
 
-$EM_DateTime = new EM_DateTime( $calendar['month_start'], 'UTC' );
-$id          = absint( $args['id'] );
-$events      = array(); // used in two templates
+$EM_DateTime = new EM_DateTime($calendar['month_start'], 'UTC');
+$id = absint($args['id']);
+$events = array(); // used in two templates
 ?>
-<div class="<?php em_template_classes( 'calendar' ); ?> <?php echo esc_attr( implode( ' ', $calendar['css']['calendar_classes'] ) ); ?>" data-scope="<?php echo esc_attr( $args['scope']['name'] ); ?>" data-preview-tooltips-trigger="" id="em-calendar-<?php echo $id; ?>" data-view-id="<?php echo $id; ?>" data-view-type="calendar" data-month="<?php echo esc_attr( $calendar['month'] ); ?>" data-year="<?php echo esc_attr( $calendar['year'] ); ?>" data-timezone="<?php echo esc_attr( $calendar['timezone'] ); ?>">
+<div class="<?php em_template_classes('calendar'); ?> <?php echo esc_attr(implode(' ', $calendar['css']['calendar_classes'])); ?>" data-scope="<?php echo esc_attr($args['scope']['name']); ?>" data-preview-tooltips-trigger="" id="em-calendar-<?php echo $id ?>" data-view-id="<?php echo $id ?>" data-view-type="calendar" data-month="<?php echo esc_attr($calendar['month']); ?>" data-year="<?php echo esc_attr($calendar['year']); ?>" data-timezone="<?php echo esc_attr($calendar['timezone']); ?>">
 	<?php
 	// display section for showing header navigation (datepicker, arrows, search toggle etc.) of the calendar
-	$template = em_locate_template( 'calendar/section-header-navigation.php', false );
-	require $template;
-
+	$template = em_locate_template('calendar/section-header-navigation.php', false);
+	include($template);
+	
 	// display section for showing weekdays at top of calendar
-	$template = em_locate_template( 'calendar/section-header-weekdays.php', false );
-	require $template;
-
+	$template = em_locate_template('calendar/section-header-weekdays.php', false);
+	include($template);
+	
 	// display main section
-	$template = em_locate_template( 'calendar/section-dates.php', false );
-	require $template;
+	$template = em_locate_template('calendar/section-dates.php', false);
+	include($template);
 
 	// display section for showing preview content of an event
-	$preview_section_template = em_locate_template( 'calendar/section-preview-content.php', false );
-	require $preview_section_template;
+	$preview_section_template = em_locate_template('calendar/section-preview-content.php', false);
+	include($preview_section_template);
 	?>
 </div>
 <?php
@@ -40,7 +40,7 @@ $events      = array(); // used in two templates
 ?>
 <script>
 	{
-		let el = document.getElementById('em-calendar-<?php echo $id; ?>').querySelector('.em-cal-body');
+		let el = document.getElementById('em-calendar-<?php echo $id ?>').querySelector('.em-cal-body');
 		let width = el.firstElementChild.getBoundingClientRect().width;
 		if (width > 0) {
 			el.style.setProperty('--grid-auto-rows', 'minmax(' + width + 'px, auto)');

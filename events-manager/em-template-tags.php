@@ -4,7 +4,7 @@
  * If you know what you're doing, you're probably better off using the EM Objects directly.
  */
 
-/*
+/* 
  * ---------------------------------------------------------------------
  * Displaying Functions - Displays Lists, Page Links/URLs, etc.
  * ---------------------------------------------------------------------
@@ -13,29 +13,26 @@
 use EM\Archetypes;
 
 /**
- * Returns a html list of events filtered by the array or query-string of arguments supplied.
+ * Returns a html list of events filtered by the array or query-string of arguments supplied. 
  * @param array|string $args
  * @return string
  */
-function em_get_events( $args = array() ) {
-	if ( is_string( $args ) && strpos( $args, '=' ) ) {
-		// allows the use of arguments without breaking the legacy code
-		$args = wp_parse_args( $args, array() );
-	} else {
+function em_get_events( $args = array() ){
+	if ( is_string($args) && strpos ( $args, "=" )) {
+		// allows the use of arguments without breaking the legacy code	
+		$args = wp_parse_args ( $args, array() );
+	}else{
 		$args = (array) $args;
 	}
-	$args['ajax']  = isset( $args['ajax'] ) ? $args['ajax'] : ( ! defined( 'EM_AJAX' ) || EM_AJAX );
-	$args['limit'] = ! empty( $args['limit'] ) ? $args['limit'] : em_get_option( 'dbem_events_default_limit' );
-	if ( empty( $args['format'] ) && empty( $args['format_header'] ) && empty( $args['format_footer'] ) ) {
+	$args['ajax'] = isset($args['ajax']) ? $args['ajax']:(!defined('EM_AJAX') || EM_AJAX );
+	$args['limit'] = !empty($args['limit']) ? $args['limit'] : em_get_option('dbem_events_default_limit');
+	if( empty($args['format']) && empty($args['format_header']) && empty($args['format_footer']) ){
 		ob_start();
-		if ( ! empty( $args['ajax'] ) ) {
-			echo '<div class="em-search-ajax">'; } //open AJAX wrapper
-		em_locate_template( 'templates/events-list.php', true, array( 'args' => $args ) );
-		if ( ! empty( $args['ajax'] ) ) {
-			echo '</div>'; //close AJAX wrapper
-		}
+		if( !empty($args['ajax']) ){ echo '<div class="em-search-ajax">'; } //open AJAX wrapper
+		em_locate_template('templates/events-list.php', true, array('args'=>$args));
+		if( !empty($args['ajax']) ) echo "</div>"; //close AJAX wrapper
 		$return = ob_get_clean();
-	} else {
+	}else{
 		$return = EM_Events::output( $args );
 	}
 	return $return;
@@ -45,33 +42,29 @@ function em_get_events( $args = array() ) {
  * @param array|string $args
  * @uses em_get_events()
  */
-function em_events( $args = array() ) {
-	echo em_get_events( $args ); }
+function em_events( $args = array() ){ echo em_get_events($args); }
 
 /**
- * Returns a html list of locations filtered by the array or query-string of arguments supplied.
+ * Returns a html list of locations filtered by the array or query-string of arguments supplied. 
  * @param array|string $args
  * @return string
  */
-function em_get_locations( $args = array() ) {
-	if ( is_string( $args ) && strpos( $args, '=' ) ) {
-		// allows the use of arguments without breaking the legacy code
-		$args = wp_parse_args( $args, array() );
-	} else {
+function em_get_locations( $args = array() ){
+	if ( is_string($args) && strpos ( $args, "=" )) {
+		// allows the use of arguments without breaking the legacy code	
+		$args = wp_parse_args ( $args, array() );
+	}else{
 		$args = (array) $args;
 	}
-	$args['ajax']  = isset( $args['ajax'] ) ? $args['ajax'] : ( ! defined( 'EM_AJAX' ) || EM_AJAX );
-	$args['limit'] = ! empty( $args['limit'] ) ? $args['limit'] : em_get_option( 'dbem_locations_default_limit', $args['event_archetype'] ?? null );
-	if ( empty( $args['format'] ) && empty( $args['format_header'] ) && empty( $args['format_footer'] ) ) {
+	$args['ajax'] = isset($args['ajax']) ? $args['ajax']:(!defined('EM_AJAX') || EM_AJAX );
+	$args['limit'] = !empty($args['limit']) ? $args['limit'] : em_get_option('dbem_locations_default_limit', $args['event_archetype'] ?? null );
+	if( empty($args['format']) && empty($args['format_header']) && empty($args['format_footer']) ){
 		ob_start();
-		if ( ! empty( $args['ajax'] ) ) {
-			echo '<div class="em-search-ajax">'; } //open AJAX wrapper
-		em_locate_template( 'templates/locations-list.php', true, array( 'args' => $args ) );
-		if ( ! empty( $args['ajax'] ) ) {
-			echo '</div>'; //close AJAX wrapper
-		}
+		if( !empty($args['ajax']) ){ echo '<div class="em-search-ajax">'; } //open AJAX wrapper
+		em_locate_template('templates/locations-list.php', true, array('args'=>$args));
+		if( !empty($args['ajax']) ) echo "</div>"; //close AJAX wrapper
 		$return = ob_get_clean();
-	} else {
+	}else{
 		//no ajax allowed with custom on-the-fly formats
 		$return = EM_Locations::output( $args );
 	}
@@ -82,29 +75,27 @@ function em_get_locations( $args = array() ) {
  * @param array|string $args
  * @uses em_get_locations()
  */
-function em_locations( $args = array() ) {
-	echo em_get_locations( $args ); }
+function em_locations( $args = array() ){ echo em_get_locations($args); }
 
 /**
- * Returns an html calendar of events filtered by the array or query-string of arguments supplied.
+ * Returns an html calendar of events filtered by the array or query-string of arguments supplied. 
  * @param array|string $args
  * @return string
  */
-function em_get_calendar( $args = array() ) {
-	if ( ! is_array( $args ) && strpos( $args, '=' ) ) {
+function em_get_calendar( $args = array() ){
+	if ( !is_array($args) && strpos ( $args, "=" )) {
 		// allows the use of arguments without breaking the legacy code
-		$defaults = EM_Calendar::get_default_search();
-		$args     = wp_parse_args( $args, $defaults );
+		$defaults = EM_Calendar::get_default_search();		
+		$args = wp_parse_args ( $args, $defaults );
 	}
-	return EM_Calendar::output( $args );
+	return EM_Calendar::output($args);
 }
 /**
  * Prints out an html calendar, takes same arguments as em_get_calendar.
  * @param array|string $args
  * @uses em_get_calendar()
  */
-function em_calendar( $args = array() ) {
-	echo em_get_calendar( $args ); }
+function em_calendar( $args = array() ){ echo em_get_calendar($args); }
 
 
 /**
@@ -113,24 +104,21 @@ function em_calendar( $args = array() ) {
  * @param array $args
  * @return string
  */
-function em_get_events_list_grouped( $args = array() ) {
-	if ( is_string( $args ) && strpos( $args, '=' ) ) {
-		// allows the use of arguments without breaking the legacy code
-		$args = wp_parse_args( $args, array() );
-	} else {
+function em_get_events_list_grouped( $args = array() ){
+	if ( is_string($args) && strpos ( $args, "=" )) {
+		// allows the use of arguments without breaking the legacy code	
+		$args = wp_parse_args ( $args, array() );
+	}else{
 		$args = (array) $args;
 	}
-	$args['ajax'] = isset( $args['ajax'] ) ? $args['ajax'] : ( ! defined( 'EM_AJAX' ) || EM_AJAX );
-	if ( empty( $args['format'] ) && empty( $args['format_header'] ) && empty( $args['format_footer'] ) ) {
+	$args['ajax'] = isset($args['ajax']) ? $args['ajax']:(!defined('EM_AJAX') || EM_AJAX );
+	if( empty($args['format']) && empty($args['format_header']) && empty($args['format_footer']) ){
 		ob_start();
-		if ( ! empty( $args['ajax'] ) ) {
-			echo '<div class="em-search-ajax">'; } //open AJAX wrapper
-		em_locate_template( 'templates/events-list-grouped.php', true, array( 'args' => $args ) );
-		if ( ! empty( $args['ajax'] ) ) {
-			echo '</div>'; //close AJAX wrapper
-		}
+		if( !empty($args['ajax']) ){ echo '<div class="em-search-ajax">'; } //open AJAX wrapper
+		em_locate_template('templates/events-list-grouped.php', true, array('args'=>$args));
+		if( !empty($args['ajax']) ) echo "</div>"; //close AJAX wrapper
 		$return = ob_get_clean();
-	} else {
+	}else{
 		$return = EM_Events::output_grouped( $args );
 	}
 	return $return;
@@ -143,8 +131,7 @@ function em_get_events_list_grouped( $args = array() ) {
  * @param string $format
  * @return string
  */
-function em_events_list_grouped( $args = array() ) {
-	echo em_get_events_list_grouped( $args ); }
+function em_events_list_grouped( $args = array() ){ echo em_get_events_list_grouped($args); }
 
 /**
  * Creates an html link to the events page.
@@ -152,36 +139,34 @@ function em_events_list_grouped( $args = array() ) {
  * @return string
  */
 function em_get_link( $text = '' ) {
-	$text = ( $text == '' ) ? em_get_option( 'dbem_events_page_title' ) : $text;
-	$text = ( $text == '' ) ? __( 'Events', 'events-manager' ) : $text; //In case options aren't there....
-	return '<a href="' . esc_url( EM_URI ) . '" title="' . esc_attr( $text ) . '">' . esc_html( $text ) . '</a>';
+	$text = ($text == '') ? em_get_option ( "dbem_events_page_title" ) : $text;
+	$text = ($text == '') ? __('Events','events-manager') : $text; //In case options aren't there....
+	return '<a href="'.esc_url(EM_URI).'" title="'.esc_attr($text).'">'.esc_html($text).'</a>';
 }
 /**
  * Prints the result of em_get_link()
  * @param string $text
  * @uses em_get_link()
  */
-function em_link( $text = '' ) {
-	echo em_get_link( $text ); }
+function em_link($text = ''){ echo em_get_link($text); }
 
 /**
  * Creates an html link to the RSS feed
  * @param string $text
  * @return string
  */
-function em_get_rss_link( $text = 'RSS' ) {
-	$text = ( $text == '' ) ? 'RSS' : $text;
-	return '<a href="' . esc_url( EM_RSS_URI ) . '">' . esc_html( $text ) . '</a>';
+function em_get_rss_link($text = "RSS") {
+	$text = ($text == '') ? 'RSS' : $text;
+	return '<a href="'.esc_url(EM_RSS_URI).'">'.esc_html($text).'</a>';
 }
 /**
  * Prints the result of em_get_rss_link()
  * @param string $text
  * @uses em_get_rss_link()
  */
-function em_rss_link( $text = 'RSS' ) {
-	echo em_get_rss_link( $text ); }
+function em_rss_link($text = "RSS"){ echo em_get_rss_link($text); }
 
-/*
+/* 
  * ---------------------------------------------------------------------
  * User Interfaces - Forms, Tables etc.
  * ---------------------------------------------------------------------
@@ -192,48 +177,44 @@ function em_rss_link( $text = 'RSS' ) {
  * Outputs the event submission form for guests and members.
  * @param array $args
  */
-function em_event_form( $args = array() ) {
+function em_event_form($args = array()){
 	global $EM_Event;
 	$archetype = $args['event_archetype'] ?? null;
-	if ( em_get_option( 'dbem_css_editors', $archetype ) ) {
-		echo '<div class="css-event-form">';
-	}
-	if ( ! is_user_logged_in() && em_get_option( 'dbem_events_anonymous_submissions', $archetype ) && em_locate_template( 'forms/event-editor-guest.php' ) ) {
-		em_locate_template( 'forms/event-editor-guest.php', true, array( 'args' => $args ) );
-	} else {
-		if ( ! empty( $_REQUEST['success'] ) ) {
-			$EM_Event = new EM_Event(); //reset the event
-		}
-		if ( empty( $EM_Event->event_id ) ) {
-			$EM_Event = ( is_object( $EM_Event ) && get_class( $EM_Event ) == 'EM_Event' ) ? $EM_Event : new EM_Event();
+	if( em_get_option('dbem_css_editors', $archetype) ) echo '<div class="css-event-form">';
+	if( !is_user_logged_in() && em_get_option('dbem_events_anonymous_submissions', $archetype) && em_locate_template('forms/event-editor-guest.php') ){
+		em_locate_template('forms/event-editor-guest.php',true, array('args'=>$args));
+	}else{
+	    if( !empty($_REQUEST['success']) ){
+	    	$EM_Event = new EM_Event(); //reset the event
+	    }
+		if( empty($EM_Event->event_id) ){
+			$EM_Event = ( is_object($EM_Event) && get_class($EM_Event) == 'EM_Event') ? $EM_Event : new EM_Event();
 			//Give a default location & category
-			$default_cat = em_get_option( 'dbem_default_category', $archetype );
-			$default_loc = em_get_option( 'dbem_default_location', $archetype );
-			if ( em_get_option( 'dbem_categories_enabled', $archetype ) && is_numeric( $default_cat ) && $default_cat > 0 && ! empty( $EM_Event->get_categories()->categories ) ) {
-				$EM_Category                              = new EM_Category( $default_cat );
+			$default_cat = em_get_option('dbem_default_category', $archetype);
+			$default_loc = em_get_option('dbem_default_location', $archetype);
+			if( em_get_option('dbem_categories_enabled', $archetype) && is_numeric($default_cat) && $default_cat > 0 && !empty($EM_Event->get_categories()->categories) ){
+				$EM_Category = new EM_Category($default_cat);
 				$EM_Event->get_categories()->categories[] = $EM_Category;
 			}
-			if ( is_numeric( $default_loc ) && $default_loc > 0 && ( empty( $EM_Event->get_location()->location_id ) && empty( $EM_Event->get_location()->location_name ) && empty( $EM_Event->get_location()->location_address ) && empty( $EM_Event->get_location()->location_town ) ) ) {
+			if( is_numeric($default_loc) && $default_loc > 0 && ( empty($EM_Event->get_location()->location_id) && empty($EM_Event->get_location()->location_name) && empty($EM_Event->get_location()->location_address) && empty($EM_Event->get_location()->location_town) ) ){
 				$EM_Event->location_id = $default_loc;
-				$EM_Event->location    = new EM_Location( $default_loc );
+				$EM_Event->location = new EM_Location($default_loc);
 			}
 		}
-		em_locate_template( 'forms/event-editor.php', true, array( 'args' => $args ) );
+		em_locate_template('forms/event-editor.php',true, array('args'=>$args));
 		EM_Events::add_editor_js_vars();
 	}
-	if ( em_get_option( 'dbem_css_editors', $archetype ) ) {
-		echo '</div>';
-	}
-	wp_enqueue_style( 'dashicons' );
+	if( em_get_option('dbem_css_editors', $archetype) ) echo '</div>';
+	wp_enqueue_style('dashicons');
 }
 
 /**
  * Retreives the event submission form for guests and members.
  * @param array $args
  */
-function em_get_event_form( $args = array() ) {
+function em_get_event_form( $args = array() ){
 	ob_start();
-	em_event_form( $args );
+	em_event_form($args);
 	return ob_get_clean();
 }
 
@@ -243,173 +224,120 @@ function em_get_event_form( $args = array() ) {
  * * show_add_new - passes argument to template as $show_add_new whether to show the add new event button
  * @param array $args
  */
-function em_events_admin( $args = array() ) {
+function em_events_admin($args = array()){
 	global $EM_Event, $EM_Notices, $bp;
 	$archetype = $args['event_archetype'] ?? null;
-	if ( is_user_logged_in() && current_user_can( 'edit_events' ) ) {
-		if ( ( ! empty( $_GET['action'] ) && $_GET['action'] == 'edit' ) || ( ! empty( $_POST['action'] ) && $_POST['action'] == 'event_save' ) ) {
-			if ( empty( $_REQUEST['redirect_to'] ) ) {
-				$_REQUEST['redirect_to'] = em_add_get_params(
-					$_SERVER['REQUEST_URI'],
-					array(
-						'action'   => null,
-						'event_id' => null,
-					)
-				);
+	if( is_user_logged_in() && current_user_can('edit_events') ){
+		if( (!empty($_GET['action']) && $_GET['action']=='edit') || (!empty($_POST['action']) && $_POST['action']=='event_save') ){
+			if( empty($_REQUEST['redirect_to']) ){
+				$_REQUEST['redirect_to'] = em_add_get_params($_SERVER['REQUEST_URI'], array('action'=>null, 'event_id'=>null));
 			}
 			em_event_form();
-		} else {
-			if ( em_get_option( 'dbem_css_editors', $archetype ) ) {
-				echo '<div class="css-events-admin">';
-			}
-			//get listing options for $args
-			$limit  = ( ! empty( $_REQUEST['limit'] ) ) ? $_REQUEST['limit'] : 20;//Default limit
-			$page   = ( ! empty( $_REQUEST['pno'] ) ) ? $_REQUEST['pno'] : 1;
-			$offset = ( $page > 1 ) ? ( $page - 1 ) * $limit : 0;
-			$order  = ( ! empty( $_REQUEST ['order'] ) ) ? $_REQUEST ['order'] : 'ASC';
-			$search = ( ! empty( $_REQUEST['em_search'] ) ) ? $_REQUEST['em_search'] : '';
+		}else{
+			if( em_get_option('dbem_css_editors', $archetype) ) echo '<div class="css-events-admin">';
+		    //get listing options for $args
+			$limit = ( !empty($_REQUEST['limit']) ) ? $_REQUEST['limit'] : 20;//Default limit
+			$page = ( !empty($_REQUEST['pno']) ) ? $_REQUEST['pno']:1;
+			$offset = ( $page > 1 ) ? ($page-1)*$limit : 0;
+			$order = ( !empty($_REQUEST ['order']) ) ? $_REQUEST ['order']:'ASC';
+			$search = ( !empty($_REQUEST['em_search']) ) ? $_REQUEST['em_search']:'';
 			//deal with view or scope/status combinations
-			$show_add_new = isset( $args['show_add_new'] ) ? $args['show_add_new'] : true;
-			$args         = array(
-				'order'  => $order,
-				'search' => $search,
-				'owner'  => get_current_user_id(),
-			);
-			if ( current_user_can( 'edit_others_events' ) && ! empty( $_GET['admin_mode'] ) ) {
+			$show_add_new = isset($args['show_add_new']) ? $args['show_add_new']:true;
+			$args = array('order' => $order, 'search' => $search, 'owner' => get_current_user_id());
+			if( current_user_can('edit_others_events') && !empty($_GET['admin_mode']) ){
 				$args['owner'] = false;
 			}
-			if ( ! empty( $_REQUEST['recurrence_id'] ) ) {
-				$Event = em_get_event( absint( $_REQUEST['recurrence_id'] ) );
-				$EM_Notices->add_alert( sprintf( esc_html__( 'You are viewing individual recurrences of %s.', 'events-manager' ), '<a href="' . $Event->get_edit_url() . '">' . $Event->event_name . '</a>' ) );
-				$EM_Notices->add_alert( esc_html__( 'You can edit individual recurrences and disassociate them with this recurring event.', 'events-manager' ) );
-				$args['recurrence_id'] = absint( $_REQUEST['recurrence_id'] );
+			if( !empty($_REQUEST['recurrence_id']) ){
+				$Event = em_get_event( absint($_REQUEST['recurrence_id']) );
+				$EM_Notices->add_alert(sprintf(esc_html__('You are viewing individual recurrences of %s.', 'events-manager'), '<a href="'.$Event->get_edit_url().'">'.$Event->event_name.'</a>'));
+				$EM_Notices->add_alert(esc_html__('You can edit individual recurrences and disassociate them with this recurring event.', 'events-manager'));
+				$args['recurrence_id'] = absint($_REQUEST['recurrence_id']);
 			} else {
-				$args['event_type'] = array( 'recurring', 'repeating', 'single' );
+				$args['event_type'] = ['recurring', 'repeating', 'single'];
 			}
-			$args = apply_filters( 'em_events_admin_args', $args );
+			$args = apply_filters('em_events_admin_args', $args);
 			//template $args for different views
-			$args_views            = array();
-			$args_views['pending'] = array_merge(
-				$args,
-				array(
-					'status'    => 0,
-					'scope'     => 'all',
-					'recurring' => 'include',
-				)
-			);
-			$args_views['draft']   = array_merge(
-				$args,
-				array(
-					'status'    => null,
-					'scope'     => 'all',
-					'recurring' => 'include',
-				)
-			);
-			$args_views['past']    = array_merge(
-				$args,
-				array(
-					'status' => 'all',
-					'scope'  => 'past',
-				)
-			);
-			$args_views['future']  = array_merge(
-				$args,
-				array(
-					'status' => '1',
-					'scope'  => 'future',
-				)
-			);
+			$args_views = array();
+			$args_views['pending'] = array_merge($args, array('status'=>0, 'scope' => 'all', 'recurring'=>'include'));
+			$args_views['draft'] = array_merge($args, array('status'=>null, 'scope' => 'all', 'recurring'=>'include'));
+			$args_views['past'] = array_merge($args, array('status'=>'all', 'scope' => 'past'));
+			$args_views['future'] = array_merge($args, array('status'=>'1', 'scope' => 'future'));
 			//modify $args for current view
-			if ( ! empty( $_REQUEST['view'] ) && in_array( $_REQUEST['view'], array( 'future', 'draft', 'past', 'pending' ) ) ) {
-				$args = array_merge( $args, $args_views[ $_REQUEST['view'] ] );
-			} else {
-				$scope_names   = em_get_scopes();
-				$args['scope'] = ( ! empty( $_REQUEST ['scope'] ) && array_key_exists( $_REQUEST ['scope'], $scope_names ) ) ? $_REQUEST ['scope'] : 'future';
-				if ( array_key_exists( 'status', $_REQUEST ) ) {
-					$status = ( $_REQUEST['status'] ) ? 1 : 0;
-					if ( $_REQUEST['status'] == 'all' ) {
-						$status = 'all';
-					}
-					if ( $_REQUEST['status'] == 'draft' ) {
-						$status = null;
-					}
-				} else {
+			if( !empty($_REQUEST['view']) && in_array($_REQUEST['view'], array('future','draft','past','pending')) ){
+	    	    $args = array_merge($args, $args_views[$_REQUEST['view']]);
+			}else{
+				$scope_names = em_get_scopes();
+				$args['scope'] = ( !empty($_REQUEST ['scope']) && array_key_exists($_REQUEST ['scope'], $scope_names) ) ? $_REQUEST ['scope']:'future';
+				if( array_key_exists('status', $_REQUEST) ){
+					$status = ($_REQUEST['status']) ? 1:0;
+					if($_REQUEST['status'] == 'all') $status = 'all';
+					if($_REQUEST['status'] == 'draft') $status = null;
+				}else{
 					$status = false;
 				}
 				$args['status'] = $status;
 			}
 			//reset the limit and offset to allow for filter
-			unset( $args['limit'] );
-			unset( $args['offset'] );
+			unset($args['limit']); unset($args['offset']);
 			$events_count = EM_Events::count( $args ); //count events without limits for pagination
 			//add limit and offset again to args
-			$args['limit']  = $limit;
+			$args['limit'] = $limit;
 			$args['offset'] = $offset;
-			add_filter( 'pre_option_dbem_events_current_are_past', '__return_zero', 99 );
-			$EM_Events     = EM_Events::get( $args ); //now get the limited events to display
-			$future_count  = EM_Events::count( $args_views['future'] );
+			add_filter('pre_option_dbem_events_current_are_past', '__return_zero', 99);
+			$EM_Events = EM_Events::get( $args ); //now get the limited events to display
+			$future_count = EM_Events::count( $args_views['future'] );
 			$pending_count = EM_Events::count( $args_views['pending'] );
-			$draft_count   = EM_Events::count( $args_views['draft'] );
-			$past_count    = EM_Events::count( $args_views['past'] );
-			remove_filter( 'pre_option_dbem_events_current_are_past', '__return_zero', 99 );
-			em_locate_template(
-				'tables/events.php',
-				true,
-				array(
-					'args'          => $args,
-					'EM_Events'     => $EM_Events,
-					'events_count'  => $events_count,
-					'future_count'  => $future_count,
-					'pending_count' => $pending_count,
-					'draft_count'   => $draft_count,
-					'past_count'    => $past_count,
-					'page'          => $page,
-					'limit'         => $limit,
-					'offset'        => $offset,
-					'show_add_new'  => $show_add_new,
-				)
-			);
-			if ( em_get_option( 'dbem_css_editors' ) ) {
-				echo '</div>';
-			}
+			$draft_count = EM_Events::count( $args_views['draft'] );
+			$past_count = EM_Events::count( $args_views['past'] );
+			remove_filter('pre_option_dbem_events_current_are_past', '__return_zero', 99);
+			em_locate_template('tables/events.php',true, array(
+				'args'=>$args, 
+				'EM_Events'=>$EM_Events, 
+				'events_count'=>$events_count, 
+				'future_count'=>$future_count,
+				'pending_count'=>$pending_count,
+				'draft_count'=>$draft_count,
+				'past_count'=>$past_count,
+				'page' => $page,
+				'limit' => $limit,
+				'offset' => $offset,
+				'show_add_new' => $show_add_new
+			));
+			if( em_get_option('dbem_css_editors') ) echo '</div>';
 		}
-	} elseif ( ! is_user_logged_in() && em_get_option( 'dbem_events_anonymous_submissions' ) ) {
-		em_event_form( $args );
-	} else {
-		if ( em_get_option( 'dbem_css_editors' ) ) {
-			echo '<div class="css-events-admin">';
-		}
-		echo '<div class="css-events-admin-login">' . apply_filters( 'em_event_submission_login', __( 'You must log in to view and manage your events.', 'events-manager' ) ) . '</div>';
-		if ( em_get_option( 'dbem_css_editors' ) ) {
-			echo '</div>';
-		}
+	}elseif( !is_user_logged_in() && em_get_option('dbem_events_anonymous_submissions') ){
+		em_event_form($args);
+	}else{
+		if( em_get_option('dbem_css_editors') ) echo '<div class="css-events-admin">';
+		echo '<div class="css-events-admin-login">'. apply_filters('em_event_submission_login', __("You must log in to view and manage your events.",'events-manager')) . '</div>';
+		if( em_get_option('dbem_css_editors') ) echo '</div>';
 	}
 }
 /**
  * Retreives table of events belonging to user
  * @param array $args
  */
-function em_get_events_admin( $args = array() ) {
+function em_get_events_admin( $args = array() ){
 	ob_start();
-	em_events_admin( $args );
+	em_events_admin($args);
 	return ob_get_clean();
 }
 /**
  * Outputs the event search form.
  * @param array $args
  */
-function em_event_search_form( $args = array() ) {
-	$args         = em_get_search_form_defaults( $args );
-	$args['ajax'] = isset( $args['ajax'] ) ? $args['ajax'] : ( ! defined( 'EM_AJAX' ) || EM_AJAX );
-	em_locate_template( 'templates/events-search.php', true, array( 'args' => $args ) );
+function em_event_search_form($args = array()){
+	$args = em_get_search_form_defaults($args);
+	$args['ajax'] = isset($args['ajax']) ? $args['ajax']:(!defined('EM_AJAX') || EM_AJAX );
+	em_locate_template('templates/events-search.php',true, array('args'=>$args));
 }
 /**
  * Retreives the event search form.
  * @param array $args
  */
-function em_get_event_search_form( $args = array() ) {
+function em_get_event_search_form( $args = array() ){
 	ob_start();
-	em_event_search_form( $args );
+	em_event_search_form($args);
 	return ob_get_clean();
 }
 
@@ -418,28 +346,24 @@ function em_get_event_search_form( $args = array() ) {
  * Outputs the location submission form for guests and members.
  * @param array $args
  */
-function em_location_form( $args = array() ) {
+function em_location_form($args = array()){
 	global $EM_Location;
-	if ( em_get_option( 'dbem_css_editors' ) ) {
-		echo '<div class="css-location-form">';
-	}
-	$EM_Location = ( is_object( $EM_Location ) && get_class( $EM_Location ) == 'EM_Location' ) ? $EM_Location : new EM_Location();
-	em_locate_template( 'forms/location-editor.php', true );
-	if ( em_get_option( 'dbem_css_editors' ) ) {
-		echo '</div>';
-	}
-	if ( ! empty( $EM_Location->location_id ) && ! $EM_Location->location_longitude && ! $EM_Location->location_latitude ) {
+	if( em_get_option('dbem_css_editors') ) echo '<div class="css-location-form">';
+	$EM_Location = ( is_object($EM_Location) && get_class($EM_Location) == 'EM_Location') ? $EM_Location : new EM_Location();
+	em_locate_template('forms/location-editor.php',true);
+	if( em_get_option('dbem_css_editors') ) echo '</div>';
+	if ( !empty($EM_Location->location_id) && !$EM_Location->location_longitude && !$EM_Location->location_latitude ) {
 		// in case maps are loaded again
-		EM_Scripts_and_Styles::add_js_var( 'google_maps_resave_location', esc_html__( 'Location map and coordinates have been updated. Please re-save your location to update the map.', 'events-manager' ) );
+		EM_Scripts_and_Styles::add_js_var('google_maps_resave_location', esc_html__('Location map and coordinates have been updated. Please re-save your location to update the map.','events-manager') );
 	}
 }
 /**
  * Retreives the location submission form for guests and members.
  * @param array $args
  */
-function em_get_location_form( $args = array() ) {
+function em_get_location_form( $args = array() ){
 	ob_start();
-	em_location_form( $args );
+	em_location_form($args);
 	return ob_get_clean();
 }
 
@@ -447,103 +371,68 @@ function em_get_location_form( $args = array() ) {
  * Outputs table of locations belonging to user
  * @param array $args
  */
-function em_locations_admin( $args = array() ) {
+function em_locations_admin($args = array()){
 	$archetype = $args['event_archetype'] ?? null;
-	if ( is_user_logged_in() && current_user_can( 'edit_locations' ) ) {
-		if ( ! empty( $_GET['action'] ) && $_GET['action'] == 'edit' ) {
-			if ( empty( $_REQUEST['redirect_to'] ) ) {
-				$_REQUEST['redirect_to'] = em_add_get_params(
-					$_SERVER['REQUEST_URI'],
-					array(
-						'action'      => null,
-						'location_id' => null,
-					)
-				);
+	if( is_user_logged_in() && current_user_can('edit_locations') ){
+		if( !empty($_GET['action']) && $_GET['action']=='edit' ){
+			if( empty($_REQUEST['redirect_to']) ){
+				$_REQUEST['redirect_to'] = em_add_get_params($_SERVER['REQUEST_URI'], array('action'=>null, 'location_id'=>null));
 			}
 			em_location_form();
-		} else {
-			if ( em_get_option( 'dbem_css_editors' ) ) {
-				echo '<div class="css-locations-admin">';
-			}
-			$limit  = ( ! empty( $_REQUEST['limit'] ) ) ? $_REQUEST['limit'] : 20;//Default limit
-			$page   = ( ! empty( $_REQUEST['pno'] ) ) ? $_REQUEST['pno'] : 1;
-			$offset = ( $page > 1 ) ? ( $page - 1 ) * $limit : 0;
-			$order  = ( ! empty( $_REQUEST ['order'] ) ) ? $_REQUEST ['order'] : 'ASC';
-			if ( array_key_exists( 'status', $_REQUEST ) ) {
-				$status = ( $_REQUEST['status'] ) ? 1 : 0;
-			} else {
+		}else{
+			if( em_get_option('dbem_css_editors') ) echo '<div class="css-locations-admin">';
+			$limit = ( !empty($_REQUEST['limit']) ) ? $_REQUEST['limit'] : 20;//Default limit
+			$page = ( !empty($_REQUEST['pno']) ) ? $_REQUEST['pno']:1;
+			$offset = ( $page > 1 ) ? ($page-1)*$limit : 0;
+			$order = ( !empty($_REQUEST ['order']) ) ? $_REQUEST ['order']:'ASC';
+			if( array_key_exists('status', $_REQUEST) ){
+				$status = ($_REQUEST['status']) ? 1:0;
+			}else{
 				$status = false;
 			}
 			$blog = false;
-			if ( EM_MS_GLOBAL && ! get_site_option( 'dbem_ms_mainblog_locations' ) && ! is_main_site() ) {
-				//set current blog id if not on main site and using global mode whilst not forcing all locations to be on main blog
-				$blog = get_current_blog_id();
+			if( EM_MS_GLOBAL && !get_site_option('dbem_ms_mainblog_locations') && !is_main_site() ){
+			    //set current blog id if not on main site and using global mode whilst not forcing all locations to be on main blog
+			    $blog = get_current_blog_id();
 			}
-			$args = array(
-				'limit'  => $limit,
-				'offset' => $offset,
-				'status' => $status,
-				'blog'   => $blog,
-			);
+			$args = array('limit'=>$limit, 'offset'=>$offset, 'status'=>$status, 'blog'=>$blog);
 			//count locations
-			$locations_mine_count = EM_Locations::count(
-				array(
-					'owner'  => get_current_user_id(),
-					'blog'   => $blog,
-					'status' => false,
-				)
-			);
-			$locations_all_count  = current_user_can( 'read_others_locations' ) ? EM_Locations::count(
-				array(
-					'blog'   => $blog,
-					'status' => false,
-					'owner'  => false,
-				)
-			) : 0;
+			$locations_mine_count = EM_Locations::count( array('owner'=>get_current_user_id(), 'blog'=>$blog, 'status'=>false) );
+			$locations_all_count = current_user_can('read_others_locations') ? EM_Locations::count(array('blog'=>$blog, 'status'=>false, 'owner'=>false)):0;
 			//get set of locations
-			if ( ! empty( $_REQUEST['view'] ) && $_REQUEST['view'] == 'others' && current_user_can( 'read_others_locations' ) ) {
-				$locations       = EM_Locations::get( $args );
+			if( !empty($_REQUEST['view']) && $_REQUEST['view'] == 'others' && current_user_can('read_others_locations') ){
+				$locations = EM_Locations::get($args);
 				$locations_count = $locations_all_count;
-			} else {
-				$locations       = EM_Locations::get( array_merge( $args, array( 'owner' => get_current_user_id() ) ) );
+			}else{
+				$locations = EM_Locations::get( array_merge($args, array('owner'=>get_current_user_id())) );
 				$locations_count = $locations_mine_count;
 			}
-			em_locate_template(
-				'tables/locations.php',
-				true,
-				array(
-					'args'                 => $args,
-					'locations'            => $locations,
-					'locations_count'      => $locations_count,
-					'locations_mine_count' => $locations_mine_count,
-					'locations_all_count'  => $locations_all_count,
-					'page'                 => $page,
-					'limit'                => $limit,
-					'offset'               => $offset,
-					'show_add_new'         => true,
-				)
-			);
-			if ( em_get_option( 'dbem_css_editors' ) ) {
-				echo '</div>';
-			}
+			em_locate_template('tables/locations.php',true, array(
+				'args'=>$args, 
+				'locations'=>$locations, 
+				'locations_count'=>$locations_count, 
+				'locations_mine_count'=>$locations_mine_count,
+				'locations_all_count'=>$locations_all_count,
+				'page' => $page,
+				'limit' => $limit,
+				'offset' => $offset,
+				'show_add_new' => true
+			));
+			if( em_get_option('dbem_css_editors') ) echo '</div>';
 		}
-	} else {
-		if ( em_get_option( 'dbem_css_editors', $archetype ) ) {
-			echo '<div class="css-locations-admin">';
-		}
-		echo '<div class="css-locations-admin-login">' . __( 'You must log in to view and manage your locations.', 'events-manager' ) . '</div>';
-		if ( em_get_option( 'dbem_css_editors', $archetype ) ) {
-			echo '</div>';
-		}
+	}else{
+		if( em_get_option('dbem_css_editors', $archetype) ) echo '<div class="css-locations-admin">';
+		echo '<div class="css-locations-admin-login">'. __("You must log in to view and manage your locations.",'events-manager') .'</div>';
+		if( em_get_option('dbem_css_editors', $archetype) ) echo '</div>';
 	}
 }
 /**
  * Retreives table of locations belonging to user
  * @param array $args
  */
-function em_get_locations_admin( $args = array() ) {
+function em_get_locations_admin( $args = array() ){
 	ob_start();
-	em_locations_admin( $args );
+	em_locations_admin($args);
 	return ob_get_clean();
 }
 
@@ -551,59 +440,51 @@ function em_get_locations_admin( $args = array() ) {
  * Outputs the location search form.
  * @param array $args
  */
-function em_location_search_form( $args = array() ) {
-	$args         = em_get_search_form_defaults( $args, 'locations' );
-	$args['ajax'] = isset( $args['ajax'] ) ? $args['ajax'] : ( ! defined( 'EM_AJAX' ) || EM_AJAX );
-	em_locate_template( 'templates/locations-search.php', true, array( 'args' => $args ) );
+function em_location_search_form($args = array()){
+	$args = em_get_search_form_defaults($args, 'locations');
+	$args['ajax'] = isset($args['ajax']) ? $args['ajax']:(!defined('EM_AJAX') || EM_AJAX );
+	em_locate_template('templates/locations-search.php',true, array('args'=>$args));
 }
 /**
  * Retreives the event search form.
  * @param array $args
  */
-function em_get_location_search_form( $args = array() ) {
+function em_get_location_search_form( $args = array() ){
 	ob_start();
-	em_location_search_form( $args );
+	em_location_search_form($args);
 	return ob_get_clean();
 }
 
 //Bookings Pages
-function em_bookings_admin() {
-	if ( em_get_option( 'dbem_css_rsvpadmin' ) ) {
-		echo '<div class="css-bookings-admin">';
-	}
-	if ( is_user_logged_in() && current_user_can( 'manage_bookings' ) ) {
-		include_once EM_DIR . '/admin/em-bookings.php';
-		include_once EM_DIR . '/admin/em-admin.php';
+function em_bookings_admin(){
+	if( em_get_option('dbem_css_rsvpadmin') ) echo '<div class="css-bookings-admin">';
+	if( is_user_logged_in() && current_user_can('manage_bookings') ){
+		include_once(EM_DIR.'/admin/em-bookings.php');
+		include_once(EM_DIR.'/admin/em-admin.php');
 		em_bookings_page();
-	} else {
-		echo '<div class="css-bookings-admin-login">' . __( 'You must log in to view and manage your bookings.', 'events-manager' ) . '</div>';
+	}else{
+		echo '<div class="css-bookings-admin-login">'. __("You must log in to view and manage your bookings.",'events-manager') .'</div>';
 	}
-	if ( em_get_option( 'dbem_css_rsvpadmin' ) ) {
-		echo '</div>';
-	}
+	if( em_get_option('dbem_css_rsvpadmin') ) echo '</div>';
 }
-function em_get_bookings_admin() {
+function em_get_bookings_admin(){
 	ob_start();
 	em_bookings_admin();
 	return ob_get_clean();
 }
 
-function em_my_bookings() {
-	if ( em_get_option( 'dbem_css_rsvp' ) ) {
-		echo '<div class="css-my-bookings">';
-	}
-	em_locate_template( 'templates/my-bookings.php', true );
-	if ( em_get_option( 'dbem_css_rsvp' ) ) {
-		echo '</div>';
-	}
+function em_my_bookings(){
+	if( em_get_option('dbem_css_rsvp') ) echo '<div class="css-my-bookings">';
+	em_locate_template('templates/my-bookings.php', true);
+	if( em_get_option('dbem_css_rsvp') ) echo '</div>';
 }
-function em_get_my_bookings() {
+function em_get_my_bookings(){
 	ob_start();
 	em_my_bookings();
-	return ob_get_clean();
+	return ob_get_clean();	
 }
 
-/*
+/* 
  * ---------------------------------------------------------------------
  * Conditionals - Yes/No functions
  * ---------------------------------------------------------------------
@@ -617,21 +498,21 @@ function em_get_my_bookings() {
  * @return bool
  * @since 5.9.7
  */
-function em_is_event( $data, $object_required = false ) {
-	if ( is_object( $data ) && ! empty( $data->post_type ) ) {
+function em_is_event( $data, $object_required = false ){
+	if( is_object($data) && !empty($data->post_type) ){
 		// we assume it's either a EM_Event class type or just a WP_Post object
-		$post_type       = $data->post_type;
-		$is_event_object = get_class( $data ) == 'EM_Event' || is_subclass_of( $data, 'EM_Object' );
-	} elseif ( is_numeric( $data ) ) {
+		$post_type = $data->post_type;
+		$is_event_object = get_class($data) == 'EM_Event' || is_subclass_of($data, 'EM_Object');
+	}elseif( is_numeric($data) ){
 		// we assume we were passed a post_id
-		$post_type = get_post_type( $data );
-	} elseif ( is_string( $data ) ) {
+		$post_type = get_post_type($data);
+	}elseif( is_string($data) ){
 		// we assume we were passed a post type
 		$post_type = $data;
 	}
-	if ( ! empty( $post_type ) ) {
+	if( !empty($post_type) ){
 		$is_event_post_type = Archetypes::is_event( $post_type );
-		return $is_event_post_type && ( ! $object_required || ! empty( $is_event_object ) );
+		return $is_event_post_type && (!$object_required || !empty($is_event_object));
 	}
 	return false;
 }
@@ -644,21 +525,21 @@ function em_is_event( $data, $object_required = false ) {
  * @return bool
  * @since 5.9.7
  */
-function em_is_location( $data, $object_required = false ) {
-	if ( is_object( $data ) && ! empty( $data->post_type ) ) {
+function em_is_location( $data, $object_required = false ){
+	if( is_object($data) && !empty($data->post_type) ){
 		// we assume it's either a EM_Location class type or just a WP_Post object
-		$post_type          = $data->post_type;
-		$is_location_object = get_class( $data ) == 'EM_Location' || is_subclass_of( $data, 'EM_Object' );
-	} elseif ( is_numeric( $data ) ) {
+		$post_type = $data->post_type;
+		$is_location_object = get_class($data) == 'EM_Location' || is_subclass_of($data, 'EM_Object');
+	}elseif( is_numeric($data) ){
 		// we assume we were passed a post_id
-		$post_type = get_post_type( $data );
-	} elseif ( is_string( $data ) ) {
+		$post_type = get_post_type($data);
+	}elseif( is_string($data) ){
 		// we assume we were passed a post type
 		$post_type = $data;
 	}
-	if ( ! empty( $post_type ) ) {
+	if( !empty($post_type) ){
 		$is_location_post_type = $post_type == EM_POST_TYPE_LOCATION;
-		return $is_location_post_type && ( ! $object_required || ! empty( $is_location_object ) );
+		return $is_location_post_type && (!$object_required || !empty($is_location_object));
 	}
 	return false;
 }
@@ -668,19 +549,14 @@ function em_is_location( $data, $object_required = false ) {
  * @param string $scope
  * @return boolean
  */
-function em_are_events_available( $scope = 'future' ) {
-	$scope  = ( $scope == '' ) ? 'future' : $scope;
-	$events = EM_Events::get(
-		array(
-			'limit' => 1,
-			'scope' => $scope,
-		)
-	);
-	return ( count( $events ) > 0 );
+function em_are_events_available($scope = "future") {
+	$scope = ($scope == "") ? "future":$scope;
+	$events = EM_Events::get( array('limit'=>1, 'scope'=>$scope) );	
+	return ( count($events) > 0 );
 }
 
 /**
- * Returns true if the page is the events page. this is now only an events page, before v4.0.83 this would be true for any multiple page (e.g. locations)
+ * Returns true if the page is the events page. this is now only an events page, before v4.0.83 this would be true for any multiple page (e.g. locations) 
  * @return boolean
  */
 function em_is_events_page() {
@@ -692,7 +568,7 @@ function em_is_events_page() {
  * Is this a a single event page?
  * @return boolean
  */
-function em_is_event_page() {
+function em_is_event_page(){
 	return em_get_page_type() == 'event';
 }
 
@@ -701,7 +577,7 @@ function em_is_event_page() {
  * Is this a a single calendar day page?
  * @return boolean
  */
-function em_is_calendar_day_page() {
+function em_is_calendar_day_page(){
 	return em_get_page_type() == 'calendar_day';
 }
 
@@ -709,35 +585,34 @@ function em_is_calendar_day_page() {
  * Is this a a single category page?
  * @return boolean
  */
-function em_is_category_page( $category = false ) {
-	if ( ! empty( $category ) ) {
-		global $wp_query, $post, $em_category_id;
-		if ( is_tax( EM_TAXONOMY_CATEGORY, $category ) ) {
-			return true; }
-		if ( ! empty( $wp_query->em_category_id ) || ( $post->ID == get_option( 'dbem_categories_page' ) && ! empty( $em_category_id ) ) ) {
-			$cat_id      = ! empty( $wp_query->em_category_id ) ? $wp_query->em_category_id : $em_category_id;
-			$EM_Category = em_get_category( $cat_id );
-			if ( is_array( $category ) ) {
-				$is_category = array();
-				foreach ( $category as $id_or_term ) {
-					$is_category[] = is_numeric( $id_or_term ) ? $EM_Category->id == $id_or_term : ( $EM_Category->slug == $id_or_term || $EM_Category->name == $id_or_term );
-				}
-				return in_array( true, $is_category );
-			} else {
-				$is_category = is_numeric( $category ) ? $EM_Category->id == $category : ( $EM_Category->slug == $category || $EM_Category->name == $category );
-				return $is_category;
-			}
-			return false;
-		}
-		return false;
-	}
+function em_is_category_page( $category = false ){
+    if( !empty($category) ){
+        global $wp_query, $post, $em_category_id;
+        if( is_tax(EM_TAXONOMY_CATEGORY, $category) ){ return true; }
+        if( !empty($wp_query->em_category_id) || ($post->ID == get_option('dbem_categories_page') && !empty($em_category_id)) ){
+			$cat_id = !empty($wp_query->em_category_id) ? $wp_query->em_category_id:$em_category_id;
+            $EM_Category = em_get_category($cat_id);
+            if( is_array($category) ){
+                $is_category = array();
+                foreach( $category as $id_or_term ){
+                    $is_category[] = is_numeric($id_or_term) ? $EM_Category->id == $id_or_term : ($EM_Category->slug == $id_or_term || $EM_Category->name == $id_or_term);
+                }
+                return in_array(true, $is_category);
+            }else{
+                $is_category = is_numeric($category) ? $EM_Category->id == $category : ($EM_Category->slug == $category  || $EM_Category->name == $category);
+                return $is_category;
+            }
+            return false;
+        }
+        return false;
+    }
 	return em_get_page_type() == 'category';
 }
 /**
  * Is this a categories list page?
  * @return boolean
  */
-function em_is_categories_page() {
+function em_is_categories_page(){
 	return em_get_page_type() == 'categories';
 }
 
@@ -745,22 +620,21 @@ function em_is_categories_page() {
  * Is this a a single category page?
  * @return boolean
  */
-function em_is_tag_page( $tag = false ) {
-	if ( ! empty( $tag ) ) {
+function em_is_tag_page( $tag = false ){
+	if( !empty($tag) ){
 		global $wp_query, $post, $em_tag_id;
-		if ( is_tax( EM_TAXONOMY_TAG, $tag ) ) {
-			return true; }
-		if ( ! empty( $wp_query->em_tag_id ) || ! empty( $em_tag_id ) ) {
-			$tag_id = ! empty( $wp_query->em_tag_id ) ? $wp_query->em_tag_id : $em_tag_id;
-			$EM_Tag = em_get_tag( $tag_id );
-			if ( is_array( $tag ) ) {
+		if( is_tax(EM_TAXONOMY_TAG, $tag) ){ return true; }
+		if( !empty($wp_query->em_tag_id) || !empty($em_tag_id) ){
+			$tag_id = !empty($wp_query->em_tag_id) ? $wp_query->em_tag_id:$em_tag_id;
+			$EM_Tag = em_get_tag($tag_id);
+			if( is_array($tag) ){
 				$is_tag = array();
-				foreach ( $tag as $id_or_term ) {
-					$is_tag[] = is_numeric( $id_or_term ) ? $EM_Tag->id == $id_or_term : ( $EM_Tag->slug == $id_or_term || $EM_Tag->name == $id_or_term );
+				foreach( $tag as $id_or_term ){
+					$is_tag[] = is_numeric($id_or_term) ? $EM_Tag->id == $id_or_term : ($EM_Tag->slug == $id_or_term || $EM_Tag->name == $id_or_term);
 				}
-				return in_array( true, $is_tag );
-			} else {
-				$is_tag = is_numeric( $tag ) ? $EM_Tag->id == $tag : ( $EM_Tag->slug == $tag || $EM_Tag->name == $tag );
+				return in_array(true, $is_tag);
+			}else{
+				$is_tag = is_numeric($tag) ? $EM_Tag->id == $tag : ($EM_Tag->slug == $tag || $EM_Tag->name == $tag);
 				return $is_tag;
 			}
 			return false;
@@ -774,14 +648,14 @@ function em_is_tag_page( $tag = false ) {
  * Is this a a single location page?
  * @return boolean
  */
-function em_is_location_page() {
+function em_is_location_page(){
 	return em_get_page_type() == 'location';
 }
 /**
  * Is this a locations list page?
  * @return boolean
  */
-function em_is_locations_page() {
+function em_is_locations_page(){
 	return em_get_page_type() == 'locations';
 }
 
@@ -789,7 +663,7 @@ function em_is_locations_page() {
  * Is this my bookings page?
  * @return boolean
  */
-function em_is_my_bookings_page() {
+function em_is_my_bookings_page(){
 	return em_get_page_type() == 'my_bookings';
 }
 
@@ -802,3 +676,4 @@ function em_is_event_rsvpable() {
 	global $EM_Event;
 	return ( em_is_event_page() && $EM_Event->rsvp );
 }
+?>

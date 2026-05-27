@@ -14,15 +14,15 @@ class Timerange extends \EM\Timerange {
 	 */
 	protected $event;
 	protected $event_id;
-	public $timeslots = array();
-	public $status    = 1;
+	public $timeslots = [];
+	public $status = 1;
 
 	public function __construct( $data = false, $EM_Event = null ) {
-		parent::__construct( $data );
+		parent::__construct($data);
 		// deactivate dynamic timeranges if disabled
 		if ( $EM_Event instanceof EM_Event ) {
-			$this->event           = $EM_Event;
-			$allow_timeranges      = $EM_Event->get_option( 'dbem_event_timeranges_enabled', true );
+			$this->event = $EM_Event;
+			$allow_timeranges = $EM_Event->get_option( 'dbem_event_timeranges_enabled', true );
 			$this->allow_timeslots = $allow_timeranges && $EM_Event->get_option( 'dbem_event_timeranges_advanced', true );
 
 		} else {
@@ -38,21 +38,19 @@ class Timerange extends \EM\Timerange {
 	 */
 	public function load_timeslots( $reload = false ) {
 		global $wpdb;
-		if ( ! $this->timeslots || $reload ) {
-			$this->timeslots = array();
+		if ( !$this->timeslots || $reload ) {
+			$this->timeslots = [];
 			if ( $this->event->event_id > 0 ) {
 				// get timeslots from DB
-				$timeslots_data = $wpdb->get_results( 'SELECT * FROM ' . EM_EVENT_TIMESLOTS_TABLE . ' WHERE timerange_id=' . absint( $this->timerange_id ) . ' AND event_id=' . absint( $this->event->event_id ), ARRAY_A );
-				if ( ! $timeslots_data ) {
+				$timeslots_data = $wpdb->get_results( "SELECT * FROM " . EM_EVENT_TIMESLOTS_TABLE . " WHERE timerange_id=" . absint($this->timerange_id) . " AND event_id=" . absint( $this->event->event_id ), ARRAY_A );
+				if ( !$timeslots_data ) {
 					// prefill with start and end dates of the event
-					$timeslots_data = array(
-						array(
-							'timeslot_all_day' => $this->timerange_all_day,
-							'timeslot_start'   => $this->timerange_start,
-							'timeslot_end'     => $this->timerange_end,
-							'timeslot_id'      => null,
-						),
-					);
+					$timeslots_data = [[
+						'timeslot_all_day' => $this->timerange_all_day,
+						'timeslot_start' => $this->timerange_start,
+						'timeslot_end' => $this->timerange_end,
+						'timeslot_id' => null,
+					]];
 				}
 				foreach ( $timeslots_data as $timeslot_data ) {
 					$this->timeslots[ $timeslot_data['timeslot_id'] ] = $this->get_timeslot( $timeslot_data );
@@ -63,7 +61,7 @@ class Timerange extends \EM\Timerange {
 	}
 
 	public function get_event() {
-		if ( ! ( $this->event instanceof EM_Event ) && $this->event_id ) {
+		if ( !($this->event instanceof EM_Event) && $this->event_id ) {
 			$this->event = em_get_event( $this->event_id );
 		}
 		return $this->event;
@@ -98,7 +96,7 @@ class Timerange extends \EM\Timerange {
 		}
 		if ( $db ) {
 			global $wpdb;
-			$sql = 'UPDATE ' . EM_EVENT_TIMESLOTS_TABLE . ' SET timeslot_status = ' . $this->status . ' WHERE timerange_id = ' . absint( $this->timerange_id );
+			$sql = "UPDATE " . EM_EVENT_TIMESLOTS_TABLE . " SET timeslot_status = " . $this->status . " WHERE timerange_id = " . absint( $this->timerange_id );
 			$wpdb->query( $sql );
 		}
 	}
@@ -111,7 +109,7 @@ class Timerange extends \EM\Timerange {
 		global $wpdb;
 		$result = parent::delete();
 		// now delete timeslots too
-		$timeslots_result = $wpdb->delete( EM_EVENT_TIMESLOTS_TABLE, array( 'timerange_id' => $this->timerange_id ) );
+		$timeslots_result = $wpdb->delete( EM_EVENT_TIMESLOTS_TABLE, [ 'timerange_id' => $this->timerange_id ] );
 		return apply_filters( 'em_event_timerange_delete', $result && $timeslots_result !== false, $this );
 	}
 }

@@ -17,17 +17,17 @@ class Event_Content extends Event_Action_Field {
 	 * Field name/label
 	 */
 	public static function get_name() {
-		return __( 'Event Content', 'events-manager-thrive-automator' );
+		return __('Event Content', 'events-manager-thrive-automator');
 	}
-
+	
 	/**
 	 * Field description
 	 */
 	public static function get_description() {
-		return __( 'The name of the event', 'events-manager-thrive-automator' );
+		return __('The name of the event', 'events-manager-thrive-automator');
 	}
-
-
+	
+	
 	public static function get_id() {
 		return 'events-manager/post_content';
 	}

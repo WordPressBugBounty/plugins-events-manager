@@ -13,11 +13,11 @@ namespace libphonenumber;
  * @package libphonenumber
  * @internal
  */
-interface MatcherAPIInterface {
-
-	/**
-	 * Returns whether the given national number (a string containing only decimal digits) matches
-	 * the national number pattern defined in the given {@code PhoneNumberDesc} message.
-	 */
-	public function matchNationalNumber( string $number, PhoneNumberDesc $numberDesc, bool $allowPrefixMatch ): bool;
+interface MatcherAPIInterface
+{
+    /**
+     * Returns whether the given national number (a string containing only decimal digits) matches
+     * the national number pattern defined in the given {@code PhoneNumberDesc} message.
+     */
+    public function matchNationalNumber(string $number, PhoneNumberDesc $numberDesc, bool $allowPrefixMatch): bool;
 }

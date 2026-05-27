@@ -1,2 +1,2 @@
 <?php
-//DEPRECATED, now only using event/bookings-ticket-form.php
+//DEPRECATED, now only using event/bookings-ticket-form.php 

@@ -17,7 +17,7 @@
 		{is_cancelled}
 		<div class="em-event-cancelled em-notice em-notice-error em-notice-thin em-notice-icon">
 			<span class="em-icon em-icon-cross-circle"></span>
-			<?php esc_html_e( 'This event has been cancelled.', 'events-manager' ); ?>
+			<?php esc_html_e('This event has been cancelled.', 'events-manager'); ?>
 		</div>
 		{/is_cancelled}
 		<div class="em-event-meta em-item-meta">
@@ -64,11 +64,11 @@
 			#_EVENTEXCERPT{25}
 		</div>
 		<div class="em-item-actions input">
-			<a class="em-item-read-more button" href="#_EVENTURL"><?php esc_html_e( 'More Info', 'events-manager' ); ?></a>
+			<a class="em-item-read-more button" href="#_EVENTURL"><?php esc_html_e('More Info', 'events-manager'); ?></a>
 			{bookings_open}
 			<a class="em-event-book-now button" href="#_EVENTURL#em-event-booking-form">
 				<span class="em-icon em-icon-ticket"></span>
-				<?php esc_html_e( 'Book Now!', 'events-manager' ); ?>
+				<?php esc_html_e('Book Now!', 'events-manager'); ?>
 			</a>
 			{/bookings_open}
 		</div>

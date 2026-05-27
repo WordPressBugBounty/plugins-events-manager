@@ -6,14 +6,12 @@
  * You can display events however you wish, there are a few variables made available to you:
  */
 /* @var array $args - the args passed onto EM_Events::output() */
-$args = apply_filters( 'em_content_events_args', $args );
-if ( empty( $args['id'] ) ) {
-	$args['id'] = rand( 100, getrandmax() ); // prevent warnings
-}
-$id = esc_attr( $args['id'] );
+$args = apply_filters('em_content_events_args', $args);
+if( empty($args['id']) ) $args['id'] = rand(100, getrandmax()); // prevent warnings
+$id = esc_attr($args['id']);
 ?>
-<div class="<?php em_template_classes( 'view-container' ); ?>" id="em-view-<?php echo $id; ?>" data-view="list">
-	<div class="<?php em_template_classes( 'events-list' ); ?>" id="em-events-list-<?php echo $id; ?>" data-view-id="<?php echo $id; ?>">
+<div class="<?php em_template_classes('view-container'); ?>" id="em-view-<?php echo $id; ?>" data-view="list">
+	<div class="<?php em_template_classes('events-list'); ?>" id="em-events-list-<?php echo $id; ?>" data-view-id="<?php echo $id; ?>">
 	<?php
 	echo EM_Events::output( $args );
 	?>

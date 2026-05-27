@@ -48,8 +48,8 @@
 </div>
 <div class="em-item-desc">#_EVENTEXCERPT{25,...}</div>
 <div class="em-item-actions input">
-	<a class="em-event-read-more button" href="#_EVENTURL"><?php esc_html_e( 'More Info', 'events-manager' ); ?></a>
+	<a class="em-event-read-more button" href="#_EVENTURL"><?php esc_html_e('More Info', 'events-manager') ?></a>
 	{bookings_open}
-	<a class="em-event-book-now button" href="#_EVENTURL#em-booking"><?php esc_html_e( 'Book Now!', 'events-manager' ); ?></a>
+	<a class="em-event-book-now button" href="#_EVENTURL#em-booking"><?php esc_html_e('Book Now!', 'events-manager') ?></a>
 	{/bookings_open}
 </div>

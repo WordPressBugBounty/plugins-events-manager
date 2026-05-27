@@ -1,11 +1,11 @@
 === Events Manager - Calendar, Bookings, Tickets, and more!  ===
 Contributors: msykes, pxlite, nutsmuggler, netweblogic
 Donate link: https://wp-events-plugin.com
-Tags: events, calendar, tickets, bookings, appointments
+Tags: events, calendar, tickets, bookings, block
 Text Domain: events-manager
 Requires at least: 6.1
 Tested up to: 7.0
-Stable tag: 7.2.3.1
+Stable tag: 7.3.1
 Requires PHP: 7.0
 License: GPLv2
 
@@ -21,6 +21,8 @@ Events Manager is a full-featured event calendar, bookings, appointments, schedu
 
 = Main Features =
 
+* **NEW** Integrate easily with your favourite AI via MCP, unlock the power of AI-powered Events!
+* **NEW** API Rest Integration
 * Beautiful calendars, search pages, lists, grids and booking forms to enhance your site events.
 * Easy event registration (single day with start/end times)
 * Recurring and long (multi-day) event registration
@@ -36,7 +38,7 @@ Events Manager is a full-featured event calendar, bookings, appointments, schedu
  * Network-wide Global Booking Management
  * BuddyPress and BuddyBoss Support
  * Create modular (independent) event subsites or inter-networked events
-* **NEW** Multiple custom event types (Archetypes), such as Workshops, Events, Webinars, Appointments etc.
+* Multiple custom event types (Archetypes), such as Workshops, Events, Webinars, Appointments etc.
  * Customize your labels, slugs and CPT names
  * Enable or disable specific features for specific event archetypes.
 * Multiple Location Types
@@ -63,8 +65,10 @@ Events Manager is a full-featured event calendar, bookings, appointments, schedu
 * Compatible with SEO plugins
 * Timezone Support - create events in different timezones
 * Plenty of template tags and shortcodes for use in your posts and pages
+* Gutenberg block editor support, with native blocks for the Events Calendar, Events List, and Locations List — usable in posts, pages, the site editor and the widget editor
 * Actively maintained and supported
 * Lots of documentation and tutorials
+* **NEW** Gutenberg Supported
 * And much more!
 
 = Data Privacy and GDPR Compliance =
@@ -183,6 +187,27 @@ See our [FAQ](http://wp-events-plugin.com/documentation/faq/) page for helps wit
 18. Grid view for displaying your upcoming events at a glance
 
 == Changelog ==
+= 7.3.1 =
+* Bumped version to fix missing file dependency during build causing fatal errors in 7.3
+
+= 7.3 =
+* Added REST API v1 with full event, location, booking, and ticket endpoints under `events-manager/v1/`, PATCH partial-update support, a validation endpoint, and extension hooks so custom archetypes and Pro modules plug into the same save pipeline as Gutenberg, the classic editor, headless clients, and WP-CLI
+* Added documented input schemas for the REST API covering events, locations, bookings, per-attendee custom fields, embedded location creation, attributes, coupons, and Pro overlay fields
+* Added OAuth Application-Password support so apps can authenticate against the REST API without admin sessions
+* Added MCP (Model Context Protocol) adapter and setup wizard so AI agents can read and manage events through the authenticated REST surface
+* Added Gutenberg (block editor) support for events and locations with a Classic/Gutenberg toggle on Settings → General, defaulting to Classic on upgrade and Gutenberg on fresh install
+* Added Events Manager block category with three blocks (Events Calendar, Events List, Locations List), each delegating to the existing widget classes so output stays identical to shortcodes and widgets
+* Added ACF-style pre-save validation for the block editor — clicking Publish/Update runs EM's validate() pipeline against the classic metabox state via `events-manager/v1/blocks/event/validate`, surfacing errors as editor notices instead of silently demoting to draft
+* Tweaked repeating-event template CPTs to continue loading in classic editor since the Recurrences metabox does not render correctly in Gutenberg's metabox panel
+* Fixed XSS vulnerability CVE-2025-12976 (medium severity) reported by Muhammad Yudha-DJ via Wordfence
+* Fixed vulnerabilities CVE-2025-12407 and CVE-2025-12408 reported by thinnawarth mathuros via Wordfence
+* Changed REST API endpoints to require authentication by default
+* Fixed advanced formatting textareas being POSTed even when their group was hidden, which caused some host firewalls (Hostinger, SiteGround, Wordfence) to flag the raw HTML templates as XSS payloads and block the Settings save with a 403
+* Fixed pending events count in the WP admin sidebar menu incorrectly including or excluding recurring-event templates — counts now filter by event_type for both single and recurring totals
+* Updated intl-tel-input i18n files
+* Fixed some newly added settings missing multilingual translatable options
+* Fixed some PHP notices related to multilingual setups
+
 = 7.2.3.1 =
 * Fixed bug with counting approved bookings since 7.2.3
 * Fixed WP caching of event timeslots using only event ID instead of full UID, causing retrieval errors

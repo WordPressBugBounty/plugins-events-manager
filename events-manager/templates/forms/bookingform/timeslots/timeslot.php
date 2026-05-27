@@ -18,13 +18,8 @@ $can_book = $EM_Event->get_bookings()->is_open();
 $event_id = $EM_Event->event_id;
 if ( $can_book ) {
 	?>
-	<a href="#<?php echo $EM_Event->start()->getDate() . '@' . $EM_Event->start()->getTime(); ?>" class="em-booking-recurrence em-booking-timeslot em-item em-button button-secondary" 
-	<?php
-	if ( ! $can_book ) {
-		echo 'disabled';}
-	?>
-	data-event="<?php echo $event_id; ?>">
-		<?php echo $EM_Event->output( '#_12HSTARTTIME' ); ?>
+	<a href="#<?php echo $EM_Event->start()->getDate() . '@' . $EM_Event->start()->getTime(); ?>" class="em-booking-recurrence em-booking-timeslot em-item em-button button-secondary" <?php if ( !$can_book ) echo 'disabled'; ?> data-event="<?php echo $event_id; ?>">
+		<?php echo $EM_Event->output('#_12HSTARTTIME'); ?>
 	</a>
 	<?php
 }

@@ -19,11 +19,11 @@ function bp_em_attending() {
 	bp_core_load_template( apply_filters( 'bp_core_template_plugin', 'members/single/plugins' ) );
 }
 
-function bp_em_attending_title() {
-	_e( 'Events I\'m Attending', 'events-manager' );
-}
+	function bp_em_attending_title() {
+		_e( 'Events I\'m Attending', 'events-manager');
+	}
 
-function bp_em_attending_content() {
-	//We can use the same template as the public user interface for non bp sites
-	em_my_bookings();
-}
+	function bp_em_attending_content() {
+		//We can use the same template as the public user interface for non bp sites
+		em_my_bookings();
+	}

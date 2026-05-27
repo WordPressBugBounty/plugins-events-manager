@@ -17,21 +17,21 @@ class Event_Start extends Event_Action_Field {
 	 * Field name/label
 	 */
 	public static function get_name() {
-		return __( 'Event Start Date/Time (UTC)', 'events-manager-thrive-automator' );
+		return __('Event Start Date/Time (UTC)', 'events-manager-thrive-automator');
 	}
-
+	
 	/**
 	 * Field description
 	 */
 	public static function get_description() {
-		return __( 'The start date and time of the event in UTC timezone with a MySQL DATETIME format.', 'events-manager-thrive-automator' );
+		return __('The start date and time of the event in UTC timezone with a MySQL DATETIME format.', 'events-manager-thrive-automator');
 	}
-
+	
 	public static function get_placeholder() {
 		return 'YYYY-MM-DD HH:MM:SS';
 	}
-
-
+	
+	
 	public static function get_id() {
 		return 'events-manager/event_start';
 	}

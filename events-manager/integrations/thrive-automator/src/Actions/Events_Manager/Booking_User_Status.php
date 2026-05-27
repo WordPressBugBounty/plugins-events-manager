@@ -15,11 +15,11 @@ class Booking_User_Status extends Action {
 	}
 
 	public static function get_name() {
-		return __( 'Change User Booking Statuses', 'events-manager-thrive-automator' );
+		return __('Change User Booking Statuses', 'events-manager-thrive-automator');
 	}
 
 	public static function get_description() {
-		return __( 'Change the status of a users bookings.', 'events-manager-thrive-automator' );
+		return __('Change the status of a users bookings.', 'events-manager-thrive-automator');
 	}
 
 	public static function get_image() {
@@ -36,12 +36,12 @@ class Booking_User_Status extends Action {
 	 * @return array
 	 */
 	public static function get_required_action_fields() {
-		return array(
+		return [
 			'events-manager/booking_status',
 			'events-manager/booking_scope',
 			'events-manager/booking_send_email',
 			'events-manager/booking_ignore_capacity',
-		);
+		];
 	}
 
 	/**
@@ -50,7 +50,7 @@ class Booking_User_Status extends Action {
 	 * @return array
 	 */
 	public static function get_required_data_objects() {
-		return array( 'user_data' );
+		return ['user_data'];
 	}
 
 	/**
@@ -58,24 +58,24 @@ class Booking_User_Status extends Action {
 	 */
 	public function do_action( $data ) {
 		$user_data = $data['user_data'];
-		if ( $user_data instanceof \Thrive\Automator\Items\User_Data ) {
-			$user_id       = $user_data->get_value( 'user_id' );
-			$status        = $this->get_automation_data_value( 'events-manager/booking_status' );
-			$scope         = $this->get_automation_data_value( 'events-manager/booking_scope' );
-			$email         = $this->get_automation_data_value( 'events-manager/booking_send_email' ) == true;
+		if( $user_data instanceof \Thrive\Automator\Items\User_Data ){
+			$user_id = $user_data->get_value('user_id');
+			$status = $this->get_automation_data_value( 'events-manager/booking_status' );
+			$scope = $this->get_automation_data_value( 'events-manager/booking_scope' );
+			$email = $this->get_automation_data_value( 'events-manager/booking_send_email' ) == true;
 			$ignore_spaces = $this->get_automation_data_value( 'events-manager/booking_ignore_capacity' ) == true;
 			// get user emails based on scope
 			global $wpdb;
-			$sql = $wpdb->prepare( 'SELECT booking_id FROM ' . EM_BOOKINGS_TABLE . ' WHERE person_id=%d', $user_id );
-			if ( $scope === 'past' ) {
-				$sql .= ' AND event_id IN ( SELECT event_id FROM ' . EM_EVENTS_TABLE . ' WHERE event_start < NOW() )';
-			} elseif ( $scope === 'future' ) {
-				$sql .= ' AND event_id IN ( SELECT event_id FROM ' . EM_EVENTS_TABLE . ' WHERE event_start > NOW() )';
+			$sql = $wpdb->prepare('SELECT booking_id FROM '. EM_BOOKINGS_TABLE. ' WHERE person_id=%d', $user_id);
+			if( $scope === 'past' ){
+				$sql .= ' AND event_id IN ( SELECT event_id FROM '. EM_EVENTS_TABLE .' WHERE event_start < NOW() )';
+			}elseif( $scope === 'future' ){
+				$sql .= ' AND event_id IN ( SELECT event_id FROM '. EM_EVENTS_TABLE .' WHERE event_start > NOW() )';
 			}
-			$bookings = $wpdb->get_col( $sql );
-			foreach ( $bookings as $booking_id ) {
-				$EM_Booking = em_get_booking( $booking_id );
-				$EM_Booking->set_status( $status, $email, $ignore_spaces );
+			$bookings = $wpdb->get_col($sql);
+			foreach( $bookings as $booking_id ){
+				$EM_Booking = em_get_booking($booking_id);
+				$EM_Booking->set_status($status, $email, $ignore_spaces);
 			}
 		}
 	}

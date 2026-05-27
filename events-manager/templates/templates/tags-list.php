@@ -8,14 +8,12 @@
  * $args - the args passed onto EM_Tags::output()
  *
  */
-$args = apply_filters( 'em_content_tags_args', $args );
-if ( empty( $args['id'] ) ) {
-	$args['id'] = rand( 100, getrandmax() ); // prevent warnings
-}
-$id = esc_attr( $args['id'] );
+$args = apply_filters('em_content_tags_args', $args);
+if( empty($args['id']) ) $args['id'] = rand(100, getrandmax()); // prevent warnings
+$id = esc_attr($args['id']);
 ?>
-<div class="<?php em_template_classes( 'view-container' ); ?>" id="em-view-<?php echo $id; ?>" data-view="list">
-	<div class="<?php em_template_classes( 'tags-list' ); ?>" id="em-tags-list-<?php echo $id; ?>" data-view-id="<?php echo $id; ?>">
+<div class="<?php em_template_classes('view-container'); ?>" id="em-view-<?php echo $id; ?>" data-view="list">
+	<div class="<?php em_template_classes('tags-list'); ?>" id="em-tags-list-<?php echo $id; ?>" data-view-id="<?php echo $id; ?>">
 		<?php
 		echo EM_Tags::output( $args );
 		?>

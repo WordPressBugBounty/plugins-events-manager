@@ -3,18 +3,18 @@ namespace EM\Integrations;
 
 class Duplicate_Post_Plugins {
 
-	public static function init() {
+	public static function init(){
 		// Yoast Duplicate Post plugin
-		if ( defined( 'DUPLICATE_POST_CURRENT_VERSION' ) ) {
-			add_filter( 'duplicate_post_enabled_post_types', array( static::class, 'disable_yoast_duplicate_posts' ) );
+		if ( defined('DUPLICATE_POST_CURRENT_VERSION') ) {
+			add_filter( 'duplicate_post_enabled_post_types', [ static::class, 'disable_yoast_duplicate_posts' ] );
 		}
 		// Copy and Duplicate Plugin
-		if ( defined( 'CDP_VERSION' ) ) {
-			add_action( 'template_redirect', array( static::class, 'disable_copy_and_duplicate_plugin' ) );
+		if ( defined('CDP_VERSION') ) {
+			add_action('template_redirect', [ static::class, 'disable_copy_and_duplicate_plugin' ] );
 		}
 		// Admin checks
 		if ( is_admin() ) {
-			include 'duplicate-post-plugins-admin.php';
+			include('duplicate-post-plugins-admin.php');
 		}
 	}
 
@@ -24,7 +24,7 @@ class Duplicate_Post_Plugins {
 	 * @return array
 	 */
 	public static function get_cpts() {
-		return array( EM_POST_TYPE_EVENT, EM_POST_TYPE_LOCATION, 'event-recurring' );
+		return [EM_POST_TYPE_EVENT, EM_POST_TYPE_LOCATION, 'event-recurring'];
 	}
 
 	/**
@@ -36,7 +36,7 @@ class Duplicate_Post_Plugins {
 	 */
 	public static function disable_yoast_duplicate_posts( $enabled_post_types ) {
 		foreach ( $enabled_post_types as $key => $post_type ) {
-			if ( in_array( $post_type, array( EM_POST_TYPE_EVENT, EM_POST_TYPE_LOCATION, 'event-recurring' ) ) ) {
+			if ( in_array( $post_type, [ EM_POST_TYPE_EVENT, EM_POST_TYPE_LOCATION, 'event-recurring' ] ) ) {
 				unset( $enabled_post_types[ $key ] );
 			}
 		}
@@ -46,7 +46,7 @@ class Duplicate_Post_Plugins {
 	// Copy and Duplicate Plugin
 	public static function disable_copy_and_duplicate_plugin() {
 		if ( is_single() && in_array( get_post_type(), self::get_cpts() ) ) {
-			add_filter( 'option__cdp_globals', array( static::class, 'disable_copy_and_duplicate_plugin_option' ), 10, 1 );
+			add_filter('option__cdp_globals', [ static::class, 'disable_copy_and_duplicate_plugin_option' ], 10, 1 );
 		}
 	}
 

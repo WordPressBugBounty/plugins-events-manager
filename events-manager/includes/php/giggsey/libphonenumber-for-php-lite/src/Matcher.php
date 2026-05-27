@@ -13,132 +13,144 @@ namespace libphonenumber;
  *
  * @internal
  */
-class Matcher {
+class Matcher
+{
+    protected string $pattern;
+    protected string $subject = '';
 
-	protected string $pattern;
-	protected string $subject = '';
+    /**
+     * @var array<array{string,int}>
+     */
+    protected array $groups = [];
 
-	/**
-	 * @var array<array{string,int}>
-	 */
-	protected array $groups = array();
+    private int $searchIndex = 0;
 
-	private int $searchIndex = 0;
+    /**
+     * @param string $pattern
+     * @param string $subject
+     */
+    public function __construct(string $pattern, string $subject)
+    {
+        $this->pattern = str_replace('/', '\/', $pattern);
+        $this->subject = $subject;
+    }
 
-	/**
-	 * @param string $pattern
-	 * @param string $subject
-	 */
-	public function __construct( string $pattern, string $subject ) {
-		$this->pattern = str_replace( '/', '\/', $pattern );
-		$this->subject = $subject;
-	}
+    /**
+     * @param string $type
+     * @param int $offset
+     * @return bool
+     */
+    protected function doMatch(string $type = 'find', int $offset = 0): bool
+    {
+        $final_pattern = '(?:' . $this->pattern . ')';
+        switch ($type) {
+            case 'matches':
+                $final_pattern = '^' . $final_pattern . '$';
+                break;
+            case 'lookingAt':
+                $final_pattern = '^' . $final_pattern;
+                break;
+            case 'find':
+            default:
+                // no changes
+                break;
+        }
+        $final_pattern = '/' . $final_pattern . '/ui';
 
-	/**
-	 * @param string $type
-	 * @param int $offset
-	 * @return bool
-	 */
-	protected function doMatch( string $type = 'find', int $offset = 0 ): bool {
-		$final_pattern = '(?:' . $this->pattern . ')';
-		switch ( $type ) {
-			case 'matches':
-				$final_pattern = '^' . $final_pattern . '$';
-				break;
-			case 'lookingAt':
-				$final_pattern = '^' . $final_pattern;
-				break;
-			case 'find':
-			default:
-				// no changes
-				break;
-		}
-		$final_pattern = '/' . $final_pattern . '/ui';
+        $search = mb_substr($this->subject, $offset);
 
-		$search = mb_substr( $this->subject, $offset );
+        $result = preg_match($final_pattern, $search, $groups, PREG_OFFSET_CAPTURE);
 
-		$result = preg_match( $final_pattern, $search, $groups, PREG_OFFSET_CAPTURE );
+        if ($result === 1) {
+            // Expand $groups into $this->groups, but being multi-byte aware
 
-		if ( $result === 1 ) {
-			// Expand $groups into $this->groups, but being multi-byte aware
+            $positions = [];
 
-			$positions = array();
+            foreach ($groups as $group) {
+                $positions[] = [
+                    $group[0],
+                    $offset + mb_strlen(substr($search, 0, $group[1])),
+                ];
+            }
 
-			foreach ( $groups as $group ) {
-				$positions[] = array(
-					$group[0],
-					$offset + mb_strlen( substr( $search, 0, $group[1] ) ),
-				);
-			}
+            $this->groups = $positions;
+        }
 
-			$this->groups = $positions;
-		}
+        return ($result === 1);
+    }
 
-		return ( $result === 1 );
-	}
+    public function matches(): bool
+    {
+        return $this->doMatch('matches');
+    }
 
-	public function matches(): bool {
-		return $this->doMatch( 'matches' );
-	}
+    public function lookingAt(): bool
+    {
+        return $this->doMatch('lookingAt');
+    }
 
-	public function lookingAt(): bool {
-		return $this->doMatch( 'lookingAt' );
-	}
+    public function find(?int $offset = null): bool
+    {
+        if ($offset === null) {
+            $offset = $this->searchIndex;
+        }
 
-	public function find( ?int $offset = null ): bool {
-		if ( $offset === null ) {
-			$offset = $this->searchIndex;
-		}
+        // Increment search index for the next time we call this
+        $this->searchIndex++;
+        return $this->doMatch('find', $offset);
+    }
 
-		// Increment search index for the next time we call this
-		++$this->searchIndex;
-		return $this->doMatch( 'find', $offset );
-	}
+    public function groupCount(): ?int
+    {
+        if (empty($this->groups)) {
+            return null;
+        }
 
-	public function groupCount(): ?int {
-		if ( empty( $this->groups ) ) {
-			return null;
-		}
+        return count($this->groups) - 1;
+    }
 
-		return count( $this->groups ) - 1;
-	}
+    public function group(?int $group = null): ?string
+    {
+        if ($group === null) {
+            $group = 0;
+        }
+        return $this->groups[$group][0] ?? null;
+    }
 
-	public function group( ?int $group = null ): ?string {
-		if ( $group === null ) {
-			$group = 0;
-		}
-		return $this->groups[ $group ][0] ?? null;
-	}
+    public function end(?int $group = null): ?int
+    {
+        if ($group === null) {
+            $group = 0;
+        }
+        if (!isset($this->groups[$group])) {
+            return null;
+        }
+        return $this->groups[$group][1] + mb_strlen($this->groups[$group][0]);
+    }
 
-	public function end( ?int $group = null ): ?int {
-		if ( $group === null ) {
-			$group = 0;
-		}
-		if ( ! isset( $this->groups[ $group ] ) ) {
-			return null;
-		}
-		return $this->groups[ $group ][1] + mb_strlen( $this->groups[ $group ][0] );
-	}
+    public function start(int $group = 0): ?int
+    {
+        if (!isset($this->groups[$group])) {
+            return null;
+        }
 
-	public function start( int $group = 0 ): ?int {
-		if ( ! isset( $this->groups[ $group ] ) ) {
-			return null;
-		}
+        return $this->groups[$group][1];
+    }
 
-		return $this->groups[ $group ][1];
-	}
+    public function replaceFirst(string $replacement): string
+    {
+        return preg_replace('/' . $this->pattern . '/x', $replacement, $this->subject, 1);
+    }
 
-	public function replaceFirst( string $replacement ): string {
-		return preg_replace( '/' . $this->pattern . '/x', $replacement, $this->subject, 1 );
-	}
+    public function replaceAll(string $replacement): string
+    {
+        return preg_replace('/' . $this->pattern . '/x', $replacement, $this->subject);
+    }
 
-	public function replaceAll( string $replacement ): string {
-		return preg_replace( '/' . $this->pattern . '/x', $replacement, $this->subject );
-	}
+    public function reset(string $input = ''): self
+    {
+        $this->subject = $input;
 
-	public function reset( string $input = '' ): self {
-		$this->subject = $input;
-
-		return $this;
-	}
+        return $this;
+    }
 }

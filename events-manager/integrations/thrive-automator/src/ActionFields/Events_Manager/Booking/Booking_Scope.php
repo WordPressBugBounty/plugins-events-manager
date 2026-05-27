@@ -19,28 +19,28 @@ class Booking_Scope extends Booking_Action_Field {
 	 * Field name/label
 	 */
 	public static function get_name() {
-		return __( 'Event Scope', 'events-manager-thrive-automator' );
+		return __('Event Scope', 'events-manager-thrive-automator');
 	}
-
+	
 	/**
 	 * Field description
 	 */
 	public static function get_description() {
-		return __( 'The scopes of the booking for an event', 'events-manager-thrive-automator' );
+		return __('The scopes of the booking for an event', 'events-manager-thrive-automator');
 	}
-
-
+	
+	
 	public static function get_id() {
 		return 'events-manager/booking_scope';
 	}
-
+	
 	/**
 	 * Campaigns will be displayed in a dropdown select
 	 */
 	public static function get_type() {
 		return Utils::FIELD_TYPE_SELECT;
 	}
-
+	
 	/**
 	 * Function that returns an array with campaigns (id/name) that will be used in the select
 	 *
@@ -48,16 +48,16 @@ class Booking_Scope extends Booking_Action_Field {
 	 */
 	public static function get_options_callback( $action_id, $action_data ) {
 		$options = array();
-		$scopes  = array(
-			'future' => __( 'Future Bookings', 'events-manager-thrive-automator' ),
-			'past'   => __( 'Past Bookings', 'events-manager-thrive-automator' ),
-			'all'    => __( 'All Bookings', 'events-manager-thrive-automator' ),
+		$scopes = array(
+			'future' => __('Future Bookings', 'events-manager-thrive-automator'),
+			'past' => __('Past Bookings', 'events-manager-thrive-automator'),
+			'all' => __('All Bookings', 'events-manager-thrive-automator'),
 		);
-		foreach ( $scopes as $id => $label ) {
-			$options[] = array(
-				'id'    => $id,
+		foreach( $scopes as $id => $label ){
+			$options[] = [
+				'id' => $id,
 				'label' => $label,
-			);
+			];
 		}
 		return $options;
 	}

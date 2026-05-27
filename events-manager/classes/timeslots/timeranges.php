@@ -13,7 +13,7 @@ class Timeranges extends \EM_Object implements \Iterator, \ArrayAccess, \Countab
 	/**
 	 * @var Timerange[] Array of Timerange objects
 	 */
-	public $timeranges = array();
+	public $timeranges = [];
 
 	/**
 	 * @var string The group ID these timeranges belong to
@@ -23,7 +23,7 @@ class Timeranges extends \EM_Object implements \Iterator, \ArrayAccess, \Countab
 	/**
 	 * @var array Timeranges that have been marked for deletion
 	 */
-	public $deleted_timeranges = array();
+	public $deleted_timeranges = [];
 
 	/**
 	 * @var bool Whether this collection allows more than one timerange.
@@ -43,11 +43,11 @@ class Timeranges extends \EM_Object implements \Iterator, \ArrayAccess, \Countab
 	/**
 	 * @var Timeslot[] Array of timeslots generated from this collection
 	 */
-	public $generated_timeslots = array();
+	public $generated_timeslots = [];
 
 	/**
 	 * Constructor to initialize the Timeranges collection.
-	 *
+	 * 
 	 * @param string|null $group_id The group ID to load timeranges for
 	 */
 	public function __construct( $group_id = null ) {
@@ -81,18 +81,18 @@ class Timeranges extends \EM_Object implements \Iterator, \ArrayAccess, \Countab
 	 */
 	protected function load_timeranges( $padding = false ) {
 		global $wpdb;
-		if ( ! $this->timeranges && $this->group_id ) {
+		if ( !$this->timeranges && $this->group_id ) {
 			// Use the constant if available, otherwise construct table name
-			$sql             = $wpdb->prepare( 'SELECT * FROM ' . EM_TIMERANGES_TABLE . ' WHERE timerange_group_id = %s ORDER BY timerange_start ASC', $this->group_id );
-			$timeranges_data = $wpdb->get_results( $sql, ARRAY_A );
+			$sql = $wpdb->prepare("SELECT * FROM ". EM_TIMERANGES_TABLE ." WHERE timerange_group_id = %s ORDER BY timerange_start ASC", $this->group_id);
+			$timeranges_data = $wpdb->get_results($sql, ARRAY_A);
 
-			foreach ( $timeranges_data as $timerange_data ) {
-				$Timerange                                    = $this->get_timerange( $timerange_data );
+			foreach ($timeranges_data as $timerange_data) {
+				$Timerange = $this->get_timerange($timerange_data);
 				$this->timeranges[ $Timerange->timerange_id ] = $Timerange;
 			}
 		}
 		if ( empty( $this->timeranges ) && $padding ) {
-			$this->timeranges = array( $this->get_timerange() );
+			$this->timeranges = [ $this->get_timerange() ];
 		}
 		return $this->timeranges;
 	}
@@ -116,13 +116,13 @@ class Timeranges extends \EM_Object implements \Iterator, \ArrayAccess, \Countab
 	 * @return Timeslot[]
 	 */
 	public function generate_timeslots( $reload = false ) {
-		if ( ! $this->generated_timeslots || $reload ) {
-			$this->generated_timeslots = array();
+		if ( !$this->generated_timeslots || $reload ) {
+			$this->generated_timeslots = [];
 			foreach ( $this->get_timeranges() as $timerange ) {
 				$this->generated_timeslots = array_merge( $this->generated_timeslots, $timerange->generate_timeslots() );
 			}
 			// Remove duplicate start timeslots
-			foreach ( $this->generated_timeslots as $key1 => $Timeslot ) {
+			foreach ($this->generated_timeslots as $key1 => $Timeslot) {
 				foreach ( $this->generated_timeslots as $key2 => $_Timeslot ) {
 					// We only compare items that are after the current item in the array, given this is a numerically key-ordered array
 					if ( $key1 < $key2 ) {
@@ -133,7 +133,7 @@ class Timeranges extends \EM_Object implements \Iterator, \ArrayAccess, \Countab
 				}
 			}
 			// Re-index the array after removing elements with unset().
-			$this->generated_timeslots = array_values( $this->generated_timeslots );
+			$this->generated_timeslots = array_values($this->generated_timeslots);
 		}
 		return $this->generated_timeslots;
 	}
@@ -148,26 +148,27 @@ class Timeranges extends \EM_Object implements \Iterator, \ArrayAccess, \Countab
 		$earliest_time = null; // latest is 24h
 		foreach ( $this->get_timeranges() as $Timerange ) {
 			$hour_start = $Timerange->timerange_start;
-			$ts_start   = strtotime( '1970-01-01 ' . $hour_start );
+			$ts_start = strtotime('1970-01-01 ' . $hour_start);
 			if ( $earliest_time === null || $ts_start < $earliest_time ) {
 				$earliest_time = $ts_start;
 			}
 		}
 		$date_format = $format ?: 'H:i:s';
-		return date( $date_format, $earliest_time ?? 0 );
+		return date($date_format, $earliest_time ?? 0);
 	}
 
 	public function get_time_end( $format = false ) {
 		$latest = null; // latest is 24h
 		foreach ( $this->get_timeranges() as $timerange ) {
 			$hour_start = $timerange->timerange_end;
-			$ts_end     = strtotime( '1970-01-01 ' . $hour_start );
+			$ts_end = strtotime('1970-01-01 ' . $hour_start);
 			if ( $ts_end > $latest ) {
 				$latest = $ts_end;
 			}
 		}
 		$date_format = $format ?: 'H:i:s';
-		return date( $date_format, $latest ?? 0 );
+		return date($date_format, $latest ?? 0);
+
 	}
 
 	public function is_all_day() {
@@ -182,7 +183,7 @@ class Timeranges extends \EM_Object implements \Iterator, \ArrayAccess, \Countab
 	}
 
 	public function get_time_from_minutes( $minutes ) {
-		return date( 'H:i:s', $minutes * 60 );
+		return date('H:i:s', $minutes * 60 );
 	}
 
 	/**
@@ -196,18 +197,18 @@ class Timeranges extends \EM_Object implements \Iterator, \ArrayAccess, \Countab
 
 	/**
 	 * Add a new timerange to the collection
-	 *
+	 * 
 	 * @param Timerange|array $timerange
 	 * @return bool
 	 */
-	public function add( $timerange ) {
-		if ( is_array( $timerange ) ) {
-			$timerange = new Timerange( $timerange );
+	public function add($timerange) {
+		if ( is_array($timerange) ) {
+			$timerange = new Timerange($timerange);
 		}
 
 		if ( $timerange instanceof Timerange ) {
 			$timerange->timerange_group_id = $this->group_id;
-			$this->timeranges[]            = $timerange;
+			$this->timeranges[] = $timerange;
 			return true;
 		}
 
@@ -216,19 +217,19 @@ class Timeranges extends \EM_Object implements \Iterator, \ArrayAccess, \Countab
 
 	/**
 	 * Remove a timerange from the collection
-	 *
+	 * 
 	 * @param int|Timerange $timerange_id_or_object
 	 * @return boolean
 	 */
 	public function remove( $timerange_id_or_object ) {
-		$timerange_id = is_object( $timerange_id_or_object ) ? $timerange_id_or_object->timerange_id : $timerange_id_or_object;
+		$timerange_id = is_object($timerange_id_or_object) ? $timerange_id_or_object->timerange_id : $timerange_id_or_object;
 
-		foreach ( $this->timeranges as $key => $timerange ) {
-			if ( $timerange->timerange_id == $timerange_id ) {
+		foreach ($this->timeranges as $key => $timerange) {
+			if ($timerange->timerange_id == $timerange_id) {
 				$this->deleted_timeranges[] = $timerange;
-				unset( $this->timeranges[ $key ] );
+				unset($this->timeranges[$key]);
 				// Reindex array
-				$this->timeranges = array_values( $this->timeranges );
+				$this->timeranges = array_values($this->timeranges);
 				return true;
 			}
 		}
@@ -242,17 +243,17 @@ class Timeranges extends \EM_Object implements \Iterator, \ArrayAccess, \Countab
 	 * @return boolean
 	 */
 	public function get_post( $post_name = 'timeranges' ) {
-		do_action( 'em_timeranges_get_post_pre', $this );
+		do_action('em_timeranges_get_post_pre', $this);
 
-		$result     = true;
-		$post_array = is_array( $post_name ) ? $post_name : $_POST[ $post_name ] ?? array();
+		$result = true;
+		$post_array = is_array( $post_name ) ? $post_name : $_POST[ $post_name ] ?? [];
 
-		if ( ! $this->group_id || $this->allow_edit || wp_verify_nonce( $post_array['edit_nonce'] ?? '', 'em_timeranges_edit_' . $this->group_id ) ) {
+		if ( !$this->group_id || $this->allow_edit || wp_verify_nonce( $post_array['edit_nonce'] ?? '', 'em_timeranges_edit_' . $this->group_id ) ) {
 			$this->allow_edit = true;
-			if ( is_array( $post_name ) || ( ! empty( $_POST[ $post_name ] ) && is_array( $_POST[ $post_name ] ) ) ) {
+			if ( is_array( $post_name ) || ( !empty( $_POST[ $post_name ] ) && is_array( $_POST[ $post_name ] ) ) ) {
 				$this->load_timeranges();
 				// remove default timerange
-				if ( ! empty( $this->timeranges[0] ) ) {
+				if ( !empty($this->timeranges[0]) ) {
 					unset( $this->timeranges[0] );
 				}
 				// add or update timeranges
@@ -262,14 +263,14 @@ class Timeranges extends \EM_Object implements \Iterator, \ArrayAccess, \Countab
 							$Timerange = $this->timeranges[ $timerange_data['timerange_id'] ];
 							// check for edit nonce or delete nonce
 						} else {
-							$Timerange          = $this->get_timerange( array( 'timerange_group_id' => $this->group_id ) );
+							$Timerange = $this->get_timerange( ['timerange_group_id' => $this->group_id ]);
 							$this->timeranges[] = $Timerange;
 						}
 						$Timerange->get_post( $timerange_data );
 					}
 				}
 				// process deleted ones and mark for deletion
-				if ( ! empty( $post_array['delete'] ) ) {
+				if ( !empty( $post_array['delete'] ) ) {
 					foreach ( $post_array['delete'] as $timerange_id => $delete_nonce ) {
 						if ( $delete_nonce && wp_verify_nonce( $delete_nonce, 'delete_timerange_' . $timerange_id ) ) {
 							$this->deleted_timeranges[ $timerange_id ] = $this->timeranges[ $timerange_id ];
@@ -280,38 +281,38 @@ class Timeranges extends \EM_Object implements \Iterator, \ArrayAccess, \Countab
 			}
 		}
 
-		return apply_filters( 'em_timeranges_get_post', $result, $this );
+		return apply_filters('em_timeranges_get_post', $result, $this);
 	}
 
 	/**
 	 * Validate all timeranges in the collection
-	 *
+	 * 
 	 * @return boolean
 	 */
 	public function validate() {
-		do_action( 'em_timeranges_validate_pre', $this );
+		do_action('em_timeranges_validate_pre', $this);
 
 		$result = true;
 
-		foreach ( $this->timeranges as $timerange ) {
-			if ( ! $timerange->validate() ) {
-				$this->add_error( $timerange->get_errors() );
+		foreach ($this->timeranges as $timerange) {
+			if (!$timerange->validate()) {
+				$this->add_error($timerange->get_errors());
 				$result = false;
 			}
 		}
 
 		// Check for overlapping timeranges (optional validation)
-		if ( $result && $this->has_overlapping_timeranges() ) {
-			$this->add_error( __( 'Timeranges cannot overlap with each other.', 'events-manager' ) );
+		if ($result && $this->has_overlapping_timeranges()) {
+			$this->add_error(__('Timeranges cannot overlap with each other.', 'events-manager'));
 			$result = false;
 		}
 
-		return apply_filters( 'em_timeranges_validate', $result, $this );
+		return apply_filters('em_timeranges_validate', $result, $this);
 	}
 
 	/**
 	 * Check if any timeranges overlap with each other
-	 *
+	 * 
 	 * @return boolean
 	 */
 	public function has_overlapping_timeranges() {
@@ -319,17 +320,17 @@ class Timeranges extends \EM_Object implements \Iterator, \ArrayAccess, \Countab
 			foreach ( $this->timeranges as $j => $Timerange_2 ) {
 				if ( $i !== $j ) {
 					// If we detect an all day time range, return true as something is just wrong
-					if ( $Timerange->timerange_all_day || $Timerange_2->timerange_all_day ) {
+					if ( $Timerange->timerange_all_day || $Timerange_2->timerange_all_day) {
 						return true;
 					}
 
-					$start1 = strtotime( '1970-01-01 ' . $Timerange->timerange_start );
-					$end1   = strtotime( '1970-01-01 ' . $Timerange->timerange_end );
-					$start2 = strtotime( '1970-01-01 ' . $Timerange_2->timerange_start );
-					$end2   = strtotime( '1970-01-01 ' . $Timerange_2->timerange_end );
+					$start1 = strtotime('1970-01-01 ' . $Timerange->timerange_start);
+					$end1 = strtotime('1970-01-01 ' . $Timerange->timerange_end);
+					$start2 = strtotime('1970-01-01 ' . $Timerange_2->timerange_start);
+					$end2 = strtotime('1970-01-01 ' . $Timerange_2->timerange_end);
 
 					// Check for overlap, either same start time, or start/end time is within another start/end time
-					if ( $start1 === $start2 || ( $start1 < $end2 && $start1 > $start2 ) || ( $end1 > $start2 && $end1 < $end2 ) ) {
+					if ($start1 === $start2 || ( $start1 < $end2 && $start1 > $start2 ) || ( $end1 > $start2 && $end1 < $end2 )) {
 						return true;
 					}
 				}
@@ -353,7 +354,7 @@ class Timeranges extends \EM_Object implements \Iterator, \ArrayAccess, \Countab
 
 	/**
 	 * Save all timeranges in the collection
-	 *
+	 * 
 	 * @return boolean
 	 */
 	public function save() {
@@ -364,7 +365,7 @@ class Timeranges extends \EM_Object implements \Iterator, \ArrayAccess, \Countab
 
 			// Delete marked timeranges first
 			foreach ( $this->deleted_timeranges as $timerange ) {
-				if ( ! $timerange->delete() ) {
+				if ( !$timerange->delete() ) {
 					$this->add_error( $timerange->get_errors() );
 					$result = false;
 				}
@@ -372,15 +373,15 @@ class Timeranges extends \EM_Object implements \Iterator, \ArrayAccess, \Countab
 
 			// Save all timeranges
 			foreach ( $this->timeranges as $timerange ) {
-				if ( ! $timerange->save() ) {
+				if ( !$timerange->save() ) {
 					$this->add_error( $timerange->get_errors() );
 					$result = false;
 				}
 			}
 
 			if ( $result ) {
-				$this->deleted_timeranges = array(); // Clear deleted list after successful save
-				$this->feedback_message   = sprintf( __( 'Successfully saved %d timeranges.', 'events-manager' ), count( $this->timeranges ) );
+				$this->deleted_timeranges = []; // Clear deleted list after successful save
+				$this->feedback_message = sprintf( __( 'Successfully saved %d timeranges.', 'events-manager' ), count( $this->timeranges ) );
 			}
 
 			do_action( 'em_timeranges_save_post', $this, $result );
@@ -391,34 +392,34 @@ class Timeranges extends \EM_Object implements \Iterator, \ArrayAccess, \Countab
 
 	/**
 	 * Delete all timeranges in the collection
-	 *
+	 * 
 	 * @return boolean
 	 */
 	public function delete() {
-		do_action( 'em_timeranges_delete_pre', $this );
+		do_action('em_timeranges_delete_pre', $this);
 
 		$result = true;
 
-		foreach ( $this->timeranges as $timerange ) {
-			if ( ! $timerange->delete() ) {
-				$this->add_error( $timerange->get_errors() );
+		foreach ($this->timeranges as $timerange) {
+			if ( !$timerange->delete() ) {
+				$this->add_error($timerange->get_errors());
 				$result = false;
 			}
 		}
 
-		if ( $result ) {
-			$this->timeranges       = array();
-			$this->feedback_message = __( 'Successfully deleted all timeranges.', 'events-manager' );
+		if ($result) {
+			$this->timeranges = [];
+			$this->feedback_message = __('Successfully deleted all timeranges.', 'events-manager');
 		}
 
-		do_action( 'em_timeranges_delete_post', $this, $result );
+		do_action('em_timeranges_delete_post', $this, $result);
 
-		return apply_filters( 'em_timeranges_delete', $result, $this );
+		return apply_filters('em_timeranges_delete', $result, $this);
 	}
 
 	/**
 	 * Get the first timerange in the collection
-	 *
+	 * 
 	 * @return Timerange|false
 	 */
 	public function get_first() {
@@ -431,36 +432,36 @@ class Timeranges extends \EM_Object implements \Iterator, \ArrayAccess, \Countab
 
 	/**
 	 * Get the last timerange in the collection
-	 *
+	 * 
 	 * @return Timerange|false
 	 */
 	public function get_last() {
-		return ! empty( $this->timeranges ) ? end( $this->timeranges ) : false;
+		return !empty($this->timeranges) ? end($this->timeranges) : false;
 	}
 
 	/**
 	 * Convert collection to API format
-	 *
+	 * 
 	 * @return array
 	 */
 	public function to_api() {
 		$api_data = array(
-			'group_id'   => $this->group_id,
-			'timeranges' => array(),
+			'group_id' => $this->group_id,
+			'timeranges' => array()
 		);
 
 		foreach ( $this->load_timeranges() as $timerange ) {
 			$api_data['timeranges'][] = $timerange->to_api();
 		}
 
-		return apply_filters( 'em_timeranges_to_api', $api_data, $this );
+		return apply_filters('em_timeranges_to_api', $api_data, $this);
 	}
 
 	// Iterator Implementation
 	#[\ReturnTypeWillChange]
 	public function rewind() {
 		$this->load_timeranges();
-		reset( $this->timeranges );
+		reset($this->timeranges);
 	}
 
 	#[\ReturnTypeWillChange]
@@ -469,13 +470,13 @@ class Timeranges extends \EM_Object implements \Iterator, \ArrayAccess, \Countab
 	 */
 	public function current() {
 		$this->load_timeranges();
-		return current( $this->timeranges );
+		return current($this->timeranges);
 	}
 
 	#[\ReturnTypeWillChange]
 	public function key() {
 		$this->load_timeranges();
-		return key( $this->timeranges );
+		return key($this->timeranges);
 	}
 
 	#[\ReturnTypeWillChange]
@@ -484,14 +485,14 @@ class Timeranges extends \EM_Object implements \Iterator, \ArrayAccess, \Countab
 	 */
 	public function next() {
 		$this->load_timeranges();
-		return next( $this->timeranges );
+		return next($this->timeranges);
 	}
 
 	#[\ReturnTypeWillChange]
 	public function valid() {
 		$this->load_timeranges();
-		$key = key( $this->timeranges );
-		return ( $key !== null && $key !== false );
+		$key = key($this->timeranges);
+		return ($key !== null && $key !== false);
 	}
 
 	// ArrayAccess Implementation
@@ -501,27 +502,27 @@ class Timeranges extends \EM_Object implements \Iterator, \ArrayAccess, \Countab
 	 * @param Timerange $value
 	 * @return void
 	 */
-	public function offsetSet( $offset, $value ) {
+	public function offsetSet($offset, $value) {
 		$this->load_timeranges();
-		if ( is_null( $offset ) ) {
+		if (is_null($offset)) {
 			$this->timeranges[] = $value;
 		} else {
-			$this->timeranges[ $offset ] = $value;
+			$this->timeranges[$offset] = $value;
 		}
 	}
 
 	#[\ReturnTypeWillChange]
-	public function offsetExists( $offset ) {
+	public function offsetExists($offset) {
 		$this->load_timeranges();
-		return isset( $this->timeranges[ $offset ] );
+		return isset($this->timeranges[$offset]);
 	}
 
 	#[\ReturnTypeWillChange]
-	public function offsetUnset( $offset ) {
+	public function offsetUnset($offset) {
 		$this->load_timeranges();
-		unset( $this->timeranges[ $offset ] );
+		unset($this->timeranges[$offset]);
 		// Reindex array to maintain sequential keys
-		$this->timeranges = array_values( $this->timeranges );
+		$this->timeranges = array_values($this->timeranges);
 	}
 
 	#[\ReturnTypeWillChange]
@@ -529,16 +530,16 @@ class Timeranges extends \EM_Object implements \Iterator, \ArrayAccess, \Countab
 	 * @param mixed $offset
 	 * @return Timerange|null
 	 */
-	public function offsetGet( $offset ) {
+	public function offsetGet($offset) {
 		$this->load_timeranges();
-		return isset( $this->timeranges[ $offset ] ) ? $this->timeranges[ $offset ] : null;
+		return isset($this->timeranges[$offset]) ? $this->timeranges[$offset] : null;
 	}
 
 	// Countable Implementation
 	#[\ReturnTypeWillChange]
 	public function count() {
 		$this->load_timeranges();
-		return count( $this->timeranges );
+		return count($this->timeranges);
 	}
 
 	/*
@@ -552,9 +553,9 @@ class Timeranges extends \EM_Object implements \Iterator, \ArrayAccess, \Countab
 	 * @param int $timerange_id
 	 * @return Timerange|false
 	 */
-	public function find( $timerange_id ) {
-		foreach ( $this->timeranges as $timerange ) {
-			if ( $timerange->timerange_id == $timerange_id ) {
+	public function find($timerange_id) {
+		foreach ($this->timeranges as $timerange) {
+			if ($timerange->timerange_id == $timerange_id) {
 				return $timerange;
 			}
 		}
@@ -567,20 +568,20 @@ class Timeranges extends \EM_Object implements \Iterator, \ArrayAccess, \Countab
 	 * @param array $criteria
 	 * @return Timerange[]
 	 */
-	public function find_by( $criteria ) {
-		$found = array();
+	public function find_by($criteria) {
+		$found = [];
 
-		foreach ( $this->timeranges as $timerange ) {
+		foreach ($this->timeranges as $timerange) {
 			$match = true;
 
-			foreach ( $criteria as $field => $value ) {
-				if ( $timerange->$field != $value ) {
+			foreach ($criteria as $field => $value) {
+				if ($timerange->$field != $value) {
 					$match = false;
 					break;
 				}
 			}
 
-			if ( $match ) {
+			if ($match) {
 				$found[] = $timerange;
 			}
 		}
@@ -594,7 +595,7 @@ class Timeranges extends \EM_Object implements \Iterator, \ArrayAccess, \Countab
 	 * @return Timerange[]
 	 */
 	public function get_all_day() {
-		return $this->find_by( array( 'timerange_all_day' => 1 ) );
+		return $this->find_by(['timerange_all_day' => 1]);
 	}
 
 	/**
@@ -604,11 +605,11 @@ class Timeranges extends \EM_Object implements \Iterator, \ArrayAccess, \Countab
 	 * @param string $end_time
 	 * @return Timerange[]
 	 */
-	public function get_by_time_range( $start_time, $end_time ) {
-		$found = array();
+	public function get_by_time_range($start_time, $end_time) {
+		$found = [];
 
-		foreach ( $this->timeranges as $timerange ) {
-			if ( $timerange->timerange_start >= $start_time && $timerange->timerange_end <= $end_time ) {
+		foreach ($this->timeranges as $timerange) {
+			if ($timerange->timerange_start >= $start_time && $timerange->timerange_end <= $end_time) {
 				$found[] = $timerange;
 			}
 		}
@@ -622,15 +623,12 @@ class Timeranges extends \EM_Object implements \Iterator, \ArrayAccess, \Countab
 	 * @param string $field
 	 * @param string $order ASC or DESC
 	 */
-	public function sort_by( $field = 'timerange_start', $order = 'ASC' ) {
-		usort(
-			$this->timeranges,
-			function ( $a, $b ) use ( $field, $order ) {
-				$result = strcmp( $a->$field, $b->$field );
-				return ( $order === 'DESC' ) ? -$result : $result;
-			}
-		);
+	public function sort_by($field = 'timerange_start', $order = 'ASC') {
+		usort($this->timeranges, function($a, $b) use ($field, $order) {
+			$result = strcmp($a->$field, $b->$field);
+			return ($order === 'DESC') ? -$result : $result;
+		});
 	}
 }
-require __DIR__ . '/timeslot.php';
-require __DIR__ . '/timerange.php';
+include( __DIR__ . '/timeslot.php' );
+include( __DIR__ . '/timerange.php' );

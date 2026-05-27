@@ -1,7 +1,7 @@
 <?php
 /* We're treating this as a single-item list so it looks good oa modal */
 ?>
-<div class="<?php em_template_classes( 'calendar-preview', 'events-list' ); ?>">
+<div class="<?php em_template_classes('calendar-preview', 'events-list'); ?>">
 	<div class="em-event em-item" style="--default-border:#_CATEGORYCOLOR;">
 		<div class="em-item-image {no_image}has-placeholder{/no_image}">
 			{has_image}
@@ -61,11 +61,11 @@
 				#_EVENTEXCERPT{25}
 			</div>
 			<div class="em-item-actions input">
-				<a class="em-item-read-more button" href="#_EVENTURL"><?php esc_html_e( 'More Info', 'events-manager' ); ?></a>
+				<a class="em-item-read-more button" href="#_EVENTURL"><?php esc_html_e('More Info', 'events-manager'); ?></a>
 				{bookings_open}
 				<a class="em-event-book-now button" href="#_EVENTURL#em-event-booking-form">
 					<span class="em-icon em-icon-ticket"></span>
-					<?php esc_html_e( 'Book Now!', 'events-manager' ); ?>
+					<?php esc_html_e('Book Now!', 'events-manager'); ?>
 				</a>
 				{/bookings_open}
 			</div>

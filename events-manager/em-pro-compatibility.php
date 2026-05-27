@@ -1,13 +1,13 @@
 <?php
 //in the event the Pro add-on is installed but fails to meet the minimum EM_PRO_MIN_VERSION, this file will be executed in case extra actions are needed
-define( 'EM_COMPAT_MESSAGE_BE_GONE', "Only Administrators see this message. To hide critical messages and prevent this safety measure, you can add <code>define('EMP_DISABLE_CRITICAL_WARNINGS', true);</code> as a new line in your wp-config.php file." );
-if ( EMP_VERSION < 2.377 && ( ! defined( 'EMP_2376_FIXED' ) || ! EMP_2376_FIXED ) ) {
+define('EM_COMPAT_MESSAGE_BE_GONE',"Only Administrators see this message. To hide critical messages and prevent this safety measure, you can add <code>define('EMP_DISABLE_CRITICAL_WARNINGS', true);</code> as a new line in your wp-config.php file."); 
+if( EMP_VERSION < 2.377 && (!defined('EMP_2376_FIXED') || !EMP_2376_FIXED) ){
 	//we changed some function scopes to static, so Pro must be updated or modified to prevent fatal errors and should not be activated
 	//we're deactivating Pro until that happens
 	global $EM_Pro;
-	remove_action( 'plugins_loaded', array( &$EM_Pro, 'init' ) );
-
-	function em_empro_lt_2376_notice() {
+	remove_action( 'plugins_loaded', array(&$EM_Pro, 'init') );
+		
+	function em_empro_lt_2376_notice(){
 		?>
 		<div class="error">
 			<p>Due to some inevitable changes to some code in Events Manager, it is necessary to use Pro 2.3.7.7 or later. We have disabled the Pro plugin as a safety precaution.</p>
@@ -16,13 +16,13 @@ if ( EMP_VERSION < 2.377 && ( ! defined( 'EMP_2376_FIXED' ) || ! EMP_2376_FIXED 
 		</div>
 		<?php
 	}
-	if ( em_wp_is_super_admin() ) {
-		add_action( 'admin_notices', 'em_empro_lt_2376_notice', 100 );
-		add_action( 'network_admin_notices', 'em_empro_lt_2376_notice', 100 );
+	if( em_wp_is_super_admin() ){
+		add_action ( 'admin_notices', 'em_empro_lt_2376_notice', 100 );
+		add_action ( 'network_admin_notices', 'em_empro_lt_2376_notice', 100 );
 	}
 }
-if ( version_compare( EMP_VERSION, '3.0', '<' ) && ( ! defined( 'EMP_3_FIXED' ) || ! EMP_3_FIXED ) ) {
-	function em_empro_lt_3_notice() {
+if( version_compare(EMP_VERSION, '3.0', '<') && (!defined('EMP_3_FIXED') || !EMP_3_FIXED) ){
+	function em_empro_lt_3_notice(){
 		?>
 		<div class="error">
 			<p>Due to some inevitable changes to some code in Events Manager 6.1, it is necessary to use Pro 3.0 or later, this change affects attendee forms.</p>
@@ -32,8 +32,8 @@ if ( version_compare( EMP_VERSION, '3.0', '<' ) && ( ! defined( 'EMP_3_FIXED' ) 
 		</div>
 		<?php
 	}
-	if ( em_wp_is_super_admin() ) {
-		add_action( 'admin_notices', 'em_empro_lt_3_notice', 100 );
-		add_action( 'network_admin_notices', 'em_empro_lt_3_notice', 100 );
+	if( em_wp_is_super_admin() ){
+		add_action ( 'admin_notices', 'em_empro_lt_3_notice', 100 );
+		add_action ( 'network_admin_notices', 'em_empro_lt_3_notice', 100 );
 	}
 }
