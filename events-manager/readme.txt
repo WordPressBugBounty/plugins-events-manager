@@ -5,7 +5,7 @@ Tags: events, calendar, tickets, bookings, block
 Text Domain: events-manager
 Requires at least: 6.1
 Tested up to: 7.0
-Stable tag: 7.3.1
+Stable tag: 7.3.2
 Requires PHP: 7.0
 License: GPLv2
 
@@ -187,6 +187,17 @@ See our [FAQ](http://wp-events-plugin.com/documentation/faq/) page for helps wit
 18. Grid view for displaying your upcoming events at a glance
 
 == Changelog ==
+= 7.3.2 =
+* Added: REST API now accepts a booking UUID on `/bookings/{id}` routes alongside the numeric booking ID, so MCP agents and headless clients can look up bookings without needing the database row id.
+* Added: `booked_spaces` and `available_spaces` fields on the event REST API response, with corresponding entries in the event-bookings schema.
+* Added: MCP `get-booking-requirements` ability so AI agents can introspect which fields, attendees and gateway data a booking needs before submission. Booking validation errors are now agent-friendly (specific required-field names instead of a generic message).
+* Fixed: REST/MCP — booking validation errors now surface to the caller instead of being swallowed; ticket-by-id lookups return the right ticket; event timeranges round-trip cleanly through the API.
+* Fixed: `#_BOOKINGBUTTON` placeholder rendering the "Event Cancelled" message instead of "Fully Booked" when an event sold out (`templates/placeholders/bookingbutton.php`). Thanks to Jon Eiseman for the report.
+* Fixed: Unavailable Dates being ignored when generating events for a repeating series — `Recurrence_Sets::has_collision()` was returning the inbound filter argument instead of the matched recurrence type, so the save loop treated every collision as no-collision. Repeating events with exclusions (e.g. "every Monday June 1–30 except June 15") now correctly omit the excluded occurrences. Thanks to Jon Eiseman for the diagnosis.
+* Fixed: Event Categories and Event Tags panels not appearing in the Gutenberg block editor's Document sidebar — taxonomies now opt into the WordPress REST API alongside the CPT when the block editor is enabled, so Gutenberg users can assign them to events again. Thanks to Jon Eiseman for the report.
+* Fixed: Multilingual — booking-form settings keys that were missing the WPML globe icon are now in the translatable-options whitelist.
+* Fixed: Multilingual — guarded against fatal errors when WPML is partially configured and expanded the translatable-settings whitelist to cover newly added options.
+
 = 7.3.1 =
 * Bumped version to fix missing file dependency during build causing fatal errors in 7.3
 

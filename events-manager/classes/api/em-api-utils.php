@@ -16,9 +16,32 @@ class Utils {
 	}
 
 	public static function object_error( $code, $object, $fallback, $status = 400 ) {
-		$errors = is_object( $object ) && method_exists( $object, 'get_errors' ) ? $object->get_errors() : array();
-		$message = !empty( $errors ) ? implode( ' ', array_map( 'wp_strip_all_tags', (array) $errors ) ) : $fallback;
-		return static::error( $code, $message, $status, array( 'errors' => $errors ) );
+		$raw = is_object( $object ) && method_exists( $object, 'get_errors' ) ? $object->get_errors() : array();
+		$messages = static::flatten_error_messages( $raw );
+		$message = !empty( $messages ) ? implode( ' ', $messages ) : $fallback;
+		return static::error( $code, $message, $status, array( 'errors' => $messages ) );
+	}
+
+	/**
+	 * Reduce an arbitrarily-nested error structure to a flat list of non-empty,
+	 * tag-stripped strings. EM objects can stash nested arrays (and occasionally
+	 * empty strings) inside ->errors; passing those straight to wp_strip_all_tags()
+	 * collapses the message to "", which is what made MCP/REST booking failures
+	 * surface as {"success":false,"error":""} with no actionable detail.
+	 */
+	protected static function flatten_error_messages( $errors ) {
+		$out = array();
+		foreach ( (array) $errors as $item ) {
+			if ( is_array( $item ) ) {
+				$out = array_merge( $out, static::flatten_error_messages( $item ) );
+			} elseif ( is_scalar( $item ) ) {
+				$text = trim( wp_strip_all_tags( (string) $item ) );
+				if ( $text !== '' ) {
+					$out[] = $text;
+				}
+			}
+		}
+		return array_values( array_unique( $out ) );
 	}
 
 	public static function collection_args( $params, $defaults = array() ) {

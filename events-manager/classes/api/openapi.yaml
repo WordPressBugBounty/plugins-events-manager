@@ -1146,11 +1146,15 @@ components:
       name: booking_id
       in: path
       required: true
-      description: Events Manager booking ID.
+      description: Events Manager booking ID (integer) or booking UUID (32-character hex string).
       schema:
-        type: integer
-        format: int64
-        example: 789
+        oneOf:
+          - type: integer
+            format: int64
+            example: 789
+          - type: string
+            pattern: "^[0-9a-f]{32}$"
+            example: fab91000f7e149dea28baa7f2bafcabf
     TermId:
       name: term_id
       in: path
@@ -2363,6 +2367,16 @@ components:
           type:
             - integer
             - "null"
+        booked_spaces:
+          type:
+            - integer
+            - "null"
+          description: Confirmed booked spaces. Populated for booking-enabled events only.
+        available_spaces:
+          type:
+            - integer
+            - "null"
+          description: Spaces still available. Populated for booking-enabled events only.
     EventAvailability:
       type: object
       required: [event_id, bookings_enabled, open, spaces, available_spaces, tickets]

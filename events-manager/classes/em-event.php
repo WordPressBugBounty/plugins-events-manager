@@ -3917,6 +3917,9 @@ class EM_Event extends EM_Object{
 				'end_time' => $this->event_rsvp_time,
 				'rsvp_spaces' => $this->event_rsvp_spaces,
 				'spaces' => $this->event_spaces,
+				// Booked / available counts, computed only for booking-enabled events to avoid extra queries elsewhere.
+				'booked_spaces' => !empty( $this->event_rsvp ) ? absint( $this->get_bookings()->get_booked_spaces() ) : 0,
+				'available_spaces' => !empty( $this->event_rsvp ) ? absint( $this->get_bookings()->get_available_spaces() ) : null,
 			),
 			'when' => array(
 				'all_day' => $this->event_all_day,

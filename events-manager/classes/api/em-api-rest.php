@@ -136,7 +136,7 @@ class REST {
 				'permission_callback' => array( static::class, 'can_create_booking' ),
 			),
 		) );
-		register_rest_route( static::NAMESPACE, '/bookings/(?P<id>\d+)', array(
+		register_rest_route( static::NAMESPACE, '/bookings/(?P<id>[\w-]+)', array(
 			array(
 				'methods' => 'GET',
 				'callback' => array( static::class, 'get_booking' ),
@@ -153,7 +153,7 @@ class REST {
 				'permission_callback' => array( static::class, 'can_manage_bookings' ),
 			),
 		) );
-		register_rest_route( static::NAMESPACE, '/bookings/(?P<id>\d+)/status', array(
+		register_rest_route( static::NAMESPACE, '/bookings/(?P<id>[\w-]+)/status', array(
 			'methods' => 'POST',
 			'callback' => array( static::class, 'set_booking_status' ),
 			'permission_callback' => array( static::class, 'can_manage_bookings' ),

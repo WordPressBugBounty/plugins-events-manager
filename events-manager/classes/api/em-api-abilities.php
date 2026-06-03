@@ -28,6 +28,7 @@ class Abilities {
 		static::register_data_ability( 'list-events', __( 'List events', 'events-manager' ), __( 'Retrieves a filtered collection of Events Manager events.', 'events-manager' ), Schemas::collection_input(), array( static::class, 'list_events' ) );
 		static::register_data_ability( 'get-event', __( 'Get event', 'events-manager' ), __( 'Retrieves one Events Manager event by ID.', 'events-manager' ), Schemas::id_input( __( 'Event ID or event ID with timeslot suffix.', 'events-manager' ) ), array( static::class, 'get_event' ) );
 		static::register_data_ability( 'get-event-availability', __( 'Get event availability', 'events-manager' ), __( 'Retrieves booking availability, spaces, and ticket availability for one event.', 'events-manager' ), Schemas::id_input( __( 'Event ID or event ID with timeslot suffix.', 'events-manager' ) ), array( static::class, 'get_event_availability' ) );
+		static::register_data_ability( 'get-booking-requirements', __( 'Get booking requirements', 'events-manager' ), __( 'Returns the exact fields, payload locations, payment options, and a ready-to-submit example payload needed to create a booking for one event. Call this before create-booking.', 'events-manager' ), Schemas::id_input( __( 'Event ID or event ID with timeslot suffix.', 'events-manager' ) ), array( static::class, 'get_booking_requirements' ) );
 		static::register_data_ability( 'list-event-tickets', __( 'List event tickets', 'events-manager' ), __( 'Retrieves tickets for one Events Manager event.', 'events-manager' ), Schemas::id_input( __( 'Event ID or event ID with timeslot suffix.', 'events-manager' ) ), array( static::class, 'list_event_tickets' ) );
 		static::register_data_ability( 'get-ticket', __( 'Get ticket', 'events-manager' ), __( 'Retrieves one Events Manager ticket by ID.', 'events-manager' ), Schemas::id_input( __( 'Ticket ID.', 'events-manager' ) ), array( static::class, 'get_ticket' ) );
 		static::register_management_ability( 'create-event', __( 'Create event', 'events-manager' ), __( 'Creates an Events Manager event.', 'events-manager' ), Schemas::event_input(), array( static::class, 'create_event' ), array( static::class, 'can_edit_events' ), array( 'destructive' => false, 'idempotent' => false ) );
@@ -45,7 +46,7 @@ class Abilities {
 
 		static::register_data_ability( 'list-bookings', __( 'List bookings', 'events-manager' ), __( 'Retrieves bookings visible to the current user.', 'events-manager' ), Schemas::collection_input(), array( static::class, 'list_bookings' ), array( static::class, 'can_read_bookings' ) );
 		static::register_data_ability( 'get-booking', __( 'Get booking', 'events-manager' ), __( 'Retrieves one booking by ID if visible to the current user.', 'events-manager' ), Schemas::id_input( __( 'Booking ID.', 'events-manager' ) ), array( static::class, 'get_booking' ), array( static::class, 'can_read_bookings' ) );
-		static::register_management_ability( 'create-booking', __( 'Create booking', 'events-manager' ), __( 'Creates an Events Manager booking.', 'events-manager' ), Schemas::booking_input(), array( static::class, 'create_booking' ), array( static::class, 'can_create_booking' ), array( 'destructive' => false, 'idempotent' => false ) );
+		static::register_management_ability( 'create-booking', __( 'Create booking', 'events-manager' ), __( "Creates an Events Manager booking. Call get-booking-requirements first to get this event's required fields, payload locations, and an example payload.", 'events-manager' ), Schemas::booking_input(), array( static::class, 'create_booking' ), array( static::class, 'can_create_booking' ), array( 'destructive' => false, 'idempotent' => false ) );
 		static::register_management_ability( 'update-booking', __( 'Update booking', 'events-manager' ), __( 'Updates an Events Manager booking.', 'events-manager' ), Schemas::booking_input( true ), array( static::class, 'update_booking' ), array( static::class, 'can_manage_bookings' ), array( 'destructive' => true, 'idempotent' => false ) );
 		static::register_management_ability( 'set-booking-status', __( 'Set booking status', 'events-manager' ), __( 'Changes a booking status, such as approving, rejecting, or cancelling it.', 'events-manager' ), Schemas::booking_status_input(), array( static::class, 'set_booking_status' ), array( static::class, 'can_manage_bookings' ), array( 'destructive' => true, 'idempotent' => true ) );
 		static::register_management_ability( 'delete-booking', __( 'Delete booking', 'events-manager' ), __( 'Permanently deletes an Events Manager booking.', 'events-manager' ), Schemas::id_input( __( 'Booking ID.', 'events-manager' ) ), array( static::class, 'delete_booking' ), array( static::class, 'can_manage_bookings' ), array( 'destructive' => true, 'idempotent' => false ) );
@@ -134,6 +135,11 @@ class Abilities {
 		return Service::get_event_availability( $input['id'] ?? 0 );
 	}
 
+	public static function get_booking_requirements( $input ) {
+		$input = Utils::normalize_input( $input );
+		return Service::get_booking_requirements( $input['id'] ?? $input['event_id'] ?? 0 );
+	}
+
 	public static function list_event_tickets( $input ) {
 		$input = Utils::normalize_input( $input );
 		return Service::list_event_tickets( $input['id'] ?? 0, $input );
@@ -165,12 +171,12 @@ class Abilities {
 
 	public static function update_ticket( $input ) {
 		$input = Utils::normalize_input( $input );
-		return Service::update_ticket( $input['id'] ?? 0, $input );
+		return Service::update_ticket( $input['id'] ?? $input['ticket_id'] ?? 0, $input );
 	}
 
 	public static function delete_ticket( $input ) {
 		$input = Utils::normalize_input( $input );
-		return Service::delete_ticket( $input['id'] ?? 0, $input['force'] ?? false );
+		return Service::delete_ticket( $input['id'] ?? $input['ticket_id'] ?? 0, $input['force'] ?? false );
 	}
 
 	public static function list_locations( $input ) {

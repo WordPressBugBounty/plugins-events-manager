@@ -220,7 +220,7 @@ class Recurrence_Sets extends \EM_Object implements \Iterator, \ArrayAccess, \Co
 				$type_found = !empty($recurrence['event_id']) ? 'include' : 'exclude';
 				// overlap found, return if it matches type needed or if none specified
 				if ( !$type || $type_found === $type ) {
-					return $type;
+					return $type_found;
 				}
 			}
 		}

@@ -66,6 +66,104 @@ class Service {
 		), $EM_Event );
 	}
 
+	/**
+	 * Describe everything an agent needs to create a booking for one event:
+	 * required fields, where they live in the payload, payment options, and a
+	 * ready-to-submit example. Pro augments via the em_api_booking_requirements
+	 * filter (custom booking/attendee form fields, gateways).
+	 */
+	public static function get_booking_requirements( $id ) {
+		$EM_Event = em_get_event( $id );
+		if ( !$EM_Event || !$EM_Event->get_id() ) {
+			return Utils::error( 'em_api_event_not_found', __( 'Event not found.', 'events-manager' ), 404 );
+		}
+		if ( !static::can_read_event( $EM_Event ) ) {
+			return Utils::error( 'em_api_event_forbidden', __( 'You do not have permission to view this event.', 'events-manager' ), 403 );
+		}
+		$EM_Bookings = $EM_Event->get_bookings();
+		$tickets = array();
+		foreach ( $EM_Event->get_tickets() as $EM_Ticket ) {
+			$price = (float) $EM_Ticket->get_price();
+			$tickets[] = array(
+				'id'               => absint( $EM_Ticket->ticket_id ),
+				'name'             => $EM_Ticket->ticket_name,
+				'price'            => $price,
+				'is_free'          => $price <= 0,
+				'available_spaces' => $EM_Ticket->get_available_spaces(),
+				'min'              => !empty( $EM_Ticket->ticket_min ) ? absint( $EM_Ticket->ticket_min ) : 1,
+				'max'              => !empty( $EM_Ticket->ticket_max ) ? absint( $EM_Ticket->ticket_max ) : null,
+			);
+		}
+		$payload = array(
+			'event_id'         => $EM_Event->get_event_uid(),
+			'bookings_open'    => !empty( $EM_Event->event_rsvp ) && $EM_Bookings->is_open(),
+			'spaces_available' => $EM_Bookings->get_available_spaces(),
+			'tickets'          => $tickets,
+			// Core defaults; Pro replaces booking_fields with the custom form and adds attendee_fields + payment.
+			'booking_fields'   => array(
+				array( 'field' => 'user_name',  'label' => __( 'Name', 'events-manager' ),  'type' => 'text',  'required' => true, 'location' => 'booking.user_name' ),
+				array( 'field' => 'user_email', 'label' => __( 'Email', 'events-manager' ), 'type' => 'email', 'required' => true, 'location' => 'booking.user_email' ),
+			),
+			'attendee_fields'  => array(),
+			'payment'          => array( 'required_when' => 'never', 'field' => 'gateway', 'active_gateways' => array() ),
+			'notes'            => array(),
+		);
+		$payload = apply_filters( 'em_api_booking_requirements', $payload, $EM_Event );
+		$payload['example_payload'] = static::build_booking_example( $payload );
+		return $payload;
+	}
+
+	protected static function build_booking_example( $payload ) {
+		$example = array( 'event_id' => (string) ( $payload['event_id'] ?? '' ) );
+		if ( !empty( $payload['payment']['active_gateways'] ) ) {
+			$slugs = array_column( $payload['payment']['active_gateways'], 'slug' );
+			$example['gateway'] = in_array( 'offline', $slugs, true ) ? 'offline' : reset( $slugs );
+		}
+		$booking = array();
+		foreach ( (array) ( $payload['booking_fields'] ?? array() ) as $field ) {
+			if ( empty( $field['required'] ) ) continue;
+			$booking[ $field['field'] ] = static::booking_example_value( $field );
+		}
+		if ( $booking ) {
+			$example['booking'] = $booking;
+		}
+		$ticket = $payload['tickets'][0] ?? null;
+		if ( $ticket ) {
+			$ticket_entry = array( 'spaces' => 1 );
+			$attendee = array();
+			foreach ( (array) ( $payload['attendee_fields'] ?? array() ) as $field ) {
+				if ( empty( $field['required'] ) ) continue;
+				$attendee[ $field['field'] ] = static::booking_example_value( $field );
+			}
+			if ( $attendee ) {
+				$ticket_entry['ticket_bookings'] = array( array( 'attendee' => $attendee ) );
+			}
+			$example['em_tickets'] = array( (string) $ticket['id'] => $ticket_entry );
+		}
+		return $example;
+	}
+
+	protected static function booking_example_value( $field ) {
+		if ( !empty( $field['options'] ) && is_array( $field['options'] ) ) {
+			return reset( $field['options'] );
+		}
+		$id = (string) ( $field['field'] ?? '' );
+		switch ( $field['type'] ?? 'text' ) {
+			case 'user_login': return 'janedoe';
+			case 'email':      return 'jane@example.com';
+			case 'tel':        return '5551234567';
+			case 'number':     return '1';
+			case 'date':       return gmdate( 'Y-m-d' );
+			case 'checkbox':   return '1';
+		}
+		if ( strpos( $id, 'email' ) !== false ) return 'jane@example.com';
+		if ( strpos( $id, 'phone' ) !== false ) return '5551234567';
+		if ( strpos( $id, 'login' ) !== false ) return 'janedoe';
+		if ( strpos( $id, 'first' ) !== false ) return 'Jane';
+		if ( strpos( $id, 'last' )  !== false ) return 'Doe';
+		return 'Jane Doe';
+	}
+
 	public static function create_event( $data ) {
 		return static::save_event( $data );
 	}
@@ -93,6 +191,21 @@ class Service {
 		$base = $id ? $EM_Event->to_request_data() : array();
 		// Translate API-friendly flat times to the nested event_timeranges[0] shape EM expects.
 		$data = static::translate_event_input( $data );
+		// to_request_data() re-emits the event's time as a timerange with no timerange_id.
+		// On update, timeranges::get_post() can't match it to the existing row, so it appends
+		// a duplicate and the save fails with "Timeranges cannot overlap". Only re-post the
+		// timeranges when the caller is actually changing the time, and carry the existing
+		// timerange_id through so EM updates the row in place instead of duplicating it.
+		if ( $id ) {
+			if ( !array_key_exists( 'event_timeranges', $data ) ) {
+				unset( $base['event_timeranges'] );
+			} elseif ( isset( $data['event_timeranges'][0] ) && is_array( $data['event_timeranges'][0] ) && empty( $data['event_timeranges'][0]['timerange_id'] ) ) {
+				$first = $EM_Event->get_timeranges()->get_first();
+				if ( $first && !empty( $first->timerange_id ) ) {
+					$data['event_timeranges'][0]['timerange_id'] = $first->timerange_id;
+				}
+			}
+		}
 		$request_data = static::normalize_em_tickets_keys( array_merge( $base, $data ) );
 		$valid = Utils::with_request_data( $request_data, function() use ( $EM_Event, $data ) {
 			if ( !$EM_Event->get_post( true ) ) {
@@ -320,7 +433,7 @@ class Service {
 	}
 
 	public static function get_booking( $id, $context = 'view' ) {
-		$EM_Booking = em_get_booking( absint( $id ) );
+		$EM_Booking = em_get_booking( sanitize_text_field( $id ) );
 		if ( !$EM_Booking || !$EM_Booking->booking_id ) {
 			return Utils::error( 'em_api_booking_not_found', __( 'Booking not found.', 'events-manager' ), 404 );
 		}
@@ -340,7 +453,7 @@ class Service {
 
 	public static function save_booking( $data, $id = 0 ) {
 		$data = Utils::normalize_input( $data );
-		$EM_Booking = $id ? em_get_booking( absint( $id ) ) : new \EM_Booking();
+		$EM_Booking = $id ? em_get_booking( sanitize_text_field( $id ) ) : new \EM_Booking();
 		if ( !$id ) {
 			$filtered_booking = apply_filters( 'em_api_create_booking_object', $EM_Booking, $data, $id );
 			if ( $filtered_booking instanceof \EM_Booking ) {
@@ -362,7 +475,7 @@ class Service {
 			return $EM_Booking->get_post( $override_availability );
 		} );
 		if ( !$result || !$EM_Booking->validate( $override_availability ) ) {
-			return Utils::object_error( 'em_api_booking_invalid', $EM_Booking, __( 'Booking data is invalid.', 'events-manager' ), 400 );
+			return static::booking_invalid_error( $EM_Booking );
 		}
 		static::assign_booking_person( $EM_Booking, $data );
 		if ( !$EM_Booking->person_id && !empty( $EM_Booking->booking_meta['registration'] ) ) {
@@ -381,8 +494,26 @@ class Service {
 		return static::prepare_booking( $EM_Booking, 'edit' );
 	}
 
+	/**
+	 * Validation error for create/update booking. Surfaces the real field errors
+	 * (now non-empty thanks to object_error) and appends a pointer to
+	 * get-booking-requirements so an agent can fetch the exact fields, their
+	 * payload locations, and a ready-to-submit example for this event.
+	 */
+	protected static function booking_invalid_error( $EM_Booking ) {
+		$error   = Utils::object_error( 'em_api_booking_invalid', $EM_Booking, __( 'Booking data is invalid.', 'events-manager' ), 400 );
+		$message = trim( $error->get_error_message() );
+		$hint    = __( "Call get-booking-requirements with this event's ID for the exact required fields, their payload locations (attendee fields go under em_tickets[<ticket_id>].ticket_bookings[].attendee), and a ready-to-submit example.", 'events-manager' );
+		if ( strpos( $message, 'get-booking-requirements' ) === false ) {
+			$message = $message === '' ? $hint : $message . ' ' . $hint;
+		}
+		$data = (array) $error->get_error_data();
+		$data['booking_requirements_ability'] = 'events-manager/get-booking-requirements';
+		return new \WP_Error( 'em_api_booking_invalid', $message, $data );
+	}
+
 	public static function set_booking_status( $id, $status, $send_email = true, $ignore_spaces = false ) {
-		$EM_Booking = em_get_booking( absint( $id ) );
+		$EM_Booking = em_get_booking( sanitize_text_field( $id ) );
 		if ( !$EM_Booking || !$EM_Booking->booking_id ) {
 			return Utils::error( 'em_api_booking_not_found', __( 'Booking not found.', 'events-manager' ), 404 );
 		}
@@ -399,7 +530,7 @@ class Service {
 	}
 
 	public static function delete_booking( $id ) {
-		$EM_Booking = em_get_booking( absint( $id ) );
+		$EM_Booking = em_get_booking( sanitize_text_field( $id ) );
 		if ( !$EM_Booking || !$EM_Booking->booking_id ) {
 			return Utils::error( 'em_api_booking_not_found', __( 'Booking not found.', 'events-manager' ), 404 );
 		}
@@ -744,6 +875,17 @@ class Service {
 		foreach ( array( 'booking', 'booking_fields', 'fields', 'registration' ) as $key ) {
 			if ( !empty( $data[ $key ] ) && is_array( $data[ $key ] ) ) {
 				$request = array_merge( $request, $data[ $key ] );
+			}
+		}
+		// Liberal input: agents sometimes prefix booking-form fields. EM core reads them by
+		// bare fieldid, so strip a `booking_form_field_` prefix before they reach $_REQUEST.
+		foreach ( $request as $key => $value ) {
+			if ( strpos( (string) $key, 'booking_form_field_' ) === 0 ) {
+				$bare = substr( $key, 19 );
+				if ( $bare !== '' && !array_key_exists( $bare, $request ) ) {
+					$request[ $bare ] = $value;
+				}
+				unset( $request[ $key ] );
 			}
 		}
 		// Gate admin-only fields when the caller is not a booking manager.
