@@ -6,27 +6,8 @@ class REST {
 	const NAMESPACE = 'events-manager/v1';
 
 	public static function init() {
-		add_filter( 'rest_authentication_errors', array( static::class, 'authenticate_application_password' ), 30 );
 		add_action( 'rest_api_init', array( static::class, 'register_routes' ) );
-	}
-
-	public static function authenticate_application_password( $result ) {
-		if ( !empty( $result ) || is_user_logged_in() || !static::is_events_manager_request() || !class_exists( '\EM_OAuth\OAuth_Authorization_Server' ) ) {
-			return $result;
-		}
-		$app_password_result = \EM_OAuth\OAuth_Authorization_Server::authenticate_application_password();
-		if ( $app_password_result === true ) {
-			return $result;
-		}
-		if ( is_wp_error( $app_password_result ) ) {
-			$data = (array) $app_password_result->get_error_data();
-			if ( empty( $data['status'] ) ) {
-				$data['status'] = 401;
-				$app_password_result->add_data( $data );
-			}
-			return $app_password_result;
-		}
-		return $result;
+		// Inbound authentication is handled entirely by the bundled \Pixelite\OAuth_App_Passwords library — its Bearer → Basic translator runs on determine_current_user priority 9, then WP core's native Application Password validator (priority 20) does the actual check. Nothing for EM to wire up here.
 	}
 
 	public static function register_routes() {
@@ -106,6 +87,26 @@ class REST {
 				'permission_callback' => array( static::class, 'can_edit_locations' ),
 			),
 		) );
+		register_rest_route( static::NAMESPACE, '/locations/countries', array(
+			'methods'             => 'GET',
+			'callback'            => array( static::class, 'list_location_countries' ),
+			'permission_callback' => 'is_user_logged_in',
+		) );
+		register_rest_route( static::NAMESPACE, '/locations/regions', array(
+			'methods'             => 'GET',
+			'callback'            => array( static::class, 'list_location_regions' ),
+			'permission_callback' => 'is_user_logged_in',
+		) );
+		register_rest_route( static::NAMESPACE, '/locations/states', array(
+			'methods'             => 'GET',
+			'callback'            => array( static::class, 'list_location_states' ),
+			'permission_callback' => 'is_user_logged_in',
+		) );
+		register_rest_route( static::NAMESPACE, '/locations/towns', array(
+			'methods'             => 'GET',
+			'callback'            => array( static::class, 'list_location_towns' ),
+			'permission_callback' => 'is_user_logged_in',
+		) );
 		register_rest_route( static::NAMESPACE, '/locations/(?P<id>\d+)', array(
 			array(
 				'methods' => 'GET',
@@ -157,6 +158,12 @@ class REST {
 			'methods' => 'POST',
 			'callback' => array( static::class, 'set_booking_status' ),
 			'permission_callback' => array( static::class, 'can_manage_bookings' ),
+		) );
+
+		register_rest_route( static::NAMESPACE, '/media', array(
+			'methods'             => 'POST',
+			'callback'            => array( static::class, 'upload_media' ),
+			'permission_callback' => array( static::class, 'can_upload_files' ),
 		) );
 
 		foreach ( static::term_routes() as $route => $taxonomy ) {
@@ -266,6 +273,31 @@ class REST {
 		return static::respond( Service::delete_location( $request['id'], $request->get_param( 'force' ) ) );
 	}
 
+	public static function list_location_countries( $request ) {
+		return static::respond( Service::list_location_countries( Utils::get_request_data( $request ) ) );
+	}
+
+	public static function list_location_regions( $request ) {
+		return static::respond( Service::list_location_regions( Utils::get_request_data( $request ) ) );
+	}
+
+	public static function list_location_states( $request ) {
+		return static::respond( Service::list_location_states( Utils::get_request_data( $request ) ) );
+	}
+
+	public static function list_location_towns( $request ) {
+		return static::respond( Service::list_location_towns( Utils::get_request_data( $request ) ) );
+	}
+
+	public static function upload_media( $request ) {
+		$data = Utils::get_request_data( $request );
+		// Multipart file uploads come through $_FILES, not the parsed body.
+		if ( !empty( $_FILES['file'] ) && is_array( $_FILES['file'] ) ) {
+			$data['_files_file'] = $_FILES['file'];
+		}
+		return static::respond( Service::upload_media( $data ), 201 );
+	}
+
 	public static function list_bookings( $request ) {
 		return static::respond( Service::list_bookings( Utils::get_request_data( $request ) ) );
 	}
@@ -337,6 +369,10 @@ class REST {
 		return current_user_can( 'delete_event_categories' );
 	}
 
+	public static function can_upload_files() {
+		return current_user_can( 'upload_files' );
+	}
+
 	protected static function term_routes() {
 		$routes = array();
 		if ( defined( 'EM_TAXONOMY_CATEGORY' ) ) {
@@ -346,19 +382,5 @@ class REST {
 			$routes['tags'] = EM_TAXONOMY_TAG;
 		}
 		return $routes;
-	}
-
-	protected static function is_events_manager_request() {
-		$namespace = trim( static::NAMESPACE, '/' );
-		$rest_route = isset( $_GET['rest_route'] ) ? trim( (string) wp_unslash( $_GET['rest_route'] ), '/' ) : '';
-		if ( $rest_route === $namespace || strpos( $rest_route, $namespace . '/' ) === 0 ) {
-			return true;
-		}
-		$path = isset( $_SERVER['REQUEST_URI'] ) ? (string) wp_parse_url( wp_unslash( $_SERVER['REQUEST_URI'] ), PHP_URL_PATH ) : '';
-		if ( !$path ) {
-			return false;
-		}
-		$needle = '/' . trim( rest_get_url_prefix(), '/' ) . '/' . $namespace;
-		return strpos( $path, $needle ) !== false;
 	}
 }

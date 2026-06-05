@@ -1,7 +1,7 @@
 <?php
 /*
 Plugin Name: Events Manager
-Version: 7.3.2
+Version: 7.3.3
 Plugin URI: https://wp-events-plugin.com
 Description: Event registration and booking management for WordPress. Recurring events, locations, webinars, google maps, rss, ical, booking registration and more!
 Author: Pixelite
@@ -30,7 +30,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 // Setting constants
 use EM\Archetypes;
 
-define('EM_VERSION', '7.3.2'); //self expanatory, although version currently may not correspond directly with published version number. until 6.0 we're stuck updating 5.999.x
+define('EM_VERSION', '7.3.3'); //self expanatory, although version currently may not correspond directly with published version number. until 6.0 we're stuck updating 5.999.x
 define('EM_PRO_MIN_VERSION', '3.7.2'); //self expanatory
 define('EM_PRO_MIN_VERSION_CRITICAL', '3.6.0.2'); //self expanatory
 define('EM_FILE', __FILE__); //an absolute path to this directory
@@ -190,15 +190,11 @@ include( EM_DIR . '/classes/em-tickets-bookings.php' );
 include( EM_DIR . '/classes/em-ticket-bookings.php' );
 include( EM_DIR . '/classes/em-tickets.php' );
 include( EM_DIR . '/classes/em-phone.php' );
+// EM's API bootstrap loads the bundled OAuth library, registers REST routes, abilities, and the MCP server — see EM\API\API::init().
 include( EM_DIR . '/classes/api/em-api.php' );
 
 
-//Admin / API context — loaded for wp-admin pages, AJAX (covered by is_admin()),
-//and REST API requests. The REST clause is needed so the save_post +
-//wp_insert_post_data validation pipeline fires during Gutenberg saves and any
-//other REST-driven event/location creation. UI-only hooks inside these files
-//are gated separately by $pagenow / admin_menu / admin_notices, so they remain
-//inert during REST requests.
+//Admin / API context
 if( is_admin() || ( defined('REST_REQUEST') && REST_REQUEST ) ){
 	include_once( EM_DIR . '/classes/em-admin-notices.php' );
 	include( EM_DIR . '/admin/em-admin.php' );

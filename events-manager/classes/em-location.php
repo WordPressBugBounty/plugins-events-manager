@@ -1290,6 +1290,8 @@ class EM_Location extends EM_Object {
 				'postcode' => $this->location_postcode,
 				'country' => $this->location_country,
 			),
+			'image' => ( $em_api_image = $this->get_image_url( 'thumbnail' ) ) ? array( 'thumbnail' => $em_api_image, 'full' => $this->get_image_url( 'full' ) ) : null,
+			'upcoming_events_count' => class_exists( 'EM_Events' ) ? absint( EM_Events::count( array( 'location' => $this->location_id, 'scope' => 'future', 'owner' => false ) ) ) : null,
 			'language' => $this->location_language,
 			'translation' => $this->location_translation,
 		);

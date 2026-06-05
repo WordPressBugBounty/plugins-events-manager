@@ -39,6 +39,7 @@ class EM_Blocks {
 		add_action( 'rest_api_init', [ __CLASS__, 'register_rest_field' ] );
 		add_action( 'rest_api_init', [ __CLASS__, 'register_validation_endpoint' ] );
 		add_action( 'enqueue_block_editor_assets', [ __CLASS__, 'enqueue_editor_assets' ] );
+		add_action( 'enqueue_block_editor_assets', [ __CLASS__, 'enqueue_block_editor_data' ] );
 		// EM frontend CSS needs to load in BOTH the editor iframe and the frontend
 		// so ServerSideRender previews look styled. enqueue_block_editor_assets only
 		// reaches the parent document, not the iframe. enqueue_block_assets is the
@@ -542,6 +543,29 @@ class EM_Blocks {
 			true
 		);
 		wp_set_script_translations( 'em-gutenberg-validation', 'events-manager' );
+	}
+
+	/**
+	 * Expose data the block inspectors need (currently the list of event
+	 * archetypes) to the editor as window.EMBlocks, so the Calendar block can
+	 * offer the same archetype choice the widget does. Attached to wp-blocks so
+	 * it runs before any block's editor script.
+	 */
+	public static function enqueue_block_editor_data() {
+		$archetypes = [];
+		if ( class_exists( '\EM\Archetypes' ) && ! empty( \EM\Archetypes::$types ) ) {
+			foreach ( \EM\Archetypes::$types as $type => $archetype ) {
+				$archetypes[] = [
+					'value' => $type,
+					'label' => isset( $archetype['label'] ) ? $archetype['label'] : $type,
+				];
+			}
+		}
+		wp_add_inline_script(
+			'wp-blocks',
+			'window.EMBlocks = ' . wp_json_encode( [ 'archetypes' => $archetypes ] ) . ';',
+			'before'
+		);
 	}
 
 	private static function em_post_types() {

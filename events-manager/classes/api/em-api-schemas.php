@@ -4,10 +4,7 @@ namespace EM\API;
 /**
  * Input schemas for REST + Ability args, kept in lockstep with the OpenAPI YAML.
  *
- * Field-naming policy: top-level keys mirror the live admin/public form $_POST contract
- * so a single shape works across `EM_*::get_post()`, MCP abilities, and REST. Extras pass
- * through verbatim via `Utils::with_request_data()`; documented properties below are the
- * canonical core set.
+ * Field-naming policy: top-level keys mirror the live admin/public form $_POST contract so a single shape works across `EM_*::get_post()`, MCP abilities, and REST. Extras pass through verbatim via `Utils::with_request_data()`; documented properties below are the canonical core set.
  */
 class Schemas {
 
@@ -23,6 +20,63 @@ class Schemas {
 				'search'   => array( 'type' => 'string',  'description' => 'Free-text search across the resource\'s indexed fields.' ),
 				'context'  => array( 'type' => 'string',  'enum' => array( 'view', 'edit', 'embed' ), 'description' => 'Response shape. `view` is the public projection; `edit` includes admin-only fields; `embed` is the minimal shape used when the resource is nested inside another response.' ),
 			),
+		);
+	}
+
+	public static function media_upload_input() {
+		// Polymorphic input. Provide ONE of: id (existing attachment), source_url (sideload), content_base64 (inline), or a multipart `file` field on the HTTP request.
+		return array(
+			'type' => 'object',
+			'properties' => array(
+				'id'             => array( 'type' => 'integer', 'description' => 'Existing media library attachment ID. Returns its current metadata without re-uploading.' ),
+				'source_url'     => array( 'type' => 'string', 'format' => 'uri', 'description' => 'Public HTTPS URL of an image to sideload into the media library. Use this for "find a relevant image from Unsplash and attach it." Internally calls `media_sideload_image()`.' ),
+				'content_base64' => array( 'type' => 'string', 'description' => 'Base64-encoded file bytes for inline upload. Pair with `filename` (required) and `mime_type` (recommended).' ),
+				'filename'       => array( 'type' => 'string', 'description' => 'Filename for the inline upload. Required when `content_base64` is provided.' ),
+				'mime_type'      => array( 'type' => 'string', 'description' => 'MIME type for the inline upload. Optional but recommended; WordPress will sniff from the filename otherwise.' ),
+				'title'          => array( 'type' => 'string', 'description' => 'Display title for the attachment. Defaults to the filename.' ),
+				'alt_text'       => array( 'type' => 'string', 'description' => 'Alt text stored on `_wp_attachment_image_alt`. Important for accessibility.' ),
+				'caption'        => array( 'type' => 'string', 'description' => 'Attachment caption (`post_excerpt`).' ),
+				'description'    => array( 'type' => 'string', 'description' => 'Long-form attachment description (`post_content`).' ),
+				'post_id'        => array( 'type' => 'integer', 'description' => 'Parent post ID. Attaches the upload to a specific post so it appears under that post in the media library.' ),
+			),
+		);
+	}
+
+	/**
+	 * Polymorphic shape used by `featured_image` on events/locations and `image` on terms. Accepts an integer attachment ID, a string URL (sideloaded), or any of the `media_upload_input()` object forms (source_url / content_base64 / id). Pass `null` to clear an existing image.
+	 */
+	public static function image_assignment_input( $description = '' ) {
+		return array(
+			'oneOf' => array(
+				array( 'type' => 'integer', 'description' => 'Existing media library attachment ID.' ),
+				array( 'type' => 'string', 'description' => 'Public URL — sideloaded into the media library if not already there.' ),
+				array( 'type' => 'object', 'description' => 'Inline or detailed upload — same shape as `POST /media` input.' ),
+				array( 'type' => 'null', 'description' => 'Clear the image.' ),
+			),
+			'description' => $description ?: 'Polymorphic image input. Pass an attachment ID for an existing media library item, a URL to sideload, an object for inline base64 upload, or `null` to clear.',
+		);
+	}
+
+	public static function location_geo_input( $accepted = array() ) {
+		// Input for the location discovery endpoints (countries / regions / states / towns). $accepted lists which parent filters this dimension supports; the special token 'only_available' enables the countries-specific boolean filter.
+		$properties = array(
+			'search' => array( 'type' => 'string', 'description' => 'Optional case-insensitive substring filter applied to the returned values (and country names, for the countries endpoint).' ),
+		);
+		if ( in_array( 'country', $accepted, true ) ) {
+			$properties['country'] = array( 'type' => 'string', 'description' => 'ISO-3166 alpha-2 country code (e.g. `US`, `GB`). Narrows results to locations within that country.' );
+		}
+		if ( in_array( 'region', $accepted, true ) ) {
+			$properties['region'] = array( 'type' => 'string', 'description' => 'Region name. Narrows results to locations within that region.' );
+		}
+		if ( in_array( 'state', $accepted, true ) ) {
+			$properties['state'] = array( 'type' => 'string', 'description' => 'State/province name. Narrows results to locations within that state.' );
+		}
+		if ( in_array( 'only_available', $accepted, true ) ) {
+			$properties['only_available'] = array( 'type' => 'boolean', 'description' => 'When true, only return countries that have at least one stored location row. When false or omitted (default), the full ISO-3166 country list is returned — useful for populating a country picker on a fresh install.' );
+		}
+		return array(
+			'type' => 'object',
+			'properties' => $properties,
 		);
 	}
 
@@ -48,6 +102,8 @@ class Schemas {
 				'event_type'           => array( 'type' => 'string',  'enum' => array( 'single', 'recurring', 'repeating' ), 'description' => 'Event timing model. `single` is one occurrence; `recurring` is a parent that generates child occurrences; `repeating` is a parent CPT for separately-tracked instances. Defaults to `single`.' ),
 				'event_archetype'      => array( 'type' => 'string',  'description' => 'Custom event-archetype CPT slug (configured under Events > Settings > Archetypes). Defaults to the base event type.' ),
 				'post_status'          => array( 'type' => 'string',  'enum' => array( 'publish', 'pending', 'draft', 'private' ), 'description' => 'WP post status. Setting `publish` requires the `publish_events` capability; without it, EM will save as `pending` regardless.' ),
+				'featured_image'       => static::image_assignment_input( 'WordPress featured image for the event. Accepts an attachment ID, a public URL (sideloaded), an object with `source_url` / `content_base64` / `file`, or `null` to clear. Sets `_thumbnail_id` on the underlying CPT.' ),
+				'featured_image_alt'   => array( 'type' => 'string', 'description' => 'Alt text applied to the featured image attachment (`_wp_attachment_image_alt`). Only takes effect when `featured_image` is also provided.' ),
 
 				'event_start_date'     => array( 'type' => 'string', 'format' => 'date', 'description' => 'Event start date in ISO format (`YYYY-MM-DD`). Required.' ),
 				'event_end_date'       => array( 'type' => 'string', 'format' => 'date', 'description' => 'Event end date. Defaults to `event_start_date` if omitted.' ),
@@ -187,6 +243,8 @@ class Schemas {
 				'location_country'   => array( 'type' => 'string', 'description' => 'ISO 3166-1 alpha-2 country code (e.g. `GB`, `US`). Required.' ),
 				'location_latitude'  => array( 'type' => 'number', 'description' => 'WGS-84 latitude.' ),
 				'location_longitude' => array( 'type' => 'number', 'description' => 'WGS-84 longitude.' ),
+				'featured_image'     => static::image_assignment_input( 'WordPress featured image for the location. Accepts an attachment ID, a public URL (sideloaded), an object with `source_url` / `content_base64` / `file`, or `null` to clear. Sets `_thumbnail_id` on the underlying CPT.' ),
+				'featured_image_alt' => array( 'type' => 'string', 'description' => 'Alt text applied to the featured image attachment (`_wp_attachment_image_alt`). Only takes effect when `featured_image` is also provided.' ),
 				'em_attributes' => array(
 					'type'        => 'object',
 					'description' => 'Custom location attributes, keyed by attribute label as configured under Events > Settings > Attributes.',
@@ -284,6 +342,8 @@ class Schemas {
 				'slug'        => array( 'type' => 'string',  'description' => 'URL-friendly slug. Auto-generated from `name` if omitted.' ),
 				'description' => array( 'type' => 'string',  'description' => 'Long-form term description.' ),
 				'parent'      => array( 'type' => 'integer', 'description' => 'Parent term ID for hierarchical taxonomies (categories).' ),
+				'color'       => array( 'type' => array( 'string', 'null' ), 'description' => 'Hex colour for term-coloured UI (e.g. `#80b538`). Stored under the EM meta key `{taxonomy}-bgcolor`. Pass `null` to clear.' ),
+				'image'       => static::image_assignment_input( 'Term image. Accepts an attachment ID, public URL (sideloaded), media-upload object, or `null` to clear. Stored under `{taxonomy}-image` (URL) and `{taxonomy}-image-id` (attachment ID).' ),
 			),
 			'additionalProperties' => array(
 				'description' => self::ADDITIONAL_PROPERTIES_DESCRIPTION,

@@ -18,6 +18,8 @@
 		"category": { "type": "string", "default": "0" },
 		"scope": { "type": "string", "default": "all" },
 		"calendar_size": { "type": "string", "default": "auto" },
+		"calendar_event_style": { "type": "string", "default": "" },
+		"limit": { "type": "string", "default": "" },
 		"event_archetype": { "type": "string", "default": "" }
 	},
 	"editorScript": "file:./index.js"

@@ -101,8 +101,8 @@ class Service {
 			'tickets'          => $tickets,
 			// Core defaults; Pro replaces booking_fields with the custom form and adds attendee_fields + payment.
 			'booking_fields'   => array(
-				array( 'field' => 'user_name',  'label' => __( 'Name', 'events-manager' ),  'type' => 'text',  'required' => true, 'location' => 'booking.user_name' ),
-				array( 'field' => 'user_email', 'label' => __( 'Email', 'events-manager' ), 'type' => 'email', 'required' => true, 'location' => 'booking.user_email' ),
+				static::with_field_validation( array( 'field' => 'user_name',  'label' => __( 'Name', 'events-manager' ),  'type' => 'text',  'required' => true, 'location' => 'booking.user_name' ), $EM_Event ),
+				static::with_field_validation( array( 'field' => 'user_email', 'label' => __( 'Email', 'events-manager' ), 'type' => 'email', 'required' => true, 'location' => 'booking.user_email' ), $EM_Event ),
 			),
 			'attendee_fields'  => array(),
 			'payment'          => array( 'required_when' => 'never', 'field' => 'gateway', 'active_gateways' => array() ),
@@ -111,6 +111,99 @@ class Service {
 		$payload = apply_filters( 'em_api_booking_requirements', $payload, $EM_Event );
 		$payload['example_payload'] = static::build_booking_example( $payload );
 		return $payload;
+	}
+
+	/**
+	 * Attaches a `validation` block to a single requirement-field entry, with format/pattern/example/messages inferred from the field type and event context. Pro overlays its own field-specific overrides (custom regex, custom error messages) by calling this and merging. Returns the field entry (passed through with `validation` added). Safe to call on any shape — fields that have no useful validation just get a minimal `validation: { required_message?, invalid_message? }` block.
+	 *
+	 * @param array     $field    Requirement-field entry being assembled.
+	 * @param \EM_Event $EM_Event Event we're describing requirements for (used for country context on phone fields, etc.).
+	 * @return array
+	 */
+	public static function with_field_validation( $field, $EM_Event = null ) {
+		$field['validation'] = static::build_field_validation( $field, $EM_Event );
+		return $field;
+	}
+
+	/**
+	 * Build the validation metadata block for one requirement-field entry. Filterable via `em_api_field_validation` so add-ons or sites can refine the schema per field type without forking the service.
+	 *
+	 * @return array
+	 */
+	public static function build_field_validation( $field, $EM_Event = null ) {
+		$type = isset( $field['type'] ) ? (string) $field['type'] : 'text';
+		$label = isset( $field['label'] ) ? (string) $field['label'] : ( isset( $field['field'] ) ? (string) $field['field'] : '' );
+		$validation = array(
+			/* translators: %s is the human-readable field label, e.g. "Phone" */
+			'required_message' => sprintf( __( '%s is required.', 'events-manager' ), $label ?: __( 'Value', 'events-manager' ) ),
+		);
+		switch ( $type ) {
+			case 'email':
+			case 'user_email':
+				$validation['format']          = 'email';
+				$validation['pattern']         = '^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$';
+				$validation['example']         = 'jane@example.com';
+				$validation['invalid_message'] = __( 'Please enter a valid email address.', 'events-manager' );
+				break;
+			case 'tel':
+			case 'dbem_phone':
+				$country = static::resolve_event_country( $EM_Event );
+				$phone_enabled = class_exists( '\\EM\\Phone' ) && \EM\Phone::is_enabled();
+				if ( $phone_enabled ) {
+					$validation['format']           = 'E.164';
+					$validation['pattern']          = '^\\+[1-9]\\d{6,14}$';
+					$validation['preferred_format'] = 'E.164';
+					$validation['invalid_message']  = __( 'Please provide a valid phone number.', 'events-manager' );
+					$validation['human_hint']       = __( 'Use international format starting with `+` and a country code, e.g. `+447400123456`.', 'events-manager' );
+					$example = \EM\Phone::example_number( $country );
+					if ( $example ) {
+						$validation['example'] = $example;
+					}
+				} else {
+					$validation['format']          = 'tel';
+					$validation['example']         = $country === 'US' ? '+15551234567' : '+447400123456';
+					$validation['invalid_message'] = __( 'Please provide a valid phone number.', 'events-manager' );
+				}
+				if ( $country ) {
+					$validation['country_context'] = $country;
+				}
+				break;
+			case 'url':
+				$validation['format']          = 'uri';
+				$validation['pattern']         = '^https?://.+';
+				$validation['example']         = 'https://example.com';
+				$validation['invalid_message'] = __( 'Please enter a valid URL.', 'events-manager' );
+				break;
+			case 'number':
+				$validation['format']          = 'integer';
+				$validation['pattern']         = '^-?\\d+$';
+				$validation['example']         = '1';
+				break;
+			case 'date':
+				$validation['format']  = 'date';
+				$validation['pattern'] = '^\\d{4}-\\d{2}-\\d{2}$';
+				$validation['example'] = gmdate( 'Y-m-d' );
+				break;
+		}
+		return apply_filters( 'em_api_field_validation', $validation, $field, $EM_Event );
+	}
+
+	/**
+	 * Best-effort ISO 3166-1 alpha-2 country code for an event, used as default context when building country-aware field examples (phone numbers, etc.).
+	 */
+	protected static function resolve_event_country( $EM_Event = null ) {
+		if ( $EM_Event && method_exists( $EM_Event, 'get_location' ) ) {
+			$EM_Location = $EM_Event->get_location();
+			if ( $EM_Location && !empty( $EM_Location->location_country ) ) {
+				return strtoupper( (string) $EM_Location->location_country );
+			}
+		}
+		$site_default = em_get_option( 'dbem_location_default_country' );
+		if ( $site_default ) {
+			return strtoupper( (string) $site_default );
+		}
+		$phone_default = em_get_option( 'dbem_phone_default_country' );
+		return $phone_default ? strtoupper( (string) $phone_default ) : '';
 	}
 
 	protected static function build_booking_example( $payload ) {
@@ -144,6 +237,11 @@ class Service {
 	}
 
 	protected static function booking_example_value( $field ) {
+		// Prefer a validator-aware example when build_field_validation set one
+		// (the only path that gets phone numbers right per country).
+		if ( !empty( $field['validation']['example'] ) ) {
+			return (string) $field['validation']['example'];
+		}
 		if ( !empty( $field['options'] ) && is_array( $field['options'] ) ) {
 			return reset( $field['options'] );
 		}
@@ -151,13 +249,13 @@ class Service {
 		switch ( $field['type'] ?? 'text' ) {
 			case 'user_login': return 'janedoe';
 			case 'email':      return 'jane@example.com';
-			case 'tel':        return '5551234567';
+			case 'tel':        return '+447400123456';
 			case 'number':     return '1';
 			case 'date':       return gmdate( 'Y-m-d' );
 			case 'checkbox':   return '1';
 		}
 		if ( strpos( $id, 'email' ) !== false ) return 'jane@example.com';
-		if ( strpos( $id, 'phone' ) !== false ) return '5551234567';
+		if ( strpos( $id, 'phone' ) !== false ) return '+447400123456';
 		if ( strpos( $id, 'login' ) !== false ) return 'janedoe';
 		if ( strpos( $id, 'first' ) !== false ) return 'Jane';
 		if ( strpos( $id, 'last' )  !== false ) return 'Doe';
@@ -221,6 +319,10 @@ class Service {
 			return Utils::object_error( 'em_api_event_save_failed', $EM_Event, __( 'Event could not be saved.', 'events-manager' ), 500 );
 		}
 		static::save_event_terms( $EM_Event, $data );
+		$featured_result = static::apply_featured_image( $EM_Event->post_id ?? 0, $data );
+		if ( is_wp_error( $featured_result ) ) {
+			return Utils::object_error( 'em_api_event_featured_image_failed', $EM_Event, $featured_result->get_error_message(), 400 );
+		}
 		do_action( 'em_api_event_save', $EM_Event, $data, $id );
 		return static::prepare_event( $EM_Event, 'edit' );
 	}
@@ -235,6 +337,12 @@ class Service {
 		}
 		$previous = static::prepare_event( $EM_Event, 'edit' );
 		if ( !$EM_Event->delete( Utils::is_truthy( $force ) ) ) {
+			// Orphan fallback: EM_Event::delete() returns false and strands the em_events row when the WP post is already gone and EM's own orphaned_event detection didn't engage (e.g. a stale post_id or an object-cache race).
+			// That row would otherwise return a blank 500 on every retry and never clear, so detect the missing post and remove the row directly via delete_meta(), leaving the normal delete path untouched.
+			if ( $EM_Event->event_id && ( empty( $EM_Event->post_id ) || !get_post( $EM_Event->post_id ) ) && $EM_Event->delete_meta() ) {
+				wp_cache_delete( $EM_Event->event_id, 'em_events' );
+				return array( 'deleted' => true, 'orphaned' => true, 'previous' => $previous );
+			}
 			return Utils::object_error( 'em_api_event_delete_failed', $EM_Event, __( 'Event could not be deleted.', 'events-manager' ), 500 );
 		}
 		return array( 'deleted' => true, 'previous' => $previous );
@@ -342,6 +450,95 @@ class Service {
 		);
 	}
 
+	/**
+	 * Returns the list of countries, paired with their translated display names from em_get_countries(). By default returns the full ISO list so the endpoint can back a country picker on a fresh install with no locations yet.
+	 *
+	 * @param array $params Optional.
+	 *   - `only_available` (bool): when true, narrow the result to country codes that have at least one stored location row. Useful for "what countries do I have events in?" agent queries.
+	 *   - `search` (string): case-insensitive substring filter against code or name.
+	 * @return array { items: [ { code, name } ] }
+	 */
+	public static function list_location_countries( $params = array() ) {
+		$params = Utils::normalize_input( $params );
+		$names = function_exists( 'em_get_countries' ) ? em_get_countries() : array();
+		$only_available = !empty( $params['only_available'] ) && Utils::is_truthy( $params['only_available'] );
+		if ( $only_available ) {
+			global $wpdb;
+			$rows = $wpdb->get_col( "SELECT DISTINCT location_country FROM " . EM_LOCATIONS_TABLE . " WHERE location_country IS NOT NULL AND location_country != '' ORDER BY location_country ASC" );
+			$items = array();
+			foreach ( $rows as $code ) {
+				$items[] = array(
+					'code' => $code,
+					'name' => isset( $names[ $code ] ) ? $names[ $code ] : $code,
+				);
+			}
+		} else {
+			$items = array();
+			foreach ( $names as $code => $name ) {
+				// em_get_countries() prepends a blank with key 0 when its $add_blank arg is set; our call doesn't ask for it, but guard against any future caller that does.
+				if ( !$code || !is_string( $code ) ) continue;
+				$items[] = array( 'code' => $code, 'name' => $name );
+			}
+		}
+		if ( !empty( $params['search'] ) ) {
+			$needle = mb_strtolower( sanitize_text_field( $params['search'] ) );
+			$items = array_values( array_filter( $items, function( $item ) use ( $needle ) {
+				return strpos( mb_strtolower( $item['code'] ), $needle ) !== false
+					|| strpos( mb_strtolower( $item['name'] ), $needle ) !== false;
+			} ) );
+		}
+		// Sort by display name for natural alphabetical reading.
+		usort( $items, function( $a, $b ) { return strcasecmp( $a['name'], $b['name'] ); } );
+		return array( 'items' => $items );
+	}
+
+	/**
+	 * Returns the distinct list of regions, optionally narrowed to a country.
+	 */
+	public static function list_location_regions( $params = array() ) {
+		return static::list_location_geo_column( 'location_region', $params, array( 'country' ) );
+	}
+
+	/**
+	 * Returns the distinct list of states, optionally narrowed to country and/or region.
+	 */
+	public static function list_location_states( $params = array() ) {
+		return static::list_location_geo_column( 'location_state', $params, array( 'country', 'region' ) );
+	}
+
+	/**
+	 * Returns the distinct list of towns/cities, optionally narrowed to country, region, and/or state.
+	 */
+	public static function list_location_towns( $params = array() ) {
+		return static::list_location_geo_column( 'location_town', $params, array( 'country', 'region', 'state' ) );
+	}
+
+	/**
+	 * Shared helper for the geo discovery endpoints. Returns DISTINCT non-empty values from a single location column, filtered by any of the supplied parent columns.
+	 *
+	 * @param string $column         The column to SELECT DISTINCT.
+	 * @param array  $params         Request params; `search` narrows results, plus any of $filter_columns.
+	 * @param array  $filter_columns Parent columns accepted as filters (e.g. `country`, `region`, `state`).
+	 * @return array { items: [ string, ... ] }
+	 */
+	protected static function list_location_geo_column( $column, $params, $filter_columns ) {
+		global $wpdb;
+		$params = Utils::normalize_input( $params );
+		$conds = array();
+		foreach ( $filter_columns as $filter ) {
+			if ( !empty( $params[ $filter ] ) ) {
+				$conds[] = $wpdb->prepare( "location_{$filter} = %s", sanitize_text_field( $params[ $filter ] ) );
+			}
+		}
+		if ( !empty( $params['search'] ) ) {
+			$conds[] = $wpdb->prepare( "{$column} LIKE %s", '%' . $wpdb->esc_like( sanitize_text_field( $params['search'] ) ) . '%' );
+		}
+		$cond = $conds ? ' AND ' . implode( ' AND ', $conds ) : '';
+		$sql = "SELECT DISTINCT {$column} FROM " . EM_LOCATIONS_TABLE . " WHERE {$column} IS NOT NULL AND {$column} != ''" . $cond . " ORDER BY {$column} ASC";
+		$items = $wpdb->get_col( $sql );
+		return array( 'items' => array_values( $items ) );
+	}
+
 	public static function get_location( $id, $context = 'view' ) {
 		$EM_Location = em_get_location( absint( $id ) );
 		if ( !$EM_Location || !$EM_Location->get_id() ) {
@@ -387,7 +584,42 @@ class Service {
 		if ( !$EM_Location->save() ) {
 			return Utils::object_error( 'em_api_location_save_failed', $EM_Location, __( 'Location could not be saved.', 'events-manager' ), 500 );
 		}
+		$featured_result = static::apply_featured_image( $EM_Location->post_id ?? 0, $data );
+		if ( is_wp_error( $featured_result ) ) {
+			return Utils::object_error( 'em_api_location_featured_image_failed', $EM_Location, $featured_result->get_error_message(), 400 );
+		}
 		return static::prepare_location( $EM_Location, 'edit' );
+	}
+
+	/**
+	 * Applies a `featured_image` input value to a CPT post — resolving the polymorphic shape to an attachment ID, calling set_post_thumbnail(), and optionally writing `featured_image_alt` to the attachment's alt-text meta. Returns true on success, WP_Error on failure, or null if `featured_image` was not provided (no-op so partial updates leave the existing thumbnail alone).
+	 */
+	protected static function apply_featured_image( $post_id, $data ) {
+		$post_id = absint( $post_id );
+		if ( !$post_id || !array_key_exists( 'featured_image', $data ) ) return null;
+		$input = $data['featured_image'];
+		if ( $input === null || $input === '' || $input === false ) {
+			delete_post_thumbnail( $post_id );
+			return true;
+		}
+		$attachment_id = static::resolve_image_input( $input, $post_id );
+		if ( is_wp_error( $attachment_id ) ) return $attachment_id;
+		if ( !$attachment_id ) return null;
+		set_post_thumbnail( $post_id, $attachment_id );
+		if ( !empty( $data['featured_image_alt'] ) ) {
+			update_post_meta( $attachment_id, '_wp_attachment_image_alt', sanitize_text_field( $data['featured_image_alt'] ) );
+		}
+		return true;
+	}
+
+	/**
+	 * Returns the featured-image attachment shape for a CPT post, or null when no thumbnail is set. Used by prepare_event / prepare_location to overlay `featured_image` on top of EM's existing `to_api()` output.
+	 */
+	protected static function get_featured_image_for_post( $post_id ) {
+		$post_id = absint( $post_id );
+		if ( !$post_id ) return null;
+		$thumbnail_id = get_post_thumbnail_id( $post_id );
+		return $thumbnail_id ? static::prepare_attachment( $thumbnail_id ) : null;
 	}
 
 	public static function delete_location( $id, $force = false ) {
@@ -410,7 +642,7 @@ class Service {
 		if ( !is_user_logged_in() ) {
 			return Utils::error( 'em_api_booking_forbidden', __( 'You must be logged in to view bookings.', 'events-manager' ), 401 );
 		}
-		$accepted = array( 'search', 'event', 'event_id', 'status', 'rsvp_status', 'person', 'ticket_id', 'booking_id', 'orderby', 'order', 'blog', 'timeslot_id' );
+		$accepted = array( 'search', 'scope', 'event', 'event_id', 'status', 'rsvp_status', 'person', 'ticket_id', 'booking_id', 'country', 'region', 'state', 'town', 'near', 'near_unit', 'near_distance', 'orderby', 'order', 'blog', 'timeslot_id' );
 		$args = Utils::collection_args( $params, Utils::pick_search_args( $params, $accepted ) );
 		if ( !current_user_can( 'manage_others_bookings' ) && !current_user_can( 'manage_bookings' ) ) {
 			$args['person'] = get_current_user_id();
@@ -603,7 +835,69 @@ class Service {
 			$result = wp_insert_term( $name, $taxonomy, $args );
 		}
 		if ( is_wp_error( $result ) ) return $result;
-		return static::get_term( $taxonomy, $result['term_id'] );
+		$term_id = absint( $result['term_id'] );
+		$image_result = static::apply_term_color_and_image( $taxonomy, $term_id, $data );
+		if ( is_wp_error( $image_result ) ) return $image_result;
+		return static::get_term( $taxonomy, $term_id );
+	}
+
+	/**
+	 * Writes `color` and `image` overlays for a term into EM_META_TABLE under the keys the EM taxonomy admin already uses (`{option_name}-bgcolor` / `{option_name}-image` / `{option_name}-image-id`). Resolves the polymorphic `image` input via resolve_image_input() so URL/base64/multipart all work. No-op for keys that aren't in $data, so partial updates leave existing color/image untouched.
+	 */
+	protected static function apply_term_color_and_image( $taxonomy, $term_id, $data ) {
+		$option_name = static::taxonomy_option_name( $taxonomy );
+		if ( !$option_name || !$term_id ) return null;
+		global $wpdb;
+		if ( array_key_exists( 'color', $data ) ) {
+			if ( $data['color'] === null || $data['color'] === '' ) {
+				$wpdb->delete( EM_META_TABLE, array( 'object_id' => $term_id, 'meta_key' => $option_name . '-bgcolor' ) );
+				wp_cache_delete( $term_id, 'em_' . $option_name . '_colors' );
+			} else {
+				$color = sanitize_hex_color( $data['color'] );
+				if ( !$color ) {
+					return Utils::error( 'em_api_term_color_invalid', __( '`color` must be a valid hex colour (e.g. `#80b538`).', 'events-manager' ), 400 );
+				}
+				static::upsert_em_meta( $term_id, $option_name . '-bgcolor', $color );
+				wp_cache_set( $term_id, $color, 'em_' . $option_name . '_colors' );
+			}
+		}
+		if ( array_key_exists( 'image', $data ) ) {
+			if ( $data['image'] === null || $data['image'] === '' || $data['image'] === false ) {
+				$wpdb->delete( EM_META_TABLE, array( 'object_id' => $term_id, 'meta_key' => $option_name . '-image' ) );
+				$wpdb->delete( EM_META_TABLE, array( 'object_id' => $term_id, 'meta_key' => $option_name . '-image-id' ) );
+			} else {
+				$attachment_id = static::resolve_image_input( $data['image'] );
+				if ( is_wp_error( $attachment_id ) ) return $attachment_id;
+				if ( $attachment_id ) {
+					$url = wp_get_attachment_url( $attachment_id );
+					if ( $url ) static::upsert_em_meta( $term_id, $option_name . '-image', $url );
+					static::upsert_em_meta( $term_id, $option_name . '-image-id', (string) $attachment_id );
+				}
+			}
+		}
+		return true;
+	}
+
+	/**
+	 * INSERT-or-UPDATE for EM_META_TABLE rows keyed by (object_id, meta_key). Mirrors what em-taxonomy-admin.php does inline, just factored out.
+	 */
+	protected static function upsert_em_meta( $object_id, $meta_key, $meta_value ) {
+		global $wpdb;
+		$exists = $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . EM_META_TABLE . ' WHERE object_id = %d AND meta_key = %s', $object_id, $meta_key ) );
+		if ( $exists ) {
+			$wpdb->update( EM_META_TABLE, array( 'meta_value' => $meta_value ), array( 'object_id' => $object_id, 'meta_key' => $meta_key ) );
+		} else {
+			$wpdb->insert( EM_META_TABLE, array( 'object_id' => $object_id, 'meta_key' => $meta_key, 'meta_value' => $meta_value ) );
+		}
+	}
+
+	/**
+	 * Maps a WP taxonomy slug to the EM taxonomy `option_name` used as the prefix for term meta keys (`category-bgcolor`, `tag-image`, etc.).
+	 */
+	protected static function taxonomy_option_name( $taxonomy ) {
+		if ( defined( 'EM_TAXONOMY_CATEGORY' ) && $taxonomy === EM_TAXONOMY_CATEGORY ) return 'category';
+		if ( defined( 'EM_TAXONOMY_TAG' ) && $taxonomy === EM_TAXONOMY_TAG ) return 'tag';
+		return null;
 	}
 
 	public static function delete_term( $taxonomy, $id ) {
@@ -674,6 +968,7 @@ class Service {
 				'delete' => $EM_Event->can_manage( 'delete_events', 'delete_others_events' ),
 			);
 		}
+		$api['featured_image'] = static::get_featured_image_for_post( $EM_Event->post_id ?? 0 );
 		return apply_filters( 'em_api_prepare_event', $api, $EM_Event, $context );
 	}
 
@@ -688,6 +983,7 @@ class Service {
 				'delete' => $EM_Location->can_manage( 'delete_locations', 'delete_others_locations' ),
 			);
 		}
+		$api['featured_image'] = static::get_featured_image_for_post( $EM_Location->post_id ?? 0 );
 		return apply_filters( 'em_api_prepare_location', $api, $EM_Location, $context );
 	}
 
@@ -756,6 +1052,15 @@ class Service {
 			$api['color'] = $EM_Term->get_color();
 			$api['image_url'] = $EM_Term->get_image_url();
 			$api['url'] = $EM_Term->get_url();
+			// Look up the attachment ID directly so consumers don't have to map URL → ID.
+			$option_name = static::taxonomy_option_name( $taxonomy );
+			$attachment_id = null;
+			if ( $option_name ) {
+				global $wpdb;
+				$attachment_id = $wpdb->get_var( $wpdb->prepare( 'SELECT meta_value FROM ' . EM_META_TABLE . ' WHERE object_id = %d AND meta_key = %s LIMIT 1', $term->term_id, $option_name . '-image-id' ) );
+				$attachment_id = $attachment_id ? absint( $attachment_id ) : null;
+			}
+			$api['image'] = $attachment_id ? static::prepare_attachment( $attachment_id ) : null;
 		}
 		return apply_filters( 'em_api_prepare_term', $api, $term, $taxonomy );
 	}
@@ -951,6 +1256,143 @@ class Service {
 				$EM_Object->{$attributes}[ '_' . $options['meta_key'] ] = 1;
 			}
 		}
+	}
+
+	/**
+	 * Uploads an image (or other media) to the WordPress media library and returns the attachment shape used everywhere else in this API. Accepts three input forms (the resolver below treats them as equivalent):
+	 *
+	 *   - `{ source_url: "https://..." }`                 → `media_sideload_image()`
+	 *   - `{ filename, mime_type, content_base64 }`       → `wp_handle_sideload()` of decoded bytes
+	 *   - `{ _files_file: $_FILES['file'] }`              → `wp_handle_upload()` (multipart)
+	 *
+	 * Optional inputs: `title`, `alt_text`, `caption`, `description`, `post_id` (attach to a post).
+	 *
+	 * @return array|\WP_Error Attachment info { id, url, mime_type, title, alt_text, width, height } or error.
+	 */
+	public static function upload_media( $data ) {
+		$data = Utils::normalize_input( $data );
+		if ( !current_user_can( 'upload_files' ) ) {
+			return Utils::error( 'em_api_media_forbidden', __( 'You do not have permission to upload media.', 'events-manager' ), 403 );
+		}
+		require_once ABSPATH . 'wp-admin/includes/file.php';
+		require_once ABSPATH . 'wp-admin/includes/media.php';
+		require_once ABSPATH . 'wp-admin/includes/image.php';
+		$attachment_id = static::resolve_attachment_id( $data );
+		if ( is_wp_error( $attachment_id ) ) return $attachment_id;
+		// Optional post-upload metadata.
+		$post_update = array( 'ID' => $attachment_id );
+		if ( !empty( $data['title'] ) ) $post_update['post_title'] = sanitize_text_field( $data['title'] );
+		if ( isset( $data['caption'] ) ) $post_update['post_excerpt'] = wp_kses_post( $data['caption'] );
+		if ( isset( $data['description'] ) ) $post_update['post_content'] = wp_kses_post( $data['description'] );
+		if ( !empty( $data['post_id'] ) ) $post_update['post_parent'] = absint( $data['post_id'] );
+		if ( count( $post_update ) > 1 ) wp_update_post( $post_update );
+		if ( isset( $data['alt_text'] ) ) update_post_meta( $attachment_id, '_wp_attachment_image_alt', sanitize_text_field( $data['alt_text'] ) );
+		return static::prepare_attachment( $attachment_id );
+	}
+
+	/**
+	 * Resolves any of the supported media-input shapes to a real attachment ID, sideloading the bytes into the WP media library where needed.
+	 *
+	 * @return int|\WP_Error
+	 */
+	protected static function resolve_attachment_id( $data ) {
+		// Existing ID — caller's done the work.
+		if ( !empty( $data['id'] ) || !empty( $data['attachment_id'] ) ) {
+			$id = absint( $data['id'] ?? $data['attachment_id'] );
+			if ( !$id || get_post_type( $id ) !== 'attachment' ) {
+				return Utils::error( 'em_api_media_invalid_id', __( 'Attachment ID not found.', 'events-manager' ), 404 );
+			}
+			return $id;
+		}
+		// Multipart upload from /media POST.
+		if ( !empty( $data['_files_file'] ) ) {
+			$file = $data['_files_file'];
+			$overrides = array( 'test_form' => false, 'action' => 'em_api_media_upload' );
+			// media_handle_upload expects $_FILES key — stage the file as $_FILES['em_api_media'].
+			$_FILES['em_api_media'] = $file;
+			$attachment_id = media_handle_upload( 'em_api_media', !empty( $data['post_id'] ) ? absint( $data['post_id'] ) : 0, array(), $overrides );
+			unset( $_FILES['em_api_media'] );
+			if ( is_wp_error( $attachment_id ) ) return $attachment_id;
+			return $attachment_id;
+		}
+		// URL sideload.
+		if ( !empty( $data['source_url'] ) ) {
+			$source_url = esc_url_raw( $data['source_url'] );
+			if ( !$source_url || !wp_http_validate_url( $source_url ) ) {
+				return Utils::error( 'em_api_media_invalid_url', __( 'Invalid source URL.', 'events-manager' ), 400 );
+			}
+			$post_id = !empty( $data['post_id'] ) ? absint( $data['post_id'] ) : 0;
+			$desc = !empty( $data['title'] ) ? sanitize_text_field( $data['title'] ) : null;
+			$attachment_id = media_sideload_image( $source_url, $post_id, $desc, 'id' );
+			if ( is_wp_error( $attachment_id ) ) return $attachment_id;
+			return absint( $attachment_id );
+		}
+		// Base64 inline upload.
+		if ( !empty( $data['content_base64'] ) ) {
+			$filename = !empty( $data['filename'] ) ? sanitize_file_name( $data['filename'] ) : 'upload-' . wp_unique_id( 'em-' ) . '.bin';
+			$bytes = base64_decode( $data['content_base64'], true );
+			if ( $bytes === false || $bytes === '' ) {
+				return Utils::error( 'em_api_media_invalid_base64', __( 'content_base64 is not valid base64 data.', 'events-manager' ), 400 );
+			}
+			$tmp_file = wp_tempnam( $filename );
+			if ( !$tmp_file || file_put_contents( $tmp_file, $bytes ) === false ) {
+				return Utils::error( 'em_api_media_tempfile_failed', __( 'Failed to write upload to temporary file.', 'events-manager' ), 500 );
+			}
+			$file_array = array(
+				'name'     => $filename,
+				'tmp_name' => $tmp_file,
+				'error'    => 0,
+				'size'     => filesize( $tmp_file ),
+			);
+			if ( !empty( $data['mime_type'] ) ) $file_array['type'] = sanitize_text_field( $data['mime_type'] );
+			$post_id = !empty( $data['post_id'] ) ? absint( $data['post_id'] ) : 0;
+			$desc = !empty( $data['title'] ) ? sanitize_text_field( $data['title'] ) : null;
+			$attachment_id = media_handle_sideload( $file_array, $post_id, $desc );
+			if ( file_exists( $tmp_file ) ) @unlink( $tmp_file );
+			if ( is_wp_error( $attachment_id ) ) return $attachment_id;
+			return absint( $attachment_id );
+		}
+		return Utils::error( 'em_api_media_missing_source', __( 'Provide one of `id`, `source_url`, `content_base64`, or a multipart `file` upload.', 'events-manager' ), 400 );
+	}
+
+	/**
+	 * Returns the canonical API shape for an attachment, used by upload_media and by the polymorphic featured-image / term-image resolvers on the read side.
+	 */
+	public static function prepare_attachment( $attachment_id ) {
+		$attachment_id = absint( $attachment_id );
+		if ( !$attachment_id || get_post_type( $attachment_id ) !== 'attachment' ) return null;
+		$meta = wp_get_attachment_metadata( $attachment_id );
+		$url = wp_get_attachment_url( $attachment_id );
+		$alt = get_post_meta( $attachment_id, '_wp_attachment_image_alt', true );
+		$post = get_post( $attachment_id );
+		$api = array(
+			'id'        => $attachment_id,
+			'url'       => $url ?: null,
+			'mime_type' => $post ? $post->post_mime_type : null,
+			'title'     => $post ? $post->post_title : null,
+			'alt_text'  => $alt ?: null,
+			'width'     => isset( $meta['width'] ) ? absint( $meta['width'] ) : null,
+			'height'    => isset( $meta['height'] ) ? absint( $meta['height'] ) : null,
+		);
+		return apply_filters( 'em_api_prepare_attachment', $api, $attachment_id );
+	}
+
+	/**
+	 * Polymorphic featured-image / term-image resolver. Accepts the same shapes as upload_media plus a bare integer (attachment ID) or string (URL — sideloaded). Returns an attachment ID, null to clear, or a WP_Error. Used by event/location featured_image and term image inputs to keep one mental model for "give me an image" across every resource.
+	 */
+	public static function resolve_image_input( $input, $post_id = 0 ) {
+		if ( $input === null || $input === '' || $input === false ) return null; // explicit clear
+		if ( is_numeric( $input ) ) {
+			return static::resolve_attachment_id( array( 'id' => $input ) );
+		}
+		if ( is_string( $input ) ) {
+			return static::resolve_attachment_id( array( 'source_url' => $input, 'post_id' => $post_id ) );
+		}
+		if ( is_array( $input ) ) {
+			if ( $post_id && empty( $input['post_id'] ) ) $input['post_id'] = $post_id;
+			return static::resolve_attachment_id( $input );
+		}
+		return Utils::error( 'em_api_image_invalid', __( 'Image input must be an attachment ID, URL, or object with source_url / content_base64 / file.', 'events-manager' ), 400 );
 	}
 
 	protected static function get_consent_classes() {

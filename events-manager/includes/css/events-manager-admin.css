@@ -6026,6 +6026,9 @@
     display: block !important;
     visibility: visible !important;
   }
+  .wp-admin .em.em-modal.active .em-modal-popup header {
+    margin: 0 0 15px;
+  }
 }
 .wp-admin .em.em-modal > form {
   margin: 0 auto !important;

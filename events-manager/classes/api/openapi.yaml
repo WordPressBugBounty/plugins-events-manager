@@ -397,6 +397,123 @@ paths:
           $ref: "#/components/responses/NotFound"
         "500":
           $ref: "#/components/responses/ServerError"
+  /events-manager/v1/locations/countries:
+    get:
+      operationId: listLocationCountries
+      summary: List location countries
+      description: |
+        Returns countries with their ISO-3166 alpha-2 code and translated display name.
+
+        By default the full ISO-3166 country list is returned — useful for populating a
+        country picker on a fresh install with no locations yet, or any UI that needs
+        every country WordPress knows about.
+
+        Pass `only_available=true` to narrow the result to countries that have at least
+        one stored location row. This is the right mode for answering *"what countries
+        do I have events in?"*.
+      tags: [Locations]
+      security:
+        - cookieAuth: []
+        - basicAuth: []
+      parameters:
+        - name: only_available
+          in: query
+          description: When `true`, only return countries with at least one stored location. Defaults to `false` (full ISO list).
+          schema:
+            type: boolean
+            default: false
+            example: true
+        - name: search
+          in: query
+          description: Optional case-insensitive substring filter against the country code or its display name.
+          schema:
+            type: string
+            example: united
+      responses:
+        "200":
+          $ref: "#/components/responses/LocationCountryListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/ServerError"
+  /events-manager/v1/locations/regions:
+    get:
+      operationId: listLocationRegions
+      summary: List location regions
+      description: |
+        Returns the distinct list of region names present in the Events Manager locations table.
+        Pass `country` to narrow the result to a single country.
+      tags: [Locations]
+      security:
+        - cookieAuth: []
+        - basicAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Country"
+        - name: search
+          in: query
+          description: Optional case-insensitive substring filter against the region name.
+          schema:
+            type: string
+      responses:
+        "200":
+          $ref: "#/components/responses/LocationGeoListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/ServerError"
+  /events-manager/v1/locations/states:
+    get:
+      operationId: listLocationStates
+      summary: List location states
+      description: |
+        Returns the distinct list of state/province names present in the Events Manager
+        locations table. Pass `country` and/or `region` to narrow the result.
+      tags: [Locations]
+      security:
+        - cookieAuth: []
+        - basicAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Country"
+        - $ref: "#/components/parameters/Region"
+        - name: search
+          in: query
+          description: Optional case-insensitive substring filter against the state name.
+          schema:
+            type: string
+      responses:
+        "200":
+          $ref: "#/components/responses/LocationGeoListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/ServerError"
+  /events-manager/v1/locations/towns:
+    get:
+      operationId: listLocationTowns
+      summary: List location towns
+      description: |
+        Returns the distinct list of town/city names present in the Events Manager
+        locations table. Pass `country`, `region`, and/or `state` to narrow the result.
+      tags: [Locations]
+      security:
+        - cookieAuth: []
+        - basicAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Country"
+        - $ref: "#/components/parameters/Region"
+        - $ref: "#/components/parameters/State"
+        - name: search
+          in: query
+          description: Optional case-insensitive substring filter against the town name.
+          schema:
+            type: string
+      responses:
+        "200":
+          $ref: "#/components/responses/LocationGeoListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/ServerError"
   /events-manager/v1/locations/validate:
     post:
       operationId: validateLocation
@@ -518,6 +635,15 @@ paths:
         - $ref: "#/components/parameters/Page"
         - $ref: "#/components/parameters/PerPage"
         - $ref: "#/components/parameters/Search"
+        - name: scope
+          in: query
+          description: |
+            Filter bookings by their event's date using an Events Manager date scope —
+            `future`, `past`, `today`, `tomorrow`, `this-week`, `this-month`, `next-month`, `all`,
+            or a `YYYY-MM-DD,YYYY-MM-DD` range. Omit to include bookings for events of any date.
+          schema:
+            type: string
+            example: future
         - $ref: "#/components/parameters/Context"
         - $ref: "#/components/parameters/BookingEvent"
         - $ref: "#/components/parameters/BookingEventId"
@@ -699,6 +825,43 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+  /events-manager/v1/media:
+    post:
+      operationId: uploadMedia
+      summary: Upload media
+      description: |
+        Uploads an image (or other media) to the WordPress media library and returns
+        the resulting attachment metadata. Three input shapes are accepted — pick the
+        one that matches your client:
+
+        - **URL sideload** — `{ source_url: "https://..." }`. Public URL is fetched
+          and stored. Good for AI agents pulling stock images.
+        - **Base64 inline** — `{ filename, mime_type, content_base64 }`. Bytes are
+          decoded and stored.
+        - **Multipart** — standard `multipart/form-data` with a `file` field.
+
+        Returns `{ id, url, mime_type, title, alt_text, width, height }`. The `id`
+        can be passed straight to `featured_image` on events/locations or `image`
+        on categories/tags.
+
+        Requires the `upload_files` capability.
+      tags: [Media]
+      security:
+        - cookieAuth: []
+        - basicAuth: []
+      requestBody:
+        $ref: "#/components/requestBodies/MediaUploadInput"
+      responses:
+        "201":
+          $ref: "#/components/responses/MediaResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "500":
           $ref: "#/components/responses/ServerError"
   /events-manager/v1/categories:
@@ -1589,6 +1752,44 @@ components:
                 slug: workshops
                 description: Hands-on learning events.
                 parent: 0
+    MediaUploadInput:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/MediaUploadInput"
+          examples:
+            sideloadUrl:
+              summary: Sideload an image from a public URL
+              value:
+                source_url: https://images.unsplash.com/photo-1556909114-f6e7ad7d3136
+                title: Knitting workshop hero
+                alt_text: Person knitting with a teal yarn ball
+            inlineBase64:
+              summary: Inline base64 upload
+              value:
+                filename: hero.jpg
+                mime_type: image/jpeg
+                content_base64: /9j/4AAQSkZJRgABAQEASABIAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/...
+            existingId:
+              summary: Look up an existing attachment
+              value:
+                id: 12345
+        multipart/form-data:
+          schema:
+            type: object
+            properties:
+              file:
+                type: string
+                format: binary
+                description: The file to upload.
+              title:
+                type: string
+              alt_text:
+                type: string
+              post_id:
+                type: integer
+            required: [file]
   responses:
     BadRequest:
       description: Invalid request.
@@ -1766,6 +1967,51 @@ components:
           examples:
             location:
               $ref: "#/components/examples/LocationExample"
+    LocationCountryListResponse:
+      description: Distinct list of countries present in the locations table.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              items:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    code:
+                      type: string
+                      description: ISO-3166 alpha-2 country code.
+                      example: GB
+                    name:
+                      type: string
+                      description: Translated display name for the country.
+                      example: United Kingdom
+                  required: [code, name]
+          example:
+            items:
+              - code: AU
+                name: Australia
+              - code: GB
+                name: United Kingdom
+              - code: US
+                name: United States
+    LocationGeoListResponse:
+      description: Distinct list of region / state / town values present in the locations table.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              items:
+                type: array
+                items:
+                  type: string
+          example:
+            items:
+              - London
+              - Manchester
+              - Edinburgh
     LocationValidationResponse:
       description: Location validation result.
       content:
@@ -1802,6 +2048,20 @@ components:
           examples:
             bookings:
               $ref: "#/components/examples/BookingCollectionExample"
+    MediaResponse:
+      description: Newly created (or looked-up) media library attachment.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Attachment"
+          example:
+            id: 12345
+            url: https://example.com/wp-content/uploads/2026/06/hero.jpg
+            mime_type: image/jpeg
+            title: Knitting workshop hero
+            alt_text: Person knitting with a teal yarn ball
+            width: 1920
+            height: 1080
     BookingResponse:
       description: Booking response.
       content:
@@ -2022,6 +2282,18 @@ components:
           description: "TODO: `EM_Event::to_api()` currently maps this from `event_private`; confirm intended meaning before freezing docs."
         content:
           type: string
+        image:
+          description: Featured image URLs (thumbnail + full), or null if the event has no image.
+          type:
+            - object
+            - "null"
+          properties:
+            thumbnail:
+              type: string
+              format: uri
+            full:
+              type: string
+              format: uri
         bookings:
           $ref: "#/components/schemas/EventBookings"
         when:
@@ -2051,6 +2323,11 @@ components:
             - "null"
         timeslot_id:
           type: integer
+        featured_image:
+          oneOf:
+            - $ref: "#/components/schemas/Attachment"
+            - type: "null"
+          description: Featured image attachment, or `null` if none is set.
         permissions:
           $ref: "#/components/schemas/Permissions"
       additionalProperties: true
@@ -2082,6 +2359,12 @@ components:
           type: string
           enum: [publish, pending, draft, private]
           description: WP post status. Setting `publish` requires the `publish_events` capability; without it, EM saves as `pending` regardless.
+        featured_image:
+          $ref: "#/components/schemas/ImageAssignmentInput"
+          description: WordPress featured image for the event. Sets `_thumbnail_id` on the underlying CPT. Accepts an attachment ID, public URL (sideloaded), media-upload object, or `null` to clear.
+        featured_image_alt:
+          type: string
+          description: Alt text applied to the featured image attachment (`_wp_attachment_image_alt`). Only takes effect when `featured_image` is also provided.
         event_start_date:
           type: string
           format: date
@@ -2471,6 +2754,23 @@ components:
           $ref: "#/components/schemas/Geo"
         address:
           $ref: "#/components/schemas/Address"
+        image:
+          description: Featured image URLs (thumbnail + full), or null if the location has no image.
+          type:
+            - object
+            - "null"
+          properties:
+            thumbnail:
+              type: string
+              format: uri
+            full:
+              type: string
+              format: uri
+        upcoming_events_count:
+          type:
+            - integer
+            - "null"
+          description: Number of upcoming (future-scope) events at this location.
         language:
           type:
             - string
@@ -2479,6 +2779,11 @@ components:
           type:
             - integer
             - "null"
+        featured_image:
+          oneOf:
+            - $ref: "#/components/schemas/Attachment"
+            - type: "null"
+          description: Featured image attachment, or `null` if none is set.
         permissions:
           $ref: "#/components/schemas/Permissions"
       additionalProperties: true
@@ -2504,6 +2809,12 @@ components:
           type: string
           enum: [publish, pending, draft, private]
           description: WP post status. `publish` requires the `publish_locations` capability.
+        featured_image:
+          $ref: "#/components/schemas/ImageAssignmentInput"
+          description: WordPress featured image for the location. Sets `_thumbnail_id` on the underlying CPT. Accepts an attachment ID, public URL (sideloaded), media-upload object, or `null` to clear.
+        featured_image_alt:
+          type: string
+          description: Alt text applied to the featured image attachment (`_wp_attachment_image_alt`). Only takes effect when `featured_image` is also provided.
         location_address:
           type: string
           description: Street address. **Required.**
@@ -3023,14 +3334,26 @@ components:
         count:
           type: integer
         color:
-          type: string
+          type:
+            - string
+            - "null"
           example: "#80b538"
+          description: Term colour stored under EM meta key `{taxonomy}-bgcolor`. Used by the EM front-end and Pro blocks to colour-code terms.
         image_url:
-          type: string
+          type:
+            - string
+            - "null"
           format: uri
+          description: Public URL of the term image attachment (mirror of `image.url`). Kept for backwards compatibility.
+        image:
+          oneOf:
+            - $ref: "#/components/schemas/Attachment"
+            - type: "null"
+          description: Term image attachment with id/url/dimensions, or `null` if none is set.
         url:
           type: string
           format: uri
+          description: Public archive URL for this term.
       additionalProperties: true
     TermInput:
       type: object
@@ -3050,6 +3373,15 @@ components:
         parent:
           type: integer
           description: Parent term ID for hierarchical taxonomies (categories support nesting; tags don't).
+        color:
+          type:
+            - string
+            - "null"
+          example: "#80b538"
+          description: Hex colour used by the EM front-end / Pro blocks. Stored under `{taxonomy}-bgcolor` in EM meta. Pass `null` to clear.
+        image:
+          $ref: "#/components/schemas/ImageAssignmentInput"
+          description: Term image. Accepts an attachment ID, public URL (sideloaded), media-upload object, or `null` to clear. Stored under `{taxonomy}-image` (URL) and `{taxonomy}-image-id` (attachment ID).
       additionalProperties: false
     Owner:
       type: object
@@ -3100,6 +3432,83 @@ components:
           type: boolean
         previous:
           $ref: "#/components/schemas/Term"
+    MediaUploadInput:
+      type: object
+      description: |
+        Polymorphic input — provide ONE of `source_url`, `content_base64`+`filename`,
+        a multipart `file` field, or `id` for an existing attachment. Optional
+        metadata fields apply regardless of upload mode.
+      properties:
+        id:
+          type: integer
+          description: Existing media library attachment ID. Returns its current metadata without re-uploading.
+        source_url:
+          type: string
+          format: uri
+          description: Public URL of a file to sideload into the media library.
+        content_base64:
+          type: string
+          description: Base64-encoded file bytes. Pair with `filename` (required) and `mime_type` (recommended).
+        filename:
+          type: string
+          description: Filename for inline upload. Required when `content_base64` is provided.
+        mime_type:
+          type: string
+          description: MIME type for the inline upload. Optional; sniffed from filename otherwise.
+        title:
+          type: string
+          description: Attachment display title.
+        alt_text:
+          type: string
+          description: Alt text for accessibility (`_wp_attachment_image_alt`).
+        caption:
+          type: string
+          description: Attachment caption (`post_excerpt`).
+        description:
+          type: string
+          description: Long-form attachment description (`post_content`).
+        post_id:
+          type: integer
+          description: Optional parent post ID to attach the upload to.
+    Attachment:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 12345
+        url:
+          type: string
+          format: uri
+          example: https://example.com/wp-content/uploads/2026/06/hero.jpg
+        mime_type:
+          type: string
+          example: image/jpeg
+        title:
+          type: string
+          example: Knitting workshop hero
+        alt_text:
+          type: string
+          example: Person knitting with a teal yarn ball
+        width:
+          type: integer
+          nullable: true
+          example: 1920
+        height:
+          type: integer
+          nullable: true
+          example: 1080
+    ImageAssignmentInput:
+      description: |
+        Polymorphic image reference used by `featured_image` on events/locations
+        and `image` on terms. Accepts an attachment ID, URL (sideloaded), the full
+        media-upload object shape, or `null` to clear.
+      oneOf:
+        - type: integer
+          description: Existing attachment ID.
+        - type: string
+          description: Public URL — sideloaded into the media library if not already there.
+        - $ref: "#/components/schemas/MediaUploadInput"
+        - type: "null"
     GenericObject:
       type: object
       additionalProperties: true

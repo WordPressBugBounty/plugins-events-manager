@@ -5,7 +5,7 @@ Tags: events, calendar, tickets, bookings, block
 Text Domain: events-manager
 Requires at least: 6.1
 Tested up to: 7.0
-Stable tag: 7.3.2
+Stable tag: 7.3.3
 Requires PHP: 7.0
 License: GPLv2
 
@@ -187,6 +187,15 @@ See our [FAQ](http://wp-events-plugin.com/documentation/faq/) page for helps wit
 18. Grid view for displaying your upcoming events at a glance
 
 == Changelog ==
+= 7.3.3 =
+* Added: Calendar "dots" style — events can now be marked with coloured dots instead of (or alongside) titles, with a style choice and a per-day event limit exposed in the Events Calendar block.
+* Added: REST API support for featured images on events and locations (input and output), a media upload endpoint and ability, and term colour + image on event categories/tags.
+* Added: Location geo-discovery REST endpoints (countries, regions, states, towns) and an `upcoming_events_count` field on the location response.
+* Added: REST `/bookings` now accepts location filters (country/region/state/town/near) and a `scope` parameter to filter bookings by event date.
+* Added: MCP `get-booking-requirements` now returns per-field validation metadata with country-tuned phone examples, so AI agents can pre-validate bookings.
+* Tweaked: The recurring-booking calendar picker now respects the configured default calendar style.
+* Tweaked: Improved the MCP experience for AI agents — authentication now uses WordPress application passwords instead of timeout-prone OAuth tokens, with native-app support, and the MCP server now exposes Pro and other add-on abilities alongside core's.
+
 = 7.3.2 =
 * Added: REST API now accepts a booking UUID on `/bookings/{id}` routes alongside the numeric booking ID, so MCP agents and headless clients can look up bookings without needing the database row id.
 * Added: `booked_spaces` and `available_spaces` fields on the event REST API response, with corresponding entries in the event-bookings schema.

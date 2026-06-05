@@ -39,10 +39,16 @@ class Abilities {
 		static::register_management_ability( 'delete-ticket', __( 'Delete ticket', 'events-manager' ), __( 'Deletes an Events Manager ticket if it has no bookings.', 'events-manager' ), Schemas::id_input( __( 'Ticket ID.', 'events-manager' ) ), array( static::class, 'delete_ticket' ), array( static::class, 'can_manage_bookings' ), array( 'destructive' => true, 'idempotent' => false ) );
 
 		static::register_data_ability( 'list-locations', __( 'List locations', 'events-manager' ), __( 'Retrieves a filtered collection of Events Manager locations.', 'events-manager' ), Schemas::collection_input(), array( static::class, 'list_locations' ) );
+		static::register_data_ability( 'list-location-countries', __( 'List location countries', 'events-manager' ), __( 'Returns countries with their ISO-3166 alpha-2 code and translated display name. By default returns the full ISO list — useful for populating a country picker. Pass `only_available: true` to narrow the result to countries that have at least one stored location row.', 'events-manager' ), Schemas::location_geo_input( array( 'only_available' ) ), array( static::class, 'list_location_countries' ) );
+		static::register_data_ability( 'list-location-regions', __( 'List location regions', 'events-manager' ), __( 'Returns the distinct list of region names present in Events Manager locations. Pass `country` to narrow results to one country.', 'events-manager' ), Schemas::location_geo_input( array( 'country' ) ), array( static::class, 'list_location_regions' ) );
+		static::register_data_ability( 'list-location-states', __( 'List location states', 'events-manager' ), __( 'Returns the distinct list of state/province names present in Events Manager locations. Pass `country` and/or `region` to narrow results.', 'events-manager' ), Schemas::location_geo_input( array( 'country', 'region' ) ), array( static::class, 'list_location_states' ) );
+		static::register_data_ability( 'list-location-towns', __( 'List location towns', 'events-manager' ), __( 'Returns the distinct list of town/city names present in Events Manager locations. Pass `country`, `region`, and/or `state` to narrow results.', 'events-manager' ), Schemas::location_geo_input( array( 'country', 'region', 'state' ) ), array( static::class, 'list_location_towns' ) );
 		static::register_data_ability( 'get-location', __( 'Get location', 'events-manager' ), __( 'Retrieves one Events Manager location by ID.', 'events-manager' ), Schemas::id_input( __( 'Location ID.', 'events-manager' ) ), array( static::class, 'get_location' ) );
 		static::register_management_ability( 'create-location', __( 'Create location', 'events-manager' ), __( 'Creates an Events Manager location.', 'events-manager' ), Schemas::location_input(), array( static::class, 'create_location' ), array( static::class, 'can_edit_locations' ), array( 'destructive' => false, 'idempotent' => false ) );
 		static::register_management_ability( 'update-location', __( 'Update location', 'events-manager' ), __( 'Updates an Events Manager location.', 'events-manager' ), Schemas::location_input( true ), array( static::class, 'update_location' ), array( static::class, 'can_edit_locations' ), array( 'destructive' => true, 'idempotent' => false ) );
 		static::register_management_ability( 'delete-location', __( 'Delete location', 'events-manager' ), __( 'Deletes or trashes an Events Manager location.', 'events-manager' ), Schemas::id_input( __( 'Location ID.', 'events-manager' ) ), array( static::class, 'delete_location' ), array( static::class, 'can_delete_locations' ), array( 'destructive' => true, 'idempotent' => false ) );
+
+		static::register_management_ability( 'upload-media', __( 'Upload media', 'events-manager' ), __( 'Uploads an image (or other media) to the WordPress media library and returns its attachment ID. Accepts a `source_url` to sideload a public image, base64-encoded bytes via `content_base64` + `filename`, or an existing `id` to look up an existing attachment. Use the returned ID with `featured_image` on events/locations or `image` on categories/tags.', 'events-manager' ), Schemas::media_upload_input(), array( static::class, 'upload_media' ), array( static::class, 'can_upload_files' ), array( 'destructive' => false, 'idempotent' => false ) );
 
 		static::register_data_ability( 'list-bookings', __( 'List bookings', 'events-manager' ), __( 'Retrieves bookings visible to the current user.', 'events-manager' ), Schemas::collection_input(), array( static::class, 'list_bookings' ), array( static::class, 'can_read_bookings' ) );
 		static::register_data_ability( 'get-booking', __( 'Get booking', 'events-manager' ), __( 'Retrieves one booking by ID if visible to the current user.', 'events-manager' ), Schemas::id_input( __( 'Booking ID.', 'events-manager' ) ), array( static::class, 'get_booking' ), array( static::class, 'can_read_bookings' ) );
@@ -183,6 +189,22 @@ class Abilities {
 		return Service::list_locations( Utils::normalize_input( $input ) );
 	}
 
+	public static function list_location_countries( $input ) {
+		return Service::list_location_countries( Utils::normalize_input( $input ) );
+	}
+
+	public static function list_location_regions( $input ) {
+		return Service::list_location_regions( Utils::normalize_input( $input ) );
+	}
+
+	public static function list_location_states( $input ) {
+		return Service::list_location_states( Utils::normalize_input( $input ) );
+	}
+
+	public static function list_location_towns( $input ) {
+		return Service::list_location_towns( Utils::normalize_input( $input ) );
+	}
+
 	public static function get_location( $input ) {
 		$input = Utils::normalize_input( $input );
 		return Service::get_location( $input['id'] ?? 0, $input['context'] ?? 'view' );
@@ -204,6 +226,14 @@ class Abilities {
 
 	public static function list_bookings( $input ) {
 		return Service::list_bookings( Utils::normalize_input( $input ) );
+	}
+
+	public static function upload_media( $input ) {
+		return Service::upload_media( Utils::normalize_input( $input ) );
+	}
+
+	public static function can_upload_files() {
+		return current_user_can( 'upload_files' );
 	}
 
 	public static function get_booking( $input ) {

@@ -3911,6 +3911,7 @@ class EM_Event extends EM_Object{
 			'active' => (bool) $this->event_active_status,
 			'active_status' => absint( $this->event_active_status ),
 			'content' => $this->post_content,
+			'image' => ( $em_api_image = $this->get_image_url( 'thumbnail' ) ) ? array( 'thumbnail' => $em_api_image, 'full' => $this->get_image_url( 'full' ) ) : null,
 			'bookings' => array (
 				'enabled' => !empty( $this->event_rsvp ),
 				'end_date' => $this->event_rsvp_date,

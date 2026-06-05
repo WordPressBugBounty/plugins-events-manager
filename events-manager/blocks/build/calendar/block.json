@@ -40,6 +40,14 @@
       "type": "string",
       "default": "auto"
     },
+    "calendar_event_style": {
+      "type": "string",
+      "default": ""
+    },
+    "limit": {
+      "type": "string",
+      "default": ""
+    },
     "event_archetype": {
       "type": "string",
       "default": ""

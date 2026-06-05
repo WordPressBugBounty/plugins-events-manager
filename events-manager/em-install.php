@@ -825,6 +825,7 @@ function em_add_options() {
 		'dbem_display_calendar_events_limit' => get_option('dbem_full_calendar_events_limit',3),
 		'dbem_display_calendar_events_limit_msg' => __('more...','events-manager'),
 		'dbem_calendar_size' => 'auto',
+		'dbem_calendar_event_style' => $already_installed ? 'pill':'dot',
 		'dbem_calendar_timeslots' => false,
 		'dbem_calendar_direct_links' => 1,
 		'dbem_calendar_preview_mode' => 'modal',

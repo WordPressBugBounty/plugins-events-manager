@@ -242,7 +242,10 @@ class OAuth_API {
 	}
 }
 //include dependents
-include_once('oauth-server.php');
+// NOTE: the inbound OAuth authorization server (oauth-server.php) was removed in
+// favour of the bundled \Pixelite\OAuth_App_Passwords library. Only the outbound
+// OAuth *client* framework (used by EM I/O importers: Google, Facebook, Meetup,
+// Zoom) remains here.
 include('oauth-api-token.php');
 include('oauth-api-client.php');
 if( is_admin() ){
