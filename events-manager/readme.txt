@@ -5,7 +5,7 @@ Tags: events, calendar, tickets, bookings, block
 Text Domain: events-manager
 Requires at least: 6.1
 Tested up to: 7.0
-Stable tag: 7.3.3
+Stable tag: 7.3.4
 Requires PHP: 7.0
 License: GPLv2
 
@@ -187,6 +187,18 @@ See our [FAQ](http://wp-events-plugin.com/documentation/faq/) page for helps wit
 18. Grid view for displaying your upcoming events at a glance
 
 == Changelog ==
+= 7.3.4 =
+* Security: Free-text event and location fields submitted by non-privileged users (e.g. front-end event submitters) are now sanitised, closing a stored-XSS vector. We recommend everyone update.
+* Added: New "Event When" block for the block editor — edit an event's date, time and recurrence inline from the canvas.
+* Added: New display options for timeslot booking cards, giving you more control over how timeslot selection appears on the booking form.
+* Fixed: Timeslot and recurring booking pickers are now a single shared template, resolving several layout and timezone-picker glitches, multiday date display, and a card-gap regression.
+* Fixed: Recurring events now regenerate their timeslots when the event duration changes, and event listings sort and scope correctly by timeslot date/time across a series.
+* Fixed: Block editor — recurring events no longer fail validation on a second save, and the date picker now initialises correctly inside the editor's iframe.
+* Fixed: Several REST/MCP API issues found in live testing — bookings made through the API were all being attributed to the authenticated admin rather than the intended account; partial event updates could wipe categories and tags; and media upload, booking-status and consent handling have been tightened. Booking on behalf of another person is now correctly a Pro-only capability.
+* Fixed: MCP installer buttons on the settings page not triggering the install.
+* Fixed: CSS glitches in the selectize search dropdown when resizing or typing.
+* Tweaked: The selected day is now shown in bold across every calendar event style.
+
 = 7.3.3 =
 * Added: Calendar "dots" style — events can now be marked with coloured dots instead of (or alongside) titles, with a style choice and a per-day event limit exposed in the Events Calendar block.
 * Added: REST API support for featured images on events and locations (input and output), a media upload endpoint and ability, and term colour + image on event categories/tags.

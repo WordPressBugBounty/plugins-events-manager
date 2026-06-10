@@ -889,6 +889,13 @@ function em_add_options() {
 			// Timeslot stuff
 			'dbem_bookings_header_timeslots' => esc_html__('Select a time', 'events-manager'),
 			'dbem_bookings_timeslots_timezone_picker' => 0,
+			'dbem_bookings_timeslots_show_unavailable' => 0,
+			'dbem_bookings_timeslots_show_spaces' => 1,
+			'dbem_bookings_timeslots_show_dates' => 1,
+			'dbem_bookings_timeslots_show_upcoming' => 1,
+			'dbem_bookings_timeslots_upcoming_limit' => 3,
+			'dbem_bookings_timeslots_date_format' => '',
+			'dbem_bookings_timeslots_time_format' => '',
 			//Messages
 			'dbem_bookings_form_msg_disabled' => __('Online bookings are not available for this event.','events-manager'),
 			'dbem_bookings_form_msg_closed' => __('Bookings are closed for this event.','events-manager'),

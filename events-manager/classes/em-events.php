@@ -777,16 +777,22 @@ $orderby_sql";
 	    $orderby = parent::build_sql_orderby($args, $accepted_fields, em_get_option('dbem_events_default_order'));
 		$orderby = self::build_sql_ambiguous_fields_helper($orderby); //fix ambiguous fields
 		if ( $args['timeslots'] ) {
+			// Sort each row by its timeslot's own datetime when one is joined, falling back to the parent event's datetime for rows the LEFT JOIN didn't match. The previous implementation kept event_start as the primary key with timeslot_start only as a tiebreaker, which inverted chronology across parent events once a timezone offset pushed timeslots from neighbouring days onto a shared local date. Also collapse duplicates from the default multi-column orderby (event_start_date,event_start_time,...) so we don't emit redundant clauses.
+			$coalesce = [
+				'start' => 'COALESCE(ets.timeslot_start, ' . EM_EVENTS_TABLE . '.event_start)',
+				'end'   => 'COALESCE(ets.timeslot_end, '   . EM_EVENTS_TABLE . '.event_end)',
+			];
+			$seen = [];
 			foreach ( $orderby as $key => $value ) {
-				$orderby[$key] = str_replace( ['event_start_date', 'event_start_time', 'event_start'], 'event_start, timeslot_start', $value );
-				$orderby[$key] = str_replace( ['event_end_date', 'event_end_time', 'event_end'], 'event_end, timeslot_end', $orderby[$key] );
-
-				if ( str_contains( $value, 'timeslot_start' ) || str_contains( $value, 'timeslot_start' ) ) {
-					if ( !empty( $switched ) ) {
+				if ( preg_match( '/event_(start|end)(?:_date|_time)?/', $value, $m ) ) {
+					$col = $m[1]; // 'start' | 'end'
+					if ( isset( $seen[ $col ] ) ) {
 						unset( $orderby[ $key ] );
-					} else {
-						$switched = true;
+						continue;
 					}
+					$seen[ $col ] = true;
+					$dir = preg_match( '/\s+(ASC|DESC)\s*$/i', $value, $dm ) ? strtoupper( $dm[1] ) : 'ASC';
+					$orderby[ $key ] = $coalesce[ $col ] . ' ' . $dir;
 				}
 			}
 		}

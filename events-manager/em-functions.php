@@ -1151,6 +1151,22 @@ function em_options_input_get_value( $name, $default = '' ){
 	return $value;
 }
 
+function em_booking_timeslots_get_display_options( $EM_Event = null ) {
+	$get_option = function( $option, $default ) use ( $EM_Event ) {
+		return $EM_Event instanceof EM_Event ? $EM_Event->get_option( $option, $default ) : em_get_option( $option, $default );
+	};
+	$options = array(
+		'show_unavailable' => (bool) $get_option( 'dbem_bookings_timeslots_show_unavailable', 0 ),
+		'show_spaces' => (bool) $get_option( 'dbem_bookings_timeslots_show_spaces', 1 ),
+		'show_dates' => (bool) $get_option( 'dbem_bookings_timeslots_show_dates', 1 ),
+		'show_upcoming' => (bool) $get_option( 'dbem_bookings_timeslots_show_upcoming', 1 ),
+		'upcoming_limit' => absint( $get_option( 'dbem_bookings_timeslots_upcoming_limit', 3 ) ),
+		'date_format' => trim( (string) $get_option( 'dbem_bookings_timeslots_date_format', '' ) ),
+		'time_format' => trim( (string) $get_option( 'dbem_bookings_timeslots_time_format', '' ) ),
+	);
+	return apply_filters( 'em_booking_timeslots_display_options', $options, $EM_Event );
+}
+
 function em_options_input_text($title, $name, $description ='', $default='', $resetable = false) {
     $translate = EM_ML::is_option_translatable($name);
 	$value = em_options_input_get_value( $name, $default );
