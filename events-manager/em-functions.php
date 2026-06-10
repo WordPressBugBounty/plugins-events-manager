@@ -975,10 +975,10 @@ function em_output_events_view( $args, $view = null ){
 				$args['format'] = em_get_option( 'dbem_event_grid_item_format' );
 			}
 			if( empty($args['format_header']) ){
-				$args['format_header'] = em_get_option('dbem_event_grid_format_header');
+				$args['format_header'] = em_get_option('dbem_event_grid_item_format_header');
 			}
 			if( empty($args['format_footer']) ){
-				$args['format_footer'] = em_get_option('dbem_event_grid_format_footer');
+				$args['format_footer'] = em_get_option('dbem_event_grid_item_format_footer');
 			}
 			em_locate_template('templates/events-grid.php', true, array('args'=>$args)); //if successful, this template overrides the settings and defaults, including search
 			break;

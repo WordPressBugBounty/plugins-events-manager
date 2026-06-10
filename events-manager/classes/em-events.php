@@ -651,8 +651,8 @@ $orderby_sql";
 			$conditions['search'] = $wpdb->prepare($like_search_sql, $like_search_strings);
 		}
 		//private events
-		if( empty($args['private']) ){
-			$conditions['private'] = "(`event_private`=0)";			
+		if( empty($args['private']) || !current_user_can('read_private_events') ){
+			$conditions['private'] = "(`event_private`=0)";
 		}elseif( !empty($args['private_only']) ){
 			$conditions['private_only'] = "(`event_private`=1)";
 		}

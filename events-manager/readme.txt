@@ -5,7 +5,7 @@ Tags: events, calendar, tickets, bookings, block
 Text Domain: events-manager
 Requires at least: 6.1
 Tested up to: 7.0
-Stable tag: 7.3.4
+Stable tag: 7.3.5
 Requires PHP: 7.0
 License: GPLv2
 
@@ -70,6 +70,12 @@ Events Manager is a full-featured event calendar, bookings, appointments, schedu
 * Lots of documentation and tutorials
 * **NEW** Gutenberg Supported
 * And much more!
+
+= AI Integration =
+
+AI is here, and we're on board! Check out what's possible with our new and evolving AI integration possibilities:
+
+https://www.youtube.com/watch?v=NYjCel9eBwY
 
 = Data Privacy and GDPR Compliance =
 We provide the tools to [help you be GDPR compliant](http://wp-events-plugin.com/documentation/data-privacy-gdpr-compliance/), including:
@@ -187,6 +193,13 @@ See our [FAQ](http://wp-events-plugin.com/documentation/faq/) page for helps wit
 18. Grid view for displaying your upcoming events at a glance
 
 == Changelog ==
+= 7.3.5 =
+* Security: Private events and locations could be exposed to non-privileged visitors when the `private` query argument was supplied — the fix ensures only users with the `read_private_events` / `read_private_locations` capability can request private content. CVE-2025-14945, responsibly disclosed by shark3y via WordFence. We recommend updating.
+* Fixed: A custom Grid format header/footer set in Formatting settings was never shown on grid event lists — the view was reading the wrong option name, so the header/footer text was silently dropped on both initial load and AJAX search.
+* Fixed: Custom Google Maps JSON styling (Styling Wizard / Snazzy Maps) stopped applying after the Advanced Markers upgrade — Google ignores legacy map styles when a Map ID is present. Front-end maps with custom styling now render correctly again, without the "styles property cannot be set when a mapId is present" console warning.
+* Fixed: Block editor — recurring events no longer trigger a false "recurrence times are required" error on second save (disabled recurrence fields are now included in form serialisation); the Event When block's edits are no longer silently dropped in Gutenberg 6.6+ where the canvas renders inside an iframe.
+* Tweaked: The default event editor has been switched back to Classic while block editor support is further refined — existing installs are unaffected and the setting can be changed under Events Manager → Settings.
+
 = 7.3.4 =
 * Security: Free-text event and location fields submitted by non-privileged users (e.g. front-end event submitters) are now sanitised, closing a stored-XSS vector. We recommend everyone update.
 * Added: New "Event When" block for the block editor — edit an event's date, time and recurrence inline from the canvas.

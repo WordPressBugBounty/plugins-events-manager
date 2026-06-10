@@ -116,13 +116,32 @@ function serialiseClassicForm() {
 	// Last-resort fallback so we never silently miss inputs.
 	containers.push( document.body );
 
+	// Also read from the em/event-when canvas block inside the editor iframe.
+	// Gutenberg 6.6+ renders block content in iframe[name="editor-canvas"], so
+	// document.querySelector can't reach it. The canvas block has the user's
+	// current (live, non-disabled) values and is the authoritative source for
+	// date/time/recurrence data when it is present.
+	const editorFrame = document.querySelector( 'iframe[name="editor-canvas"]' );
+	const canvasBlock = editorFrame?.contentDocument?.querySelector( '.em-event-when-block' );
+	if ( canvasBlock ) {
+		containers.push( canvasBlock );
+		dbg( 'container .em-event-when-block (iframe) FOUND' );
+	}
+
 	const seen = new Set();
 	const params = new URLSearchParams();
 	const debugFields = [];
 
 	for ( const root of containers ) {
 		const fields = root.querySelectorAll(
-			'input[name]:not([disabled]):not([type="submit"]):not([type="button"]):not([type="reset"]):not([type="file"]), select[name]:not([disabled]), textarea[name]:not([disabled])'
+			// Disabled fields are intentionally included: saved recurring events
+			// disable their primary recurrence inputs in the classic metabox HTML,
+			// causing `:not([disabled])` to silently drop the times and trigger a
+			// false "Main recurrence set times are required" validation error on
+			// second save. The canvas block always has enabled inputs (it re-fetches
+			// fresh HTML each load), so including disabled fields here is harmless
+			// when the canvas is the container, and necessary for the metabox fallback.
+			'input[name]:not([type="submit"]):not([type="button"]):not([type="reset"]):not([type="file"]), select[name], textarea[name]'
 		);
 
 		for ( const el of fields ) {
@@ -372,7 +391,12 @@ function onPublishClick( e ) {
  * metabox .inside so it ends up in the serialised form.
  */
 function syncAllCanvasToMetabox() {
-	const canvas = document.querySelector( '.em-event-when-block' );
+	// The canvas block renders inside iframe[name="editor-canvas"] in Gutenberg
+	// 6.6+. document.querySelector can't reach across document boundaries, so we
+	// must look inside the iframe's contentDocument explicitly.
+	const editorFrame = document.querySelector( 'iframe[name="editor-canvas"]' );
+	const canvas = editorFrame?.contentDocument?.querySelector( '.em-event-when-block' )
+	               || document.querySelector( '.em-event-when-block' ); // fallback: non-iframed context
 	if ( ! canvas ) {
 		return;
 	}
