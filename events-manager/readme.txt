@@ -5,7 +5,7 @@ Tags: events, calendar, tickets, bookings, block
 Text Domain: events-manager
 Requires at least: 6.1
 Tested up to: 7.0
-Stable tag: 7.3.5
+Stable tag: 7.3.6
 Requires PHP: 7.0
 License: GPLv2
 
@@ -193,6 +193,11 @@ See our [FAQ](http://wp-events-plugin.com/documentation/faq/) page for helps wit
 18. Grid view for displaying your upcoming events at a glance
 
 == Changelog ==
+= 7.3.6 =
+* Added: EU right of withdrawal (Widerrufsbutton) — guests and registered users can now submit a statutory cancellation request directly from a booking confirmation email or the My Bookings page, fulfilling the § 356a BGB obligation for distance contracts. Includes a configurable site-wide footer link, admin and guest acknowledgement emails, and magic-link access so guests without a WordPress account can reach the cancellation form.
+* Fixed: Recurring events with an exclude-only recurrence set (or a malformed payload with no include/exclude keys) caused a fatal TypeError in uksort() — the order array is now initialised before sorting.
+* Tweaked: OAuth connect and disconnect flows now return the admin to the page where they initiated the connection rather than always landing on the Events Manager settings page; the `em_oauth_authorize_redirect_url` and `em_oauth_disconnect_redirect_url` filters let gateways and integrations customise the destination further.
+
 = 7.3.5 =
 * Security: Private events and locations could be exposed to non-privileged visitors when the `private` query argument was supplied — the fix ensures only users with the `read_private_events` / `read_private_locations` capability can request private content. CVE-2025-14945, responsibly disclosed by shark3y via WordFence. We recommend updating.
 * Fixed: A custom Grid format header/footer set in Formatting settings was never shown on grid event lists — the view was reading the wrong option name, so the header/footer text was silently dropped on both initial load and AJAX search.

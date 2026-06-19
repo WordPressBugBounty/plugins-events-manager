@@ -744,6 +744,18 @@ function em_add_options() {
 		'dbem_event_cancelled_email_body' => str_replace("<br/>", "\n\r", $respondent_email_event_cancelled),
 		'dbem_event_cancelled_bookings' => !$already_installed,
 		'dbem_event_cancelled_bookings_email' => !$already_installed,
+		// EU right of withdrawal (Widerrufsbutton / § 356a BGB) — opt-in and off by default, since fixed-date events are exempt from the right of withdrawal. Label and email defaults are intentionally left empty: EM_Withdrawal supplies locale-aware defaults at read time so the feature reads correctly even without .po coverage.
+		'dbem_eu_withdrawal_enabled' => false,
+		'dbem_eu_withdrawal_period_days' => 14,
+		'dbem_eu_withdrawal_page' => 0,
+		'dbem_eu_withdrawal_footer_link' => true,
+		'dbem_eu_withdrawal_label_button' => '',
+		'dbem_eu_withdrawal_label_confirm' => '',
+		'dbem_eu_withdrawal_label_heading' => '',
+		'dbem_eu_withdrawal_email_subject' => '',
+		'dbem_eu_withdrawal_email_body' => '',
+		'dbem_eu_withdrawal_admin_email' => '',
+		'dbem_eu_withdrawal_policy' => '',
 		//Tags Page Formatting
 		'dbem_tags_list_item_format_header' => EM_Formats::dbem_tags_list_item_format_header(''),
 		'dbem_tags_list_item_format' => EM_Formats::dbem_tags_list_item_format(''),
