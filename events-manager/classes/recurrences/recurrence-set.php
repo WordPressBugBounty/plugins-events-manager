@@ -1946,7 +1946,13 @@ class Recurrence_Set extends EM_Object {
 			'start_date' => $this->start_date,
 			'end_date' => $this->end_date,
 			'start_time' => $this->start_time,
-			'end_time' => $this->end_time
+			'end_time' => $this->end_time,
+			// `all_day` and `timezone` apply to EVERY set, excludes included: timezone interprets the dates, and all_day distinguishes a whole-day skip from a timed one (recurrence_all_day=1 => whole day; otherwise start_time/end_time bound a timed window). `status` and `timeranges` are include-only — an exclude has no active status and (in the read shape) carries its single time window via start_time/end_time/all_day rather than a timeslot list. `dates` only carries values for freq=on.
+			'all_day' => (bool) $this->all_day,
+			'status' => $this->type === 'exclude' ? null : $this->status,
+			'timezone' => $this->timezone,
+			'dates' => $this->freq === 'on' ? array_values( (array) $this->dates ) : null,
+			'timeranges' => $this->type === 'exclude' ? array() : $this->get_timeranges()->to_api()['timeranges'],
 		];
 
 		return apply_filters( 'em_recurrence_set_to_api', $api, $this );

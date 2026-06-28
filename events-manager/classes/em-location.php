@@ -517,7 +517,7 @@ class EM_Location extends EM_Object {
 			if( em_get_option('dbem_location_attributes_enabled') ){
 				//attributes get saved as individual keys or deleted if non-existent anymore
 				$atts = em_get_attributes( true ); //get available attributes that EM manages
-				$this->location_attributes= maybe_unserialize($this->location_attributes);
+				$this->location_attributes= EM_Object::maybe_unserialize($this->location_attributes);
 				foreach( $atts['names'] as $location_attribute_key ){
 					if( !empty($this->location_attributes[$location_attribute_key]) ){
 						update_post_meta($this->post_id, $location_attribute_key, $this->location_attributes[$location_attribute_key]);

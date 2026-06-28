@@ -649,13 +649,15 @@ function em_init_actions_start() {
 			}
 		}elseif( $_REQUEST['action'] === 'booking_form_summary' ){
 			$EM_Booking->get_post();
-			// wrap in main tag as we only need what's inside by JS
-			echo '<main>';
+			if( $EM_Booking->can_manage() || ( is_user_logged_in() && !empty($EM_Booking->person->ID) && $EM_Booking->person->ID == get_current_user_id() ) ){
+				// wrap in main tag as we only need what's inside by JS
+				echo '<main>';
 				if( $EM_Booking->get_option('dbem_bookings_summary') ){
 					em_locate_template('forms/bookingform/summary.php', true, array('EM_Event' => $EM_Event, 'EM_Booking' => $EM_Booking));
 				}
 				echo $EM_Booking->output_intent_html();
-			echo '</main>';
+				echo '</main>';
+			}
 			exit();
 		}
 		Archetypes::revert_current();

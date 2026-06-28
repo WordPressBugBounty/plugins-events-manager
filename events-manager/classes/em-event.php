@@ -1487,7 +1487,7 @@ class EM_Event extends EM_Object{
 			if( $this->get_option('dbem_attributes_enabled') ){
 				//attributes get saved as individual keys
 				$atts = em_get_attributes(); //get available attributes that EM manages
-				$this->event_attributes = maybe_unserialize($this->event_attributes);
+				$this->event_attributes = EM_Object::maybe_unserialize($this->event_attributes);
 				foreach( $atts['names'] as $event_attribute_key ){
 					if( array_key_exists($event_attribute_key, $this->event_attributes) && $this->event_attributes[$event_attribute_key] != '' ){
 						update_post_meta($this->post_id, $event_attribute_key, $this->event_attributes[$event_attribute_key]);
@@ -3976,6 +3976,8 @@ class EM_Event extends EM_Object{
 				'end_date' => $this->event_end_date,
 				'end_time' => $this->event_end_time,
 				'timezone' => $this->event_timezone,
+				// Timeslot sub-shape: index 0 is the primary range, extra entries are additional timeslots / slot generators. Always present (a plain event has one). Mirrors the front-end timeranges editor and is what the REST write contract inverts.
+				'timeranges' => $this->get_timeranges()->to_api()['timeranges'],
 			),
 			'location' => false,
 			'categories' => $this->to_api_terms( EM_TAXONOMY_CATEGORY ),

@@ -342,10 +342,10 @@ class EM_Booking extends EM_Object{
 	function get_notes(){
 		global $wpdb;
 		if( !is_array($this->notes) && !empty($this->booking_id) ){
-		  	$notes = $wpdb->get_results("SELECT * FROM ". EM_META_TABLE ." WHERE meta_key='booking-note' AND object_id ='{$this->booking_id}'", ARRAY_A);
+		  	$notes = $wpdb->get_results($wpdb->prepare("SELECT * FROM ". EM_META_TABLE ." WHERE meta_key='booking-note' AND object_id = %d", $this->booking_id), ARRAY_A);
 		  	$this->notes = array();
 		  	foreach($notes as $note){
-		  		$this->notes[] = unserialize($note['meta_value']);
+		  		$this->notes[] = self::maybe_unserialize($note['meta_value']);
 		  	}
 		}elseif( empty($this->booking_id) ){
 			$this->notes = array();

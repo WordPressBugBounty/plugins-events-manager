@@ -34,6 +34,7 @@ function em_install() {
 		 	}else{
 		 		update_option('em_ms_global_install',1); //in case for some reason the user changes global settings in the future
 		 	}
+			do_action('em_install_create_tables');
 			//New install, or Migrate?
 			if( empty($old_version) ){
 				em_create_events_page();
@@ -848,6 +849,7 @@ function em_add_options() {
 		'dbem_calendar_large_pill_format' => '#_12HSTARTTIME - #_EVENTLINK',
 		//General Settings
 		'dbem_editor' => 'classic', // go classic for now
+		'dbem_event_editor_layout' => $already_installed ? 'metaboxes' : 'canvas', // existing installs keep classic stacked metaboxes; new installs get the canvas tabs
 		'dbem_timezone_enabled' => 1,
 		'dbem_timezone_default' => EM_DateTimeZone::create()->getName(),
 		'dbem_require_location' => 0,
@@ -1109,6 +1111,11 @@ function em_add_options() {
 		'dbem_phone_detect' => 1,
 		'dbem_phone_countries_include' => [],
 		'dbem_phone_countries_exclude' => [],
+		// mobile app notifications
+		'dbem_app_notifications_enabled' => 0,
+		'dbem_app_notification_booking_added' => 1,
+		'dbem_app_notification_booking_cancelled' => 1,
+		'dbem_app_notification_event_added' => 1,
 );
 
 	//do date js according to locale:
@@ -1617,7 +1624,7 @@ function em_upgrade_current_installation(){
 				foreach( $results as $booking ) {
 					// now we generate split meta, any meta in an array should be dealt with by corresponding plugin (e.g. Pro for form field meta)
 					if( !empty($booking['booking_meta']) ) {
-						$booking_meta = unserialize($booking['booking_meta']);
+						$booking_meta = EM_Object::maybe_unserialize($booking['booking_meta']);
 						foreach( $booking_meta as $k => $v ){
 							if( is_array($v) ) {
 								// we go down one level for automated array combining
@@ -2004,6 +2011,10 @@ function em_upgrade_current_installation(){
 			EM_Admin_Notices::add(new EM_Admin_Notice(array( 'name' => 'editor-update', 'who' => 'admin', 'what' => 'success', 'where' => 'classic-editor', 'message' => $message )), is_multisite());
 			// notify
 			$message = 'Connect Events Manager to your favourite AI in just a few clicks via MCP! See our <a href="https://wp-events-plugin.com/blog/2026/06/10/events-manager-ai-mcp/">latest announcement</a> for more information.';
+			EM_Admin_Notices::add(new EM_Admin_Notice(array( 'name' => 'v-update', 'who' => 'admin', 'what' => 'success', 'where' => 'all', 'message' => $message )), is_multisite());
+		}
+		if ( version_compare( $current_version, '7.3.7', '<' ) ) {
+			$message = sprintf( __('Events Manager 7.3.7 includes improvements to the block (Gutenberg) editor. Check out our %s for the details.', 'events-manager'), '<a href="https://wp-events-plugin.com/blog/2026/06/29/events-manager-7-3-7/">' . __('latest post', 'events-manager') . '</a>' );
 			EM_Admin_Notices::add(new EM_Admin_Notice(array( 'name' => 'v-update', 'who' => 'admin', 'what' => 'success', 'where' => 'all', 'message' => $message )), is_multisite());
 		}
 		$pro_update = function() {

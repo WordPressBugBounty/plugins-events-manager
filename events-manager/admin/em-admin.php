@@ -46,7 +46,8 @@ function em_admin_menu(){
 		$plugin_pages['help'] = add_submenu_page('edit.php?post_type='.$post_type, __('Getting Help for Events Manager','events-manager'),__('Help','events-manager'), 'manage_options', "events-manager-help", 'em_admin_help_page');
 		//If multisite global with locations set to be saved in main blogs we can force locations to be created on the main blog only
 		if( EM_MS_GLOBAL && !is_main_site() && get_site_option('dbem_ms_mainblog_locations') ){
-			include( dirname(__FILE__)."/em-ms-locations.php" );
+			// include_once: em_admin_menu() builds menus inside a foreach over event archetypes, so a plain include would redeclare em_admin_ms_locations() on the second CPT (fatal on MS-global subsites). The function only needs defining once.
+			include_once( dirname(__FILE__)."/em-ms-locations.php" );
 			$plugin_pages['locations'] = add_submenu_page('edit.php?post_type='.$post_type, __('Locations','events-manager'),__('Locations','events-manager'), 'read_others_locations', "locations", 'em_admin_ms_locations');
 		}
 		if ( $post_type === Archetypes::$event['cpt'] ) {

@@ -113,8 +113,8 @@ class EM_ML_IO {
 	 */
 	public static function event_merge_original_attributes($EM_Event, $event){
 		//merge attributes
-		$event->event_attributes = maybe_unserialize($event->event_attributes);
-		$EM_Event->event_attributes = maybe_unserialize($EM_Event->event_attributes);
+		$event->event_attributes = EM_Object::maybe_unserialize($event->event_attributes);
+		$EM_Event->event_attributes = EM_Object::maybe_unserialize($EM_Event->event_attributes);
 		foreach($event->event_attributes as $event_attribute_key => $event_attribute){
 			if( !empty($event_attribute) && empty($EM_Event->event_attributes[$event_attribute_key]) ){
 				$EM_Event->event_attributes[$event_attribute_key] = $event_attribute;

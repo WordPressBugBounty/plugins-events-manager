@@ -362,8 +362,8 @@ class EM_Ticket_Bookings extends EM_Tickets_Bookings {
 		global $wpdb;
 		$result = $result_meta = false;
 		if( $this->get_booking()->can_manage() ){
-			$result_meta = $wpdb->query("DELETE FROM ".EM_TICKETS_BOOKINGS_META_TABLE." WHERE ticket_booking_id IN (SELECT ticket_booking_id FROM ".EM_TICKETS_BOOKINGS_TABLE." WHERE booking_id='{$this->booking_id}' AND ticket_id='{$this->ticket_id}')");
-			$result = $wpdb->query("DELETE FROM ".EM_TICKETS_BOOKINGS_TABLE." WHERE booking_id='{$this->booking_id}' AND ticket_id='{$this->ticket_id}'");
+			$result_meta = $wpdb->query($wpdb->prepare("DELETE FROM ".EM_TICKETS_BOOKINGS_META_TABLE." WHERE ticket_booking_id IN (SELECT ticket_booking_id FROM ".EM_TICKETS_BOOKINGS_TABLE." WHERE booking_id = %d AND ticket_id = %d)", $this->booking_id, $this->ticket_id));
+			$result = $wpdb->query($wpdb->prepare("DELETE FROM ".EM_TICKETS_BOOKINGS_TABLE." WHERE booking_id = %d AND ticket_id = %d", $this->booking_id, $this->ticket_id));
 		}
 		return apply_filters(static::$n . '_delete', ($result !== false && $result_meta !== false), $this);
 	}

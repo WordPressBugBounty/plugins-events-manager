@@ -5,7 +5,7 @@ Tags: events, calendar, tickets, bookings, block
 Text Domain: events-manager
 Requires at least: 6.1
 Tested up to: 7.0
-Stable tag: 7.3.6
+Stable tag: 7.3.7
 Requires PHP: 7.0
 License: GPLv2
 
@@ -23,6 +23,7 @@ Events Manager is a full-featured event calendar, bookings, appointments, schedu
 
 * **NEW** Integrate easily with your favourite AI via MCP, unlock the power of AI-powered Events!
 * **NEW** API Rest Integration
+* **NEW** EU Compliance Tools for ["Right of withdrawal" (EU 'Widerrufsbutton')](https://wp-events-plugin.com/documentation/compliance/right-of-withdrawal/)
 * Beautiful calendars, search pages, lists, grids and booking forms to enhance your site events.
 * Easy event registration (single day with start/end times)
 * Recurring and long (multi-day) event registration
@@ -90,7 +91,7 @@ We provide the tools to [help you be GDPR compliant](http://wp-events-plugin.com
 We have a premium [Pro add-on for Events Manager](http://eventsmanagerpro.com/gopro/) which not only demonstrates the flexibility of Events Manager, but also adds some important features including but not limited to:
 
 * WooCommerce integration ([sold separately](https://em.cm/wc))
-* PayPal, Stripe, Authorize.net and Offline Payments
+* PayPal, Stripe, Authorize.net, Square, Xero and Offline Payments
 * Custom booking forms
 * Individual Attendee custom forms
 * Upload fields for bookings, attendees and users
@@ -193,6 +194,20 @@ See our [FAQ](http://wp-events-plugin.com/documentation/faq/) page for helps wit
 18. Grid view for displaying your upcoming events at a glance
 
 == Changelog ==
+= 7.3.7 =
+* Added: Push notification framework for the upcoming Events Manager mobile app — device registration, per-notification-type controls, and a settings UI.
+* Added: Block editor — Event Details canvas panel with tabbed When and Bookings sections; canvas/tabbed/stacked layout setting; namespaced EM\Editor tab system for event and location editors; EM runtime now loads inside the canvas iframe with full admin CSS and recurrence support.
+* Added: REST API recurring-event and timeslot read/write support.
+* Security: Fixed unauthenticated object injection via booking meta, SQL injection in iCal/feed/permalink slug lookups, and unauthenticated booking summary disclosure. Reported by Jakub Herman. We recommend updating.
+* Fixed: PHP 8.x infinite loop in the multi-day calendar slot allocator when two events overlap on the same day.
+* Fixed: WordPress 6.7+ "translation triggered too early" debug notice — API consent-scope now registers on `init` instead of `plugins_loaded`.
+* Fixed: Fatal `array_intersect()` error on the Bookings list when sorted by a single column.
+* Fixed: Fatal "Cannot access offset of type string on string" on settings save when `dbem_data` was corrupted to a plain string.
+* Fixed: Booked seat and ticket counts showed as 0 throughout the admin due to an inverted condition.
+* Fixed: "Limit CSS loading" setting ignored since 7.3 — stylesheet enqueued on every front-end page regardless of the setting.
+* Fixed: Fatal "Cannot redeclare em_admin_ms_locations()" on multisite subsite admin.
+* Fixed: Recurrence reschedule button and double timeslot bug in the block canvas.
+
 = 7.3.6 =
 * Added: EU right of withdrawal (Widerrufsbutton) — guests and registered users can now submit a statutory cancellation request directly from a booking confirmation email or the My Bookings page, fulfilling the § 356a BGB obligation for distance contracts. Includes a configurable site-wide footer link, admin and guest acknowledgement emails, and magic-link access so guests without a WordPress account can reach the cancellation form.
 * Fixed: Recurring events with an exclude-only recurrence set (or a malformed payload with no include/exclude keys) caused a fatal TypeError in uksort() — the order array is now initialised before sorting.

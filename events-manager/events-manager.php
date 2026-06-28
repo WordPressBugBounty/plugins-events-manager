@@ -1,7 +1,7 @@
 <?php
 /*
 Plugin Name: Events Manager
-Version: 7.3.6
+Version: 7.3.7
 Plugin URI: https://wp-events-plugin.com
 Description: Event registration and booking management for WordPress. Recurring events, locations, webinars, google maps, rss, ical, booking registration and more!
 Author: Pixelite
@@ -30,7 +30,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 // Setting constants
 use EM\Archetypes;
 
-define('EM_VERSION', '7.3.6'); //self expanatory, although version currently may not correspond directly with published version number. until 6.0 we're stuck updating 5.999.x
+define('EM_VERSION', '7.3.7'); //self expanatory, although version currently may not correspond directly with published version number. until 6.0 we're stuck updating 5.999.x
 define('EM_PRO_MIN_VERSION', '3.7.2'); //self expanatory
 define('EM_PRO_MIN_VERSION_CRITICAL', '3.6.0.2'); //self expanatory
 define('EM_FILE', __FILE__); //an absolute path to this directory
@@ -155,6 +155,8 @@ if( get_option('dbem_locations_enabled') ){
 include( EM_DIR . '/widgets/em-calendar.php' );
 //Gutenberg blocks + validation guard (registers blocks, REST field, editor JS)
 include( EM_DIR . '/blocks/_bootstrap.php' );
+//Event/Location editor: tab registry (EM\Editor\Tabs + Event/Location) + canvas/tabs/metaboxes layout controller
+include( EM_DIR . '/classes/editor/em-editor.php' );
 //Classes
 include( EM_DIR . '/classes/em-list-table.php' );
 include( EM_DIR . '/classes/em-booking.php' );
@@ -193,6 +195,8 @@ include( EM_DIR . '/classes/em-tickets.php' );
 include( EM_DIR . '/classes/em-phone.php' );
 // EM's API bootstrap loads the bundled OAuth library, registers REST routes, abilities, and the MCP server — see EM\API\API::init().
 include( EM_DIR . '/classes/api/em-api.php' );
+// Push-notification framework for the mobile app: a generic type registry (bookings, events, …) that dispatches to Expo and registers its own /app/* REST routes under the API namespace — see EM\Notifications\Notifications::init(). Loaded after the API so it can reuse the same namespace and auth layer.
+include( EM_DIR . '/classes/notifications/em-notifications.php' );
 
 
 //Admin / API context
@@ -852,7 +856,7 @@ function em_rss() {
 		$args['event_archetype'] = false;
 	}elseif( is_feed() && $wp_query->get('post_type') == EM_POST_TYPE_LOCATION && $wp_query->get(EM_POST_TYPE_LOCATION) ){
 		//location feeds
-		$location_id = $wpdb->get_var('SELECT location_id FROM '.EM_LOCATIONS_TABLE." WHERE location_slug='".$wp_query->get(EM_POST_TYPE_LOCATION)."' AND location_status=1 LIMIT 1");
+		$location_id = $wpdb->get_var($wpdb->prepare('SELECT location_id FROM '.EM_LOCATIONS_TABLE." WHERE location_slug=%s AND location_status=1 LIMIT 1", $wp_query->get(EM_POST_TYPE_LOCATION)));
 		if( !empty($location_id) ){
 			$args = array('location'=> $location_id);
 		}
