@@ -55,7 +55,7 @@ class Uploader {
 	];
 
 	/**
-	 * Supported filetypes by the uploader, add to these by hooking into em_uploader_uploader_init, restrict allowed types case-by-case in supplied $options when validating.
+	 * Supported filetypes by the uploader, add to these by hooking into em_uploads_uploader_init, restrict allowed types case-by-case in supplied $options when validating.
 	 * @var array
 	 */
 	public static $supported_file_types = array(
@@ -64,6 +64,7 @@ class Uploader {
 		'jpg'  => array('exif_type' => 2, 'mime' => ['image/jpeg'], 'type' => 'image'),
 		'jpeg' => array('exif_type' => 2, 'mime' => ['image/jpeg'], 'type' => 'image'),
 		'png'  => array('exif_type' => 3, 'mime' => ['image/png'], 'type' => 'image'),
+		'webp' => array('exif_type' => null, 'mime' => ['image/webp'], 'type' => 'image'),
 		'heic' => array('exif_type' => null, 'mime' => ['image/heic'], 'type' => 'image'),
 
 		// Documents

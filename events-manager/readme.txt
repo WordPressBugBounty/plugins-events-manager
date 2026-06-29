@@ -5,7 +5,7 @@ Tags: events, calendar, tickets, bookings, block
 Text Domain: events-manager
 Requires at least: 6.1
 Tested up to: 7.0
-Stable tag: 7.3.7
+Stable tag: 7.3.7.2
 Requires PHP: 7.0
 License: GPLv2
 
@@ -194,6 +194,10 @@ See our [FAQ](http://wp-events-plugin.com/documentation/faq/) page for helps wit
 18. Grid view for displaying your upcoming events at a glance
 
 == Changelog ==
+= 7.3.7.2 =
+* Added: webp as accepted upload image type
+* Fixed: SQL syntax error affecting ticket counts due to unprepared SQL statement (props @joneiseman)
+
 = 7.3.7 =
 * Added: Push notification framework for the upcoming Events Manager mobile app — device registration, per-notification-type controls, and a settings UI.
 * Added: Block editor — Event Details canvas panel with tabbed When and Bookings sections; canvas/tabbed/stacked layout setting; namespaced EM\Editor tab system for event and location editors; EM runtime now loads inside the canvas iframe with full admin CSS and recurrence support.
