@@ -82,7 +82,7 @@ class EM_Admin_Modals {
 			$pro_license_active = defined('EMP_VERSION');
 			if( $pro_license_active ){
 				$key = em_get_option('dbem_pro_api_key');
-				$has_lifetime_already = $key && date('Y', $key['until'] ?? time() ) === '2125';
+				//$has_lifetime_already = $key && date('Y', $key['until'] ?? time() ) === '2125';
 			}
 			if( time() < 1783728000 && !empty($data['admin-modals']['promo-popup']) && empty($has_lifetime_already) ) {
 				if( $data['admin-modals']['promo-popup'] && ($show_plugin_pages || $show_network_admin) ) {

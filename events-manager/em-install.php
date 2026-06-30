@@ -2013,8 +2013,8 @@ function em_upgrade_current_installation(){
 			$message = 'Connect Events Manager to your favourite AI in just a few clicks via MCP! See our <a href="https://wp-events-plugin.com/blog/2026/06/10/events-manager-ai-mcp/">latest announcement</a> for more information.';
 			EM_Admin_Notices::add(new EM_Admin_Notice(array( 'name' => 'v-update', 'who' => 'admin', 'what' => 'success', 'where' => 'all', 'message' => $message )), is_multisite());
 		}
-		if ( version_compare( $current_version, '7.3.7', '<' ) ) {
-			$message = sprintf( __('Events Manager 7.3.7 includes improvements to the block (Gutenberg) editor. Check out our %s for the details.', 'events-manager'), '<a href="https://wp-events-plugin.com/blog/2026/06/29/events-manager-7-3-7/">' . __('latest post', 'events-manager') . '</a>' );
+		if ( version_compare( $current_version, '7.3.7.2', '<' ) ) {
+			$message = '<strong>' . sprintf( __('Events Manager now has a <a href="">mobile app</a> 🥳 🎉, download it now!', 'events-manager'), 'https://wp-events-plugin.com/features/mobile-apps/') . '</strong> ' . sprintf( __('Update 7.3.7 also includes improvements to the block (Gutenberg) editor. Check out our %s for the details.', 'events-manager'), '<a href="https://wp-events-plugin.com/blog/2026/06/29/events-manager-7-3-7/">' . __('latest post', 'events-manager') . '</a>' );
 			EM_Admin_Notices::add(new EM_Admin_Notice(array( 'name' => 'v-update', 'who' => 'admin', 'what' => 'success', 'where' => 'all', 'message' => $message )), is_multisite());
 		}
 		$pro_update = function() {

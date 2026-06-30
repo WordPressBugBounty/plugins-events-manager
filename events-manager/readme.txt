@@ -5,7 +5,7 @@ Tags: events, calendar, tickets, bookings, block
 Text Domain: events-manager
 Requires at least: 6.1
 Tested up to: 7.0
-Stable tag: 7.3.7.2
+Stable tag: 7.3.7.3
 Requires PHP: 7.0
 License: GPLv2
 
@@ -194,7 +194,7 @@ See our [FAQ](http://wp-events-plugin.com/documentation/faq/) page for helps wit
 18. Grid view for displaying your upcoming events at a glance
 
 == Changelog ==
-= 7.3.7.2 =
+= 7.3.7.3 =
 * Added: webp as accepted upload image type
 * Fixed: SQL syntax error affecting ticket counts due to unprepared SQL statement (props @joneiseman)
 
