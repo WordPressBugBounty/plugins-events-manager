@@ -222,13 +222,13 @@ function em_options_save(){
 		wp_safe_redirect(em_wp_get_referer());
 		exit();
 	}
-	//Force Update Recheck - Workaround for now
+	//Force a stable-version recheck that reads WordPress.org directly, bypassing the staggered update rollout
 	if( !empty($_REQUEST['action']) && $_REQUEST['action'] == 'recheck_updates' && check_admin_referer('em_recheck_updates_'.get_current_user_id().'_wpnonce') && em_wp_is_super_admin() ){
-		//force recheck of plugin updates, to refresh dl links
-		remove_all_actions('pre_set_site_transient_update_plugins');
+		//delete transients and flag a one-off stable check; em_updates_check() then reads WordPress.org directly to skip the rollout delay
 		delete_transient('update_plugins');
 		delete_site_transient('update_plugins');
-		$EM_Notices->add_confirm(__('If there are any new updates, you should now see them in your Plugins or Updates admin pages.','events-manager'), true);
+		update_option('em_check_stable_version', true);
+		$EM_Notices->add_confirm(__('Checking for the latest stable version.','events-manager').' '. __('If there are any new updates, you should now see them in your Plugins or Updates admin pages.','events-manager'), true);
 		wp_safe_redirect(em_wp_get_referer());
 		exit();
 	}
@@ -1010,10 +1010,11 @@ function em_admin_option_box_uninstall(){
         			<h4><?php _e ( 'Development Versions &amp; Updates', 'events-manager'); ?></h4>
         			<p><?php _e('We\'re always making improvements, adding features and fixing bugs between releases. We incrementally make these changes in between updates and make it available as a development version. You can download these manually, but we\'ve made it easy for you. <strong>Warning:</strong> Development versions are not always fully tested before release, use wisely!','events-manager'); ?></p>
     			</td></tr>
+				<?php em_options_radio_binary ( __( 'Always check the latest stable version?', 'events-manager'), 'dbem_check_stable_version', __('If enabled, Events Manager checks WordPress.org directly for the latest stable release rather than waiting for the staggered update rollout, which can take up to 24 hours. This affects only the manual updates shown in your admin pages; automatic background updates are never triggered by this check.', 'events-manager') ); ?>
 				<?php em_options_radio_binary ( __( 'Enable Dev Updates?', 'events-manager'), 'dbem_pro_dev_updates', __('If enabled, the latest dev version will always be checked instead of the latest stable version of the plugin.', 'events-manager') ); ?>
 				<tr>
     			    <th style="text-align:right;"><a href="<?php echo $recheck_updates_url; ?>" class="button-secondary"><?php _e('Re-Check Updates','events-manager'); ?></a></th>
-    			    <td><?php _e('If you would like to check and see if there is a new stable update.','events-manager'); ?></td>
+    			    <td><?php _e('Checks WordPress.org directly for the latest stable release, skipping the staggered rollout delay (which can take up to 24 hours). Any newer stable version will appear on your Plugins or Updates page for a manual update.','events-manager'); ?></td>
     			</tr>
     			<tr>
     			    <th style="text-align:right;"><a href="<?php echo $check_devs; ?>" class="button-secondary"><?php _e('Check Dev Versions','events-manager'); ?></a></th>
