@@ -222,26 +222,6 @@ function em_options_save(){
 		wp_safe_redirect(em_wp_get_referer());
 		exit();
 	}
-	//Force a stable-version recheck that reads WordPress.org directly, bypassing the staggered update rollout
-	if( !empty($_REQUEST['action']) && $_REQUEST['action'] == 'recheck_updates' && check_admin_referer('em_recheck_updates_'.get_current_user_id().'_wpnonce') && em_wp_is_super_admin() ){
-		//delete transients and flag a one-off stable check; em_updates_check() then reads WordPress.org directly to skip the rollout delay
-		delete_transient('update_plugins');
-		delete_site_transient('update_plugins');
-		update_option('em_check_stable_version', true);
-		$EM_Notices->add_confirm(__('Checking for the latest stable version.','events-manager').' '. __('If there are any new updates, you should now see them in your Plugins or Updates admin pages.','events-manager'), true);
-		wp_safe_redirect(em_wp_get_referer());
-		exit();
-	}
-	//Flag version checking to look at trunk, not tag
-	if( !empty($_REQUEST['action']) && $_REQUEST['action'] == 'check_devs' && check_admin_referer('em_check_devs_wpnonce') && em_wp_is_super_admin() ){
-		//delete transients, and add a flag to recheck dev version next time round
-		delete_transient('update_plugins');
-		delete_site_transient('update_plugins');
-		update_option('em_check_dev_version', true);
-		$EM_Notices->add_confirm(__('Checking for dev versions.','events-manager').' '. __('If there are any new updates, you should now see them in your Plugins or Updates admin pages.','events-manager'), true);
-		wp_safe_redirect(em_wp_get_referer());
-		exit();
-	}
 	//import EM settings
 	if( !empty($_REQUEST['action']) && ( ($_REQUEST['action'] == 'import_em_settings' && check_admin_referer('import_em_settings')) || (is_multisite() && $_REQUEST['action'] == 'import_em_ms_settings' && check_admin_referer('import_em_ms_settings')) ) && em_wp_is_super_admin() ){
 		//upload uniquely named file to system for usage later

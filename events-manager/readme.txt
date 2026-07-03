@@ -5,7 +5,7 @@ Tags: events, calendar, tickets, bookings, block
 Text Domain: events-manager
 Requires at least: 6.1
 Tested up to: 7.0
-Stable tag: 7.3.7.4.1
+Stable tag: 7.3.7.4.2
 Requires PHP: 7.0
 License: GPLv2
 
@@ -194,8 +194,9 @@ See our [FAQ](http://wp-events-plugin.com/documentation/faq/) page for helps wit
 18. Grid view for displaying your upcoming events at a glance
 
 == Changelog ==
-= 7.3.7.4.1 =
+= 7.3.7.4.2 =
 * Added: Stable update checking options, excluded from automatic background updates
+* Moved update checks into em-updates.php so the auto-update veto loads during cron
 
 = 7.3.7.4 =
 * Fixed: Critical error on front-end event pages for events with a location URL since 7.3.7
