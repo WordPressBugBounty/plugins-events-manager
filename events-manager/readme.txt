@@ -5,7 +5,7 @@ Tags: events, calendar, tickets, bookings, block
 Text Domain: events-manager
 Requires at least: 6.1
 Tested up to: 7.0
-Stable tag: 7.3.7.4.2
+Stable tag: 7.4
 Requires PHP: 7.0
 License: GPLv2
 
@@ -90,7 +90,7 @@ We provide the tools to [help you be GDPR compliant](http://wp-events-plugin.com
 
 We have a premium [Pro add-on for Events Manager](http://eventsmanagerpro.com/gopro/) which not only demonstrates the flexibility of Events Manager, but also adds some important features including but not limited to:
 
-* WooCommerce integration ([sold separately](https://em.cm/wc))
+* WooCommerce integration ([sold separately](https://woocommerce.com/products/events-manager-woocommerce-add-on/))
 * PayPal, Stripe, Authorize.net, Square, Xero and Offline Payments
 * Custom booking forms
 * Individual Attendee custom forms
@@ -194,6 +194,13 @@ See our [FAQ](http://wp-events-plugin.com/documentation/faq/) page for helps wit
 18. Grid view for displaying your upcoming events at a glance
 
 == Changelog ==
+= 7.4 =
+* Added: a "check for the latest stable version" option that bypasses the staggered update rollout, plus an EM_AUTO_UPDATES constant to auto-install held-back versions
+* Fixed: "_load_textdomain_just_in_time was called incorrectly" notice logged on every page load
+* Fixed: on multisite, the image maximum file size and minimum width settings were not applied network-wide
+* Fixed: form uploads could be silently dropped on save when another upload field was left empty
+* Fixed: malformed double-slash URL for the admin dashboard chart script
+
 = 7.3.7.4.2 =
 * Added: Stable update checking options, excluded from automatic background updates
 * Moved update checks into em-updates.php so the auto-update veto loads during cron

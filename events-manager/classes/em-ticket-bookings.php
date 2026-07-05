@@ -315,6 +315,15 @@ class EM_Ticket_Bookings extends EM_Tickets_Bookings {
 		if ( !$override_availability && $available_spaces < $spaces_needed ) {
 			$this->add_error( $this->get_booking()->get_option('dbem_booking_feedback_full'));
 		}
+		// enforce the ticket's configured min/max spaces per booking, when set, so quantities can't be tampered past the form limits
+		$ticket_min = $this->get_ticket()->min;
+		$ticket_max = $this->get_ticket()->max;
+		if( $spaces_needed > 0 && $ticket_min > 0 && $spaces_needed < $ticket_min ){
+			$this->add_error( sprintf( __('You must book at least %1$d spaces for the ticket %2$s.', 'events-manager'), $ticket_min, "'".$this->get_ticket()->name."'") );
+		}
+		if( $ticket_max > 0 && $spaces_needed > $ticket_max ){
+			$this->add_error( sprintf( __('You cannot book more than %1$d spaces for the ticket %2$s.', 'events-manager'), $ticket_max, "'".$this->get_ticket()->name."'") );
+		}
 		// check if ticket is available to the user the booking is associated to
 		// TODO current implementation won't work because we're trying to validate potentially a guest that beomes a user, therefore a guest ticket can be booked by someone that isn't a user yet but at this point they have a valid ID and validation fails. We need to triple check this new way without the is_available.
 		// TODO I think we probably need to circumvent on the manual_booking level rather than here... or make sure we're validating in some smarter way

@@ -134,10 +134,14 @@ add_filter( 'pre_set_site_transient_update_plugins', 'em_updates_check', 100 );
  * its normal opt-in state, and only veto the real auto-update decision, which passes a boolean.
  */
 function em_prevent_manual_only_autoupdate( $update, $item ) {
-	if ( null !== $update && ! empty( $item->em_manual_only ) ) {
-		return false;
+	if ( empty( $item->em_manual_only ) ) {
+		return $update;
 	}
-	return $update;
+	// EM_AUTO_UPDATES=true (wp-config constant) auto-updates held-back versions too, not just showing them for manual install.
+	if ( defined( 'EM_AUTO_UPDATES' ) && EM_AUTO_UPDATES ) {
+		return true;
+	}
+	return null === $update ? $update : false;
 }
 add_filter( 'auto_update_plugin', 'em_prevent_manual_only_autoupdate', 100, 2 );
 

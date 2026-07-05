@@ -254,11 +254,12 @@ class Uploader {
 				'size'     => [],
 			];
 			foreach( $REQUEST[ $file_key ] as $file_id ) {
+				// Ignore already-uploaded URL items and empty placeholders. An empty value here (e.g. an existing file the uploader UI could not render, which submits a blank) must not abort the whole batch and discard the valid uploads sent alongside it.
+				if ( $file_id === '' || $file_id === null || preg_match('/^https?:\/\//', $file_id) ) continue;
 				$tmp_dir = ini_get('upload_tmp_dir') ?: sys_get_temp_dir(); // Fallback if not set
 				$stored_file = trailingslashit($tmp_dir) . $file_id . static::$temp_suffix;
-				
+
 				// Make sure the file exists, the suffix ensures we uploaded it via the API
-				if ( preg_match('/^https?:\/\//', $file_id) ) continue; // ignore URLs as they are already uploaded items
 				if ( !file_exists( $stored_file ) ) {
 					if ( count( $REQUEST[ $file_key ] ) > 1 ) {
 						throw new EM_Exception('Missing pre-uploaded files.', 'em_upload_uploader_prepare_file');

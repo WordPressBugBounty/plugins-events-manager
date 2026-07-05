@@ -1505,7 +1505,8 @@ class Service {
 		// URL sideload.
 		if ( !empty( $data['source_url'] ) ) {
 			$source_url = esc_url_raw( $data['source_url'] );
-			if ( !$source_url || !wp_http_validate_url( $source_url ) ) {
+			// wp_http_validate_url still permits private/reserved hosts (incl. the 169.254 cloud-metadata range), so also require every resolved address to be publicly routable before fetching.
+			if ( !$source_url || !wp_http_validate_url( $source_url ) || !static::is_public_url( $source_url ) ) {
 				return Utils::error( 'em_api_media_invalid_url', __( 'Invalid source URL.', 'events-manager' ), 400 );
 			}
 			$post_id = !empty( $data['post_id'] ) ? absint( $data['post_id'] ) : 0;
@@ -1540,6 +1541,27 @@ class Service {
 			return absint( $attachment_id );
 		}
 		return Utils::error( 'em_api_media_missing_source', __( 'Provide one of `id`, `source_url`, `content_base64`, or a multipart `file` upload.', 'events-manager' ), 400 );
+	}
+
+	/**
+	 * Confirms every address the host resolves to is publicly routable, guarding source_url sideloads against SSRF to loopback, private, reserved or link-local ranges (notably the 169.254.0.0/16 cloud-metadata range that wp_http_validate_url permits).
+	 */
+	protected static function is_public_url( $url ) {
+		$host = wp_parse_url( $url, PHP_URL_HOST );
+		if ( empty( $host ) ) {
+			return false;
+		}
+		$host = trim( $host, '[]' );
+		$ips  = filter_var( $host, FILTER_VALIDATE_IP ) ? array( $host ) : gethostbynamel( $host );
+		if ( empty( $ips ) ) {
+			return false;
+		}
+		foreach ( $ips as $ip ) {
+			if ( ! filter_var( $ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE ) ) {
+				return false;
+			}
+		}
+		return true;
 	}
 
 	/**

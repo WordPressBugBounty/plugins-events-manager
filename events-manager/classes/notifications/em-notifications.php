@@ -25,9 +25,9 @@ class Notifications {
 
 	public static function init() {
 		add_action( 'rest_api_init', array( __CLASS__, 'register_routes' ) );
-		// Register types after the whole EM family has loaded so Pro / gateway / I/O add-ons can hook em_notifications_register — same plugins_loaded:20 + did_action fallback that EM\API\API::init() uses, for the same reason (their hooks aren't in place at our load time on plugins_loaded:10).
-		add_action( 'plugins_loaded', array( __CLASS__, 'register_types' ), 20 );
-		if ( did_action( 'plugins_loaded' ) ) {
+		// Register types on init (mirrors EM\API\API::init): by init all add-ons' plugins_loaded hooks have run, so they can still hook em_notifications_register — and unlike plugins_loaded, init is late enough that translating the type labels won't trip WP 6.7's just-in-time textdomain notice.
+		add_action( 'init', array( __CLASS__, 'register_types' ), 1 );
+		if ( did_action( 'init' ) ) {
 			static::register_types();
 		}
 		// Create the device table only when notifications are enabled — on install/upgrade via em_install(), or immediately when the admin enables the feature (covers git/rsync deploys).

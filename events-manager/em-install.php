@@ -1190,6 +1190,12 @@ function em_upgrade_current_installation(){
 		EM_Admin_Notices::add($EM_Admin_Notice, is_multisite());
 	}
 
+	// Outside the version-migration guard below so fresh installs (empty $current_version) get it too.
+	if ( version_compare( $current_version, '7.3.8', '<' ) ) {
+		$message = sprintf( __('Events Manager can now show you the latest stable release as soon as it is published, we <b>strongly</b> recommend you do this. Enable this under %1$s. %2$s', 'events-manager'), '<a href="'. EM_ADMIN_URL .'&amp;page=events-manager-options#general+admin-tools">'. __('Settings', 'events-manager') .' &raquo; '. __('Admin Tools', 'events-manager') .'</a>', '<a href="https://wp-events-plugin.com/blog/2026/07/04/plugin-updating-recommendations/">'. __('Read our announcement', 'events-manager') .'</a>' );
+		EM_Admin_Notices::add(new EM_Admin_Notice(array( 'name' => 'v-stable-updates', 'who' => 'admin', 'what' => 'success', 'where' => 'all', 'message' => $message )), is_multisite());
+	}
+
 	if ( !empty($current_version) ) {
 
 		add_option('dbem_credits',1);
@@ -1878,7 +1884,7 @@ function em_upgrade_current_installation(){
 		}
 		if( version_compare( $current_version, '6.6', '<') ){ // 6.6. update
 			// remove flag for admin notice
-			$message = 'Events Manager 6.6 introduces a new phone number field input with international support and number validation, along with an additional communications consent checkbox! Please <a target="_blank" href="https://em.cm/update-6-6/">check our release post</a> for more details!';
+			$message = 'Events Manager 6.6 introduces a new phone number field input with international support and number validation, along with an additional communications consent checkbox! Please <a target="_blank" href="https://wp-events-plugin.com/blog/2024/09/11/events-manager-6-6-and-pro-3-4/">check our release post</a> for more details!';
 			EM_Admin_Notices::add(new EM_Admin_Notice(array( 'name' => 'v-update', 'who' => 'admin', 'what' => 'warning', 'where' => 'all', 'message' => $message )), is_multisite());
 			// update all booking meta keys 'consent' to 'privacy_consent' and post meta '_consent_given' to '_em_data_privacy_consent'
 			$wpdb->query('UPDATE ' . $wpdb->postmeta . ' SET meta_key = "_em_data_privacy_consent" WHERE meta_key = "_consent_given" AND post_id IN (SELECT post_id FROM '. $wpdb->posts .' WHERE post_type="'. EM_POST_TYPE_EVENT .'")');
@@ -1948,7 +1954,7 @@ function em_upgrade_current_installation(){
 			// update tickets so they are all enabled by default
 			update_option('dbem_repeating_enabled', get_option('dbem_recurrence_enabled'));
 			update_option('dbem_recurrence_enabled', false);
-			$message = 'Events Manager 7.0 introduces completely revamped recurring events functionality! Enable recurring events in <em>Events > Settings > General > General Options > Events</em>. <a target="_blank" href="https://em.cm/em7-update/">check our blog post</a>';
+			$message = 'Events Manager 7.0 introduces completely revamped recurring events functionality! Enable recurring events in <em>Events > Settings > General > General Options > Events</em>. <a target="_blank" href="https://wp-events-plugin.com/blog/">check our blog post</a>';
 			EM_Admin_Notices::add(new EM_Admin_Notice(array( 'name' => 'v-update', 'who' => 'admin', 'what' => 'warning', 'where' => 'all', 'message' => $message )), is_multisite());
 		}
 		if ( version_compare( $current_version, '7.0.2.2', '<' ) ) {
