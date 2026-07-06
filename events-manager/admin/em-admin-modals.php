@@ -321,7 +321,7 @@ class EM_Admin_Modals {
 				</div><!-- content -->
 				<footer class="em-submit-section input">
 					<div>
-						<a href="https://eventsmanagerpro.com/gopro/?utm_source=plugin&utm_medium=popup&utm_id=promo-gopro" class="button button-primary input" target="_blank" style="margin:10px auto; --accent-color:#429543; --accent-color-hover:#429543;">Go Pro</a>
+						<a href="https://pxlink.cc/promo-gopro" class="button button-primary input" target="_blank" style="margin:10px auto; --accent-color:#429543; --accent-color-hover:#429543;">Go Pro</a>
 					</div>
 					<div>
 						<button class="button button-secondary dismiss-modal">Dismiss Notice</button>
@@ -347,7 +347,7 @@ class EM_Admin_Modals {
 					<p>We're raising our prices soon, and we're letting you know first!</p>
 					<p>We have lots of new features coming very soon, go Pro now and get access at today's great prices.</p>
 					<div>
-						<a href="https://eventsmanagerpro.com/gopro/?utm_source=plugin&utm_medium=notice&utm_id=promo-gopro" class="button button-primary input" target="_blank" style="margin-right:10px; --accent-color:#429543; --accent-color-hover:#429543;">Go Pro!</a>
+						<a href="https://pxlink.cc/promo-gopro-n" class="button button-primary input" target="_blank" style="margin-right:10px; --accent-color:#429543; --accent-color-hover:#429543;">Go Pro!</a>
 						<a href="<?php echo esc_url( admin_url('admin-ajax.php?action=em_dismiss_admin_notice&notice=promo-popup&redirect=1&nonce='. wp_create_nonce('em_dismiss_admin_noticepromo-popup'.get_current_user_id()) ) ); ?>" class="button button-secondary"><?php esc_html_e('Dismiss', 'events-manager'); ?></a>
 					</div>
 				</div>

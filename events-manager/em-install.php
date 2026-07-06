@@ -1884,7 +1884,7 @@ function em_upgrade_current_installation(){
 		}
 		if( version_compare( $current_version, '6.6', '<') ){ // 6.6. update
 			// remove flag for admin notice
-			$message = 'Events Manager 6.6 introduces a new phone number field input with international support and number validation, along with an additional communications consent checkbox! Please <a target="_blank" href="https://wp-events-plugin.com/blog/2024/09/11/events-manager-6-6-and-pro-3-4/">check our release post</a> for more details!';
+			$message = 'Events Manager 6.6 introduces a new phone number field input with international support and number validation, along with an additional communications consent checkbox! Please <a target="_blank" href="https://pxlink.cc/update-6-6">check our release post</a> for more details!';
 			EM_Admin_Notices::add(new EM_Admin_Notice(array( 'name' => 'v-update', 'who' => 'admin', 'what' => 'warning', 'where' => 'all', 'message' => $message )), is_multisite());
 			// update all booking meta keys 'consent' to 'privacy_consent' and post meta '_consent_given' to '_em_data_privacy_consent'
 			$wpdb->query('UPDATE ' . $wpdb->postmeta . ' SET meta_key = "_em_data_privacy_consent" WHERE meta_key = "_consent_given" AND post_id IN (SELECT post_id FROM '. $wpdb->posts .' WHERE post_type="'. EM_POST_TYPE_EVENT .'")');
@@ -1954,7 +1954,7 @@ function em_upgrade_current_installation(){
 			// update tickets so they are all enabled by default
 			update_option('dbem_repeating_enabled', get_option('dbem_recurrence_enabled'));
 			update_option('dbem_recurrence_enabled', false);
-			$message = 'Events Manager 7.0 introduces completely revamped recurring events functionality! Enable recurring events in <em>Events > Settings > General > General Options > Events</em>. <a target="_blank" href="https://wp-events-plugin.com/blog/">check our blog post</a>';
+			$message = 'Events Manager 7.0 introduces completely revamped recurring events functionality! Enable recurring events in <em>Events > Settings > General > General Options > Events</em>. <a target="_blank" href="https://pxlink.cc/em7-update">check our blog post</a>';
 			EM_Admin_Notices::add(new EM_Admin_Notice(array( 'name' => 'v-update', 'who' => 'admin', 'what' => 'warning', 'where' => 'all', 'message' => $message )), is_multisite());
 		}
 		if ( version_compare( $current_version, '7.0.2.2', '<' ) ) {
@@ -2023,6 +2023,11 @@ function em_upgrade_current_installation(){
 			$message = '<strong>' . sprintf( __('Events Manager now has a <a href="">mobile app</a> 🥳 🎉, download it now!', 'events-manager'), 'https://wp-events-plugin.com/features/mobile-apps/') . '</strong> ' . sprintf( __('Update 7.3.7 also includes improvements to the block (Gutenberg) editor. Check out our %s for the details.', 'events-manager'), '<a href="https://wp-events-plugin.com/blog/2026/06/29/events-manager-7-3-7/">' . __('latest post', 'events-manager') . '</a>' );
 			EM_Admin_Notices::add(new EM_Admin_Notice(array( 'name' => 'v-update', 'who' => 'admin', 'what' => 'success', 'where' => 'all', 'message' => $message )), is_multisite());
 		}
+		if ( version_compare( $current_version, '7.4.0.1', '<' ) && defined('EMP_VERSION') && version_compare( EMP_VERSION, '3.9', '<' ) ) {
+			$message =  sprintf(__('Events Manager Pro %s has received a major security update. Please <a href="%s">read our announcement</a> and log into your account for upgrade options.','events-manager'), '3.9', 'https://pxlink.cc/security-3-9');
+			EM_Admin_Notices::add(new EM_Admin_Notice(array( 'name' => 'v-pro-update', 'who' => 'admin', 'what' => 'warning', 'where' => 'all', 'message' => $message )), is_multisite());
+		}
+
 		$pro_update = function() {
 			if ( defined('EMP_VERSION') && version_compare( EMP_VERSION, '3.7.2', '<' ) ) {
 				$message = 'The new timeslot features requires Events Manager Pro <code>3.7.2</code>, timeslots will remain disabled to prevent unpredicatable and undesired effects. You can continue using your current EM Pro version without timeslots enabled.';
