@@ -1,7 +1,7 @@
 <?php
 /*
 Plugin Name: Events Manager
-Version: 7.4.0.1
+Version: 7.4.1
 Plugin URI: https://wp-events-plugin.com
 Description: Event registration and booking management for WordPress. Recurring events, locations, webinars, google maps, rss, ical, booking registration and more!
 Author: Pixelite
@@ -30,7 +30,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 // Setting constants
 use EM\Archetypes;
 
-define('EM_VERSION', '7.4.0.1'); //self expanatory, although version currently may not correspond directly with published version number. until 6.0 we're stuck updating 5.999.x
+define('EM_VERSION', '7.4.1'); //self expanatory, although version currently may not correspond directly with published version number. until 6.0 we're stuck updating 5.999.x
 define('EM_PRO_MIN_VERSION', '3.9'); //self expanatory
 define('EM_PRO_MIN_VERSION_CRITICAL', '3.6.0.2'); //self expanatory
 define('EM_FILE', __FILE__); //an absolute path to this directory
@@ -909,6 +909,15 @@ function em_delete_blog( $blog_id ){
 	$wpdb->query('DROP TABLE '.$prefix.'em_tickets');
 	$wpdb->query('DROP TABLE '.$prefix.'em_tickets_bookings');
 	$wpdb->query('DROP TABLE '.$prefix.'em_meta');
+	//em_timeranges/em_event_timeslots are always per-site (even under MS Global), so drop them in every mode
+	$wpdb->query('DROP TABLE IF EXISTS '.$prefix.'em_timeranges');
+	$wpdb->query('DROP TABLE IF EXISTS '.$prefix.'em_event_timeslots');
+	//these are per-site only in plain multisite; under MS Global they are base-prefix/shared and must never be dropped per-blog
+	if( !EM_MS_GLOBAL ){
+		$wpdb->query('DROP TABLE IF EXISTS '.$prefix.'em_event_recurrences');
+		$wpdb->query('DROP TABLE IF EXISTS '.$prefix.'em_bookings_meta');
+		$wpdb->query('DROP TABLE IF EXISTS '.$prefix.'em_tickets_bookings_meta');
+	}
 	//delete events if MS Global
 	if( EM_MS_GLOBAL ){
 	    EM_Events::delete(array('limit'=>0, 'blog'=>$blog_id));
