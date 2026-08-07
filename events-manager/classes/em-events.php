@@ -467,7 +467,7 @@ $orderby_sql";
 					$events_dates = apply_filters('em_events_output_grouped_events_dates', $events_dates, $args);
 					foreach ($events_dates as $year => $events){
 						$EM_DateTime = new EM_DateTime($year.'-01-01');
-						echo str_replace('#s', $EM_DateTime->i18n($format), $args['header_format']);
+						echo str_replace('#s', esc_html( $EM_DateTime->i18n($format) ), $args['header_format']);
 						echo self::output($events, $atts);
 					}
 					break;
@@ -490,7 +490,7 @@ $orderby_sql";
 					$events_dates = apply_filters('em_events_output_grouped_events_dates', $events_dates, $args);
 					foreach ($events_dates as $month => $events){
 						$EM_DateTime = new EM_DateTime($month);
-						echo str_replace('#s', $EM_DateTime->i18n($format), $args['header_format']);
+						echo str_replace('#s', esc_html( $EM_DateTime->i18n($format) ), $args['header_format']);
 						echo self::output($events, $atts);
 					}
 					break;
@@ -516,7 +516,7 @@ $orderby_sql";
 					}
 					$events_dates = apply_filters('em_events_output_grouped_events_dates', $events_dates, $args);
 					foreach ($events_dates as $date => $events){
-						$dates_formatted = $EM_DateTime->modify($date)->i18n($format). em_get_option('dbem_dates_separator') . $EM_DateTime->add('P6D')->i18n($format);
+						$dates_formatted = esc_html( $EM_DateTime->modify($date)->i18n($format) ). em_get_option('dbem_dates_separator') . esc_html( $EM_DateTime->add('P6D')->i18n($format) );
 						echo str_replace('#s', $dates_formatted, $args['header_format']);
 						echo self::output($events, $atts);
 					}
@@ -539,7 +539,7 @@ $orderby_sql";
 					}
 					$events_dates = apply_filters('em_events_output_grouped_events_dates', $events_dates, $args);
 					foreach ($events_dates as $date => $events){
-						echo str_replace('#s', $EM_DateTime->modify($date)->i18n($format), $args['header_format']);
+						echo str_replace('#s', esc_html( $EM_DateTime->modify($date)->i18n($format) ), $args['header_format']);
 						echo self::output($events, $atts);
 					}
 					break;

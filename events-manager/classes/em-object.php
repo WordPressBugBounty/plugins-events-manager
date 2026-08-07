@@ -1165,7 +1165,8 @@ class EM_Object {
 		if( empty($request) ) $request = $_REQUEST;
 		if( !empty($request['em_search']) && empty($args['search']) ) $request['search'] = $request['em_search']; //em_search is included to circumvent wp search GET/POST clashes
 		$accepted_searches = !empty($accepted_searches) ? $accepted_searches : static::get_default_search();
-		$accepted_searches = array_diff($accepted_searches, array('format', 'format_header', 'format_footer'));
+		// header_format and date_format are display templates too, despite the inverted naming.
+		$accepted_searches = array_diff($accepted_searches, array('format', 'format_header', 'format_footer', 'header_format', 'date_format'));
 		$accepted_searches = apply_filters('em_accepted_searches', $accepted_searches, $args);
 		//merge variables from the $request into $args
 		foreach($request as $post_key => $post_value){
@@ -1216,7 +1217,7 @@ class EM_Object {
 		}
 		//go through default arguments (if defined) and build a list of unique non-default arguments that should go into the querystring
 		$unique_args = array(); //this is the set of unique arguments we'll add to the querystring
-		$ignored_args = array('offset', 'ajax', 'array', 'pagination','format','format_header','format_footer','page');
+		$ignored_args = array('offset', 'ajax', 'array', 'pagination','format','format_header','format_footer','header_format','date_format','page');
 		foreach( $default_args as $arg_key => $arg_default_val){
 			if( array_key_exists($arg_key, $args) && !in_array($arg_key, $ignored_args) ){
 				//if array exists, implode it in case one value is already imploded for matching purposes

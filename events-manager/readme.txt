@@ -5,7 +5,7 @@ Tags: events, calendar, tickets, bookings, block
 Text Domain: events-manager
 Requires at least: 6.1
 Tested up to: 7.0
-Stable tag: 7.4.1
+Stable tag: 7.4.2
 Requires PHP: 7.0
 License: GPLv2
 
@@ -194,6 +194,9 @@ See our [FAQ](http://wp-events-plugin.com/documentation/faq/) page for helps wit
 18. Grid view for displaying your upcoming events at a glance
 
 == Changelog ==
+= 7.4.2 =
+* Security: Fixed an XSS vulnerability in grouped event lists (possibly CVE-2026-66457).
+
 = 7.4.1 =
 * Fixed: events could revert to Draft on save reporting that timeranges cannot overlap, and in some cases the event's timeslots were silently removed
 * Fixed: events saved in the block editor failed validation asking for consent that cannot be given there
