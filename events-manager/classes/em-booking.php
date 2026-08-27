@@ -1372,7 +1372,7 @@ class EM_Booking extends EM_Object{
 		if( $this->get_option('dbem_bookings_user_cancellation') && !in_array($this->booking_status, array(2,3)) ){
 			$cancellation_time = $this->get_option('dbem_bookings_user_cancellation_time');
 			$can_cancel = $this->get_event()->start()->getTimestamp() > time(); // previously default was rsvp end
-			if( !empty($cancellation_time) && $cancellation_time > 0 ){
+			if( is_numeric($cancellation_time) && $cancellation_time > 0 ){
 				$EM_DateTime = $this->get_event()->start()->copy()->sub('PT'.$cancellation_time.'H');
 				$can_cancel = time() < $EM_DateTime->getTimestamp();
 			}elseif( static::is_dateinterval_string($cancellation_time) && $cancellation_time[0] !== '-' ){

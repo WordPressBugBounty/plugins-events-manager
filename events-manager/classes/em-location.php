@@ -336,7 +336,7 @@ class EM_Location extends EM_Object {
 			if( !empty($_POST['em_attributes']) && is_array($_POST['em_attributes']) ){
 				foreach($_POST['em_attributes'] as $att_key => $att_value ){
 					if( (in_array($att_key, $location_available_attributes['names']) || array_key_exists($att_key, $this->location_attributes) ) ){
-						$att_vals = count($location_available_attributes['values'][$att_key]);
+						$att_vals = isset($location_available_attributes['values'][$att_key]) ? count($location_available_attributes['values'][$att_key]) : 0;
 						if( $att_vals == 0 || ($att_vals > 0 && in_array($att_value, $location_available_attributes['values'][$att_key])) ){
 							// Same sanitization logic as event attributes: strip HTML for non-privileged users to prevent stored XSS via anonymous location submissions.
 							if( $att_vals == 0 && !current_user_can('unfiltered_html') ){

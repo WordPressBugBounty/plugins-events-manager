@@ -5,7 +5,7 @@ Tags: events, calendar, tickets, bookings, block
 Text Domain: events-manager
 Requires at least: 6.1
 Tested up to: 7.0
-Stable tag: 7.4.2
+Stable tag: 7.4.3
 Requires PHP: 7.0
 License: GPLv2
 
@@ -194,8 +194,16 @@ See our [FAQ](http://wp-events-plugin.com/documentation/faq/) page for helps wit
 18. Grid view for displaying your upcoming events at a glance
 
 == Changelog ==
+= 7.4.3 =
+* Security: Fixed an XSS vulnerability CVE-2026-66457. Reported by Mukhlis Amien via Patchstack.
+* Security: Fixed low-severity (self-diagnosed) vulnerability allowing unfiltered shortcode output under specific setup/variable circumstances.
+* Fixed: fatal error when the booking cancellation cut-off is set as an interval such as `P2D` rather than a number of hours
+* Fixed: fatal error saving a location with an attribute no longer in your configured attribute list
+* Fixed: quotes in a custom calendar month format broke the month picker
+* Tweaked: documentation links now use https
+
 = 7.4.2 =
-* Security: Fixed an XSS vulnerability in grouped event lists (possibly CVE-2026-66457).
+* Security: Fixed an XSS vulnerability in grouped event lists.
 
 = 7.4.1 =
 * Fixed: events could revert to Draft on save reporting that timeranges cannot overlap, and in some cases the event's timeslots were silently removed

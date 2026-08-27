@@ -1155,7 +1155,12 @@ class EM_Object {
 	
 	/**
 	 * Gets array of searchable variables that should be considered in a $_REQUEST variable
-	 * @param array $args Arguments to include in returned array
+	 *
+	 * WARNING: $args must never contain unsanitized data. This method vets $request, not $args — anything already in
+	 * $args is taken as trusted and returned as-is. Never pass $_REQUEST, $_GET, $_POST or cookie data in as $args
+	 * (array_merge($args, $_REQUEST) included); pass it as $request and let this method extract what is allowed.
+	 *
+	 * @param array $args Arguments to include in returned array, from trusted code only - see warning above
 	 * @param string $filter Filters out any unrecognized arguments already passed into $args
 	 * @param array $request defaults to $_REQUEST if empty but can be an array of items to go through instead
 	 * @param array $accepted_searches defaults to EM_Object::get_search_defaults(), objects should call self::get_search_defaults() to get around late static binding problems
@@ -1166,8 +1171,16 @@ class EM_Object {
 		if( !empty($request['em_search']) && empty($args['search']) ) $request['search'] = $request['em_search']; //em_search is included to circumvent wp search GET/POST clashes
 		$accepted_searches = !empty($accepted_searches) ? $accepted_searches : static::get_default_search();
 		// header_format and date_format are display templates too, despite the inverted naming.
-		$accepted_searches = array_diff($accepted_searches, array('format', 'format_header', 'format_footer', 'header_format', 'date_format'));
+		$display_templates = array('format', 'format_header', 'format_footer', 'header_format', 'date_format');
+		$accepted_searches = array_diff($accepted_searches, $display_templates);
 		$accepted_searches = apply_filters('em_accepted_searches', $accepted_searches, $args);
+		// templates are echoed as HTML, so a request may only name one and get the format registered under that name
+		foreach( $display_templates as $display_template ){
+			if( !empty($request[$display_template]) ){
+				$format = EM_Formats::get_registered_format( $request[$display_template] );
+				if( $format !== false ) $args[$display_template] = $format;
+			}
+		}
 		//merge variables from the $request into $args
 		foreach($request as $post_key => $post_value){
 			if( in_array($post_key, $accepted_searches) && !empty($post_value) ){

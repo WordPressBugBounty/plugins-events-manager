@@ -534,7 +534,7 @@ function em_add_options() {
 	}
 	$decimal_point = !empty($wp_locale->number_format['decimal_point']) ? $wp_locale->number_format['decimal_point']:'.';
 	$thousands_sep = !empty($wp_locale->number_format['thousands_sep']) ? $wp_locale->number_format['thousands_sep']:',';
-	$email_footer = '<br/><br/>-------------------------------<br/>Powered by Events Manager - http://wp-events-plugin.com';
+	$email_footer = '<br/><br/>-------------------------------<br/>Powered by Events Manager - https://wp-events-plugin.com';
 	$respondent_email_body_localizable = __("Dear #_BOOKINGNAME, <br/>You have successfully reserved #_BOOKINGSPACES space/spaces for #_EVENTNAME.<br/>When : #_EVENTDATES @ #_EVENTTIMES<br/>Where : #_LOCATIONNAME - #_LOCATIONFULLLINE<br/>Yours faithfully,<br/>#_CONTACTNAME",'events-manager').$email_footer;
 	$respondent_email_pending_body_localizable = __("Dear #_BOOKINGNAME, <br/>You have requested #_BOOKINGSPACES space/spaces for #_EVENTNAME.<br/>When : #_EVENTDATES @ #_EVENTTIMES<br/>Where : #_LOCATIONNAME - #_LOCATIONFULLLINE<br/>Your booking is currently pending approval by our administrators. Once approved you will receive an automatic confirmation.<br/>Yours faithfully,<br/>#_CONTACTNAME",'events-manager').$email_footer;
 	$respondent_email_rejected_body_localizable = __("Dear #_BOOKINGNAME, <br/>Your requested booking for #_BOOKINGSPACES spaces at #_EVENTNAME on #_EVENTDATES has been rejected.<br/>Yours faithfully,<br/>#_CONTACTNAME",'events-manager').$email_footer;
@@ -555,7 +555,7 @@ function em_add_options() {
  	 		__('Name','events-manager').' : #_BOOKINGNAME'.'<br/>'.
  		    __('Email','events-manager').' : #_BOOKINGEMAIL'.'<br/>'.
  		    '#_BOOKINGSUMMARY'.'<br/>'.
- 		    '<br/>Powered by Events Manager - http://wp-events-plugin.com';
+ 		    '<br/>Powered by Events Manager - https://wp-events-plugin.com';
 	$contact_person_emails['confirmed'] = sprintf(__('The following booking is %s :','events-manager'),strtolower(__('Confirmed','events-manager'))).'<br/>'.$contact_person_email_body_template;
 	$contact_person_emails['pending'] = sprintf(__('The following booking is %s :','events-manager'),strtolower(__('Pending','events-manager'))).'<br/>'.$contact_person_email_body_template;
 	$contact_person_emails['cancelled'] = sprintf(__('The following booking is %s :','events-manager'),strtolower(__('Cancelled','events-manager'))).'<br/>'.$contact_person_email_body_template;
@@ -1467,7 +1467,7 @@ function em_upgrade_current_installation(){
 		if( $current_version != '' && $current_version < 5.975 ){
 			update_option('dbem_location_types', array('location'=>1));
 			$message = esc_html__('Events Manager has introduced location types, which can include online locations such as a URL or integrations with webinar platforms such as Zoom! Enable different location types in your settings page, for more information see our %s.', 'events-manager');
-			$message = sprintf( $message, '<a href="http://wp-events-plugin.com/documentation/location-types/" target="_blank">'. esc_html__('documentation', 'events-manager')).'</a>';
+			$message = sprintf( $message, '<a href="https://wp-events-plugin.com/documentation/location-types/" target="_blank">'. esc_html__('documentation', 'events-manager')).'</a>';
 			$EM_Admin_Notice = new EM_Admin_Notice(array( 'name' => 'v-update', 'who' => 'admin', 'where' => 'all', 'message' => "$message" ));
 			EM_Admin_Notices::add($EM_Admin_Notice, is_multisite());
 		}
