@@ -592,32 +592,31 @@ class EM_Event extends EM_Object{
 	}
 
 	/**
-	 * Sets the timeslot ID for this event
-	 * @param $timeslot_id
+	 * Turns this event into one of its own timeslots, in place, taking on that slot's dates, times and status.
+	 *
+	 * @param int $timeslot_id
+	 * @throws Exception If the id names no timeslot of this event.
 	 *
 	 * @return void
 	 */
 	public function set_timeslot_id( $timeslot_id ){
-		global $wpdb;
 		if ( !$this->timeslot_id ) {
-			$this->timeslot_id = absint( $timeslot_id );
-			// change the date, times and overriding features of the event so it's specific to the timeslot
-			$timeslot_data = $wpdb->get_row('SELECT * FROM '. EM_EVENT_TIMESLOTS_TABLE .' WHERE timeslot_id'. $this->timeslot_id .' event_id='. absint($this->event_id), ARRAY_A );
-			$this->set_timeslot_data( $timeslot_data );
+			// Delegated rather than queried here: the loader in EM\Event\Timeslot binds the row to this event, which the id on its own does not, and a second copy of that query is how this one came to read columns the table has never had.
+			$this->convert_to_timeslot( absint( $timeslot_id ), true );
 		}
 	}
 
 	public function set_timeslot_data( $timeslot_data ) {
 		//reset start and end objects so they are recreated with the new dates/times if and when needed
-		$start = explode(' ', $timeslot_data['event_timeslot_start'] );
-		$end = explode(' ', $timeslot_data['event_timeslot_end'] );
+		$start = explode(' ', $timeslot_data['timeslot_start'] );
+		$end = explode(' ', $timeslot_data['timeslot_end'] );
 		$this->event_start_date = $start[0];
 		$this->event_start_time = $start[1];
 		$this->event_end_date = $end[0];
 		$this->event_end_time = $end[1];
 		$this->start = $this->end = $this->event_start = $this->event_end = null;
 		// event status
-		$this->event_active_status = $timeslot_data['event_timeslot_status'];
+		$this->event_active_status = $timeslot_data['timeslot_status'];
 		// reset objects specific to the timeslot
 		$this->bookings = null;
 	}
@@ -784,6 +783,16 @@ class EM_Event extends EM_Object{
 		if( is_object($this->event_location) ){
 			$this->event_location = clone $this->event_location;
 			$this->event_location->event = $this;
+		}
+	}
+	
+	/**
+	 * Drops object-cached events by id, so anything derived from their bookings is queried again.
+	 * @param int|string|array $event_ids One or more event ids, with or without a timeslot id.
+	 */
+	public static function flush_cache( $event_ids ){
+		foreach( array_unique( (array) $event_ids ) as $event_id ){
+			if( $event_id ) wp_cache_delete( $event_id, 'em_events' );
 		}
 	}
 	
@@ -1347,6 +1356,13 @@ class EM_Event extends EM_Object{
 			}
 			//start saving process
 			do_action('em_event_save_pre', $this);
+			// programmatic saves (imports, REST, add-ons) never run get_post(), which is where these are otherwise decided, and a NULL of either excludes the event from every listing query
+			if( empty($this->event_archetype) ){
+				$this->event_archetype = Archetypes::get_from_cpt( $this->post_type ) ?: EM_POST_TYPE_EVENT;
+			}
+			if( empty($this->event_type) ){
+				$this->event_type = $this->is_repeating() ? 'repeating' : 'single';
+			}
 			$post_array = array();
 			//Deal with updates to an event
 			if( !empty($this->post_id) ){
@@ -1428,7 +1444,8 @@ class EM_Event extends EM_Object{
 			$this->load_postdata($this);
 			//postless events are never object-cached (matches the load path guard) and a NULL post_id must not become a cache key
 			if( $this->post_id ){
-				wp_cache_set( $this->get_event_uid(), $this, 'em_events');
+				// a clone, because saving a new event empties its bookings child and a persistent cache would store that emptied array instead of rebuilding it on load
+				wp_cache_set( $this->get_event_uid(), clone $this, 'em_events');
 				wp_cache_set( $this->post_id, $this->get_event_uid(), 'em_events_ids');
 			}
 		}
@@ -2055,6 +2072,24 @@ class EM_Event extends EM_Object{
 			$published = ($this->post_status == 'publish' || $this->post_status == 'private');
 		}
 		return apply_filters('em_event_is_published', $published, $this);
+	}
+	
+	/**
+	 * Whether this event's post is password-protected and the current visitor hasn't unlocked it. Anyone who can manage the event sees it regardless, matching how location map balloons already behave.
+	 * @return boolean
+	 */
+	public function password_required(){
+		$required = false;
+		if ( !empty($this->post_id) ) {
+			// post_password lives in wp_posts, so in MS Global mode the lookup has to happen on the blog that owns the event.
+			if ( EM_MS_GLOBAL && !empty($this->blog_id) && get_current_blog_id() != $this->blog_id ) {
+				switch_to_blog($this->blog_id);
+				$switch_back = true;
+			}
+			$required = post_password_required( $this->post_id ) && !$this->can_manage('edit_events','edit_others_events');
+			if ( !empty($switch_back) ) restore_current_blog();
+		}
+		return apply_filters('em_event_password_required', $required, $this);
 	}
 	
 	/**

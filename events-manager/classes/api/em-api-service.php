@@ -18,6 +18,8 @@ class Service {
 		$total = (int) \EM_Events::$num_rows_found;
 		$items = array();
 		foreach ( $events as $EM_Event ) {
+			// The query layer only knows about event_status/event_private, so a password-protected event still matches here and would be serialized with its raw content.
+			if ( $EM_Event->password_required() ) continue;
 			$items[] = static::prepare_event( $EM_Event, $params['context'] ?? 'view' );
 		}
 		return array(
@@ -456,6 +458,7 @@ class Service {
 		$locations = \EM_Locations::get( $args );
 		$items = array();
 		foreach ( $locations as $EM_Location ) {
+			if ( $EM_Location->password_required() ) continue;
 			$items[] = static::prepare_location( $EM_Location, $params['context'] ?? 'view' );
 		}
 		return array(
@@ -682,6 +685,10 @@ class Service {
 		$args = Utils::collection_args( $params, Utils::pick_search_args( $params, $accepted ) );
 		if ( !current_user_can( 'manage_others_bookings' ) && !current_user_can( 'manage_bookings' ) ) {
 			$args['person'] = get_current_user_id();
+			$args['owner'] = get_current_user_id();
+		} else {
+			// EM_Bookings::get_default_search() scopes to the current user's own events unless owner is passed explicitly, so a manager with no owner override would otherwise only see their own bookings.
+			$args['owner'] = false;
 		}
 		if ( !empty( $params['event_id'] ) && empty( $args['event'] ) ) {
 			$args['event'] = $params['event_id'];
@@ -1000,6 +1007,10 @@ class Service {
 		if ( $context === 'edit' ) {
 			return $EM_Event->can_manage( 'edit_events', 'edit_others_events' );
 		}
+		// A password-protected post stays published, so the checks below would otherwise wave it through and to_api() would hand back the raw post_content the password exists to withhold.
+		if ( $EM_Event->password_required() ) {
+			return false;
+		}
 		if ( $EM_Event->is_published() && empty( $EM_Event->event_private ) ) {
 			return true;
 		}
@@ -1012,6 +1023,9 @@ class Service {
 	protected static function can_read_location( $EM_Location, $context = 'view' ) {
 		if ( $context === 'edit' ) {
 			return $EM_Location->can_manage( 'edit_locations', 'edit_others_locations' );
+		}
+		if ( $EM_Location->password_required() ) {
+			return false;
 		}
 		if ( $EM_Location->is_published() && empty( $EM_Location->location_private ) ) {
 			return true;
@@ -1407,8 +1421,17 @@ class Service {
 		if ( !current_user_can( 'upload_files' ) ) {
 			return Utils::error( 'em_api_media_forbidden', __( 'You do not have permission to upload media.', 'events-manager' ), 403 );
 		}
+		// `post_id` lands on the attachment as post_parent, here and inside the sideload/upload helpers resolve_attachment_id() calls, so the caller has to be able to edit whatever they are attaching to.
+		if ( !empty( $data['post_id'] ) && !current_user_can( 'edit_post', absint( $data['post_id'] ) ) ) {
+			return Utils::error( 'em_api_media_parent_forbidden', __( 'You do not have permission to attach media to that post.', 'events-manager' ), 403 );
+		}
+		$supplied_attachment = !empty( $data['id'] ) || !empty( $data['attachment_id'] );
 		$attachment_id = static::resolve_attachment_id( $data );
 		if ( is_wp_error( $attachment_id ) ) return $attachment_id;
+		// `upload_files` authorises adding a file, not editing one somebody else added. An attachment we created below is owned by the caller and needs no further check, but one they passed in by ID does.
+		if ( $supplied_attachment && !current_user_can( 'edit_post', $attachment_id ) ) {
+			return Utils::error( 'em_api_media_edit_forbidden', __( 'You do not have permission to edit this attachment.', 'events-manager' ), 403 );
+		}
 		// Optional post-upload metadata.
 		$post_update = array( 'ID' => $attachment_id );
 		if ( !empty( $data['title'] ) ) $post_update['post_title'] = sanitize_text_field( $data['title'] );

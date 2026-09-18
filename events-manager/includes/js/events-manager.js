@@ -573,7 +573,11 @@ document.addEventListener('DOMContentLoaded', () => em_setup_scripts( document )
 const setupListTable = function( listTable ) {
 	// handle checks of multiple items using shift
 	const checkboxes = listTable.querySelectorAll( 'tbody .check-column input[type="checkbox"]' );
-	const listTableForm = listTable.querySelector('form.em-list-table-form');
+	// The export and settings modals carry the same form class, so match the main form only.
+	const listTableForm = listTable.querySelector('form.em-list-table-form:not(.em-list-table-export-form):not(.em-list-table-settings-form)');
+	if ( !listTableForm ) {
+		return;
+	}
 	let lastChecked;
 
 	//Pagination link clicks
@@ -923,7 +927,7 @@ const setupListTable = function( listTable ) {
 
 	/* ----------------- Row/Bulk Action Handlers ----------------- */
 
-	const actionMessages = JSON.parse( listTableForm.dataset.actionMessages );
+	const actionMessages = listTableForm.dataset.actionMessages ? JSON.parse( listTableForm.dataset.actionMessages ) : {};
 	let isBulkAction = false;
 
 	listTable.addEventListener('click', function( e ) {
@@ -1124,10 +1128,16 @@ document.addEventListener('DOMContentLoaded', function() {
 	document.querySelectorAll('.em_obj div.tablenav').forEach( function( tablenav ){
 		let em_obj = tablenav.closest('.em_obj');
 		em_obj.classList.add('em-list-table','legacy', 'frontend');
-		em_obj.querySelector('& > form').classList.add('em-list-table-form');
+		em_obj.querySelector('& > form')?.classList.add('em-list-table-form');
 	});
-	// find tables
-	document.querySelectorAll('.em-list-table').forEach( listTable => setupListTable(listTable) );
+	// find tables, one table failing to set up should not leave the rest of the page unwired
+	document.querySelectorAll('.em-list-table').forEach( function( listTable ) {
+		try {
+			setupListTable( listTable );
+		} catch ( error ) {
+			console.error( error );
+		}
+	});
 });
 
 // add extra setup to bookings list table
@@ -1738,29 +1748,31 @@ function em_setup_timepicker( container ){
 		this.dataset.seconds = start.val() ? start.em_timepicker('getSecondsFromMidnight') : '';
 		retargetEvent(e);
 	});
+	// An end time before the start time is only an error when the event starts and ends on the same day.
+	let validateEndTime = function ( el ) {
+		let end = jQuery(el);
+		let start = end.prevAll('.em-time-start');
+		if ( !start.val() ) {
+			return;
+		}
+		if ( !end.val() ) {
+			el.classList.remove('error');
+			return;
+		}
+		let dates_wrapper = el.closest('.event-form-when') || el.closest('.em-time-range');
+		let start_date_element = dates_wrapper.querySelector('input[name="event_start_date"]');
+		let end_date_element = dates_wrapper.querySelector('input[name="event_end_date"]');
+		let start_date = start_date_element ? start_date_element.value : '';
+		let end_date = end_date_element ? end_date_element.value : '';
+		let hasError = start.em_timepicker('getTime') > end.em_timepicker('getTime') && ( !end_date || start_date === end_date );
+		el.classList.toggle('error', hasError);
+	};
 	// Validate.
 	container.querySelectorAll('.em-time-range').forEach( el => el.addEventListener('change', function (e) {
 		if ( e.target.matches('input.em-time-end') ) {
 			let end = jQuery(e.target);
 			e.target.dataset.seconds = end.val() ? end.em_timepicker('getSecondsFromMidnight') : '';
-			let start = end.prevAll('.em-time-start');
-			let wrapper = e.target.closest('.event-form-when, .em-time-range');
-			let start_date_element = wrapper.querySelector('.em-date-end');
-			let end_date_element = wrapper.querySelector('.em-date-start');
-			let start_date = start_date_element ? start_date_element.value : '';
-			let end_date = end_date_element ? end_date_element.value : '';
-			if ( start.val() ) {
-				let hasError = start.em_timepicker('getTime') > end.em_timepicker('getTime') && (!end_date || start_date === end_date);
-				e.target.classList.toggle('error', hasError);
-			}
-			if (end_date_element) {
-				wrapper.querySelectorAll('.em-time-all-day').forEach(function (checkbox) {
-					checkbox.checked = false;
-					checkbox.indeterminate = false;
-				});
-			}
-		} else if ( e.target.matches('.em-date-end') ) {
-			jQuery(e.target.closest('.event-form-when')).find('.em-time-end').trigger('change');
+			validateEndTime( e.target );
 		} else if ( e.target.matches('input.em-time-all-day') ) {
 			e.currentTarget.querySelectorAll('.em-time-input').forEach(function (input) {
 				input.readOnly = e.target.checked;
@@ -1772,6 +1784,12 @@ function em_setup_timepicker( container ){
 			}
 		}
 	}) );
+	// Re-validate on either date changing, so that a multi-day event no longer flags an end time earlier than its start time.
+	wrap.find('input[name="event_start_date"], input[name="event_end_date"]').off('change.em_timepicker').on('change.em_timepicker', function () {
+		jQuery(this).closest('.event-form-when').find('.em-time-range input.em-time-end').each( function () {
+			validateEndTime( this );
+		});
+	});
 	// listen to and dispatch the event
 	wrap.find(".em-time-range input.em-time-end").on('change', retargetEvent );
 }

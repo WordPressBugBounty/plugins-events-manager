@@ -949,7 +949,7 @@ var em_booking_form_submit_finally = function( booking_form, opts = {} ){
 	if ( button ) {
 		if ( button.getAttribute( 'data-current-text' ) ) {
 			button.value = button.getAttribute('data-current-text');
-			button.setAttribute('data-current-text', null);
+			button.removeAttribute('data-current-text');
 		} else {
 			button.value = EM.bookings.submit_button.text.default;
 		}

@@ -399,12 +399,12 @@ class EM_Bookings_Table extends EM\List_Table {
 		}
 		if( !empty($EM_Bookings_Table) ) {
 			// Re-check management rights against the object actually being rendered: row_id/booking_id are request-supplied and the 'refresh' action reaches here without the capability gate applied to the mutating verbs above.
-			if ( $_REQUEST['view'] === 'attendees' ) {
+			if ( isset( $_REQUEST['view'] ) && $_REQUEST['view'] === 'attendees' ) {
 				$EM_Ticket_Booking = new EM_Ticket_Booking( $_REQUEST['row_id'] );
 				if ( ! $EM_Ticket_Booking->can_manage( 'manage_bookings', 'manage_others_bookings' ) ) return;
 				$EM_Ticket_Booking->feedback_message = $EM_Booking->feedback_message;
 				$EM_Bookings_Table->single_row( $EM_Ticket_Booking );
-			} elseif ( $_REQUEST['view'] === 'tickets' ) {
+			} elseif ( isset( $_REQUEST['view'] ) && $_REQUEST['view'] === 'tickets' ) {
 				$row_id = explode( '-', $_REQUEST['row_id'] );
 				$data = array( 'booking_id' => $row_id[0], 'ticket_id' => $row_id[1] );
 				if ( ! em_get_booking( $row_id[0] )->can_manage( 'manage_bookings', 'manage_others_bookings' ) ) return;
@@ -1158,7 +1158,7 @@ class EM_Bookings_Table extends EM\List_Table {
 	 * @return false|string
 	 */
 	public function get_attendees_multiple_col( $attendees_array, $col, $EM_Object, $html = false ){
-		ob_start();
+		$value = '';
 		if( !in_array( $this->format, ['csv', 'xls', 'xlsx'] ) ){
 			if ( $EM_Object instanceof EM_Ticket_Bookings ) {
 				$EM_Ticket_Bookings = $EM_Object;
@@ -1266,7 +1266,7 @@ class EM_Bookings_Table extends EM\List_Table {
 		extract( $this->get_item_objects($item) ); /* @var EM_Ticket $EM_Ticket *//* @var EM_Ticket_Booking $EM_Ticket_Booking *//* @var EM_Ticket_Bookings $EM_Ticket_Bookings *//* @var EM_Booking $EM_Booking */
 		$column_id = $item instanceof EM_Ticket_Bookings ?  $item->booking_id . '-' . $item->ticket_id : $this->id;
 		$html = sprintf('<input type="checkbox" name="column_id[]" value="%s" data-id="%d" />', $column_id, $EM_Booking->booking_id);
-		if( $EM_Booking->booking_status === false && DOING_AJAX && !empty($_REQUEST['row_action']) && $_REQUEST['row_action'] == 'bookings_delete' ){
+		if( $EM_Booking->booking_status === false && DOING_AJAX && !empty($_REQUEST['row_action']) && $_REQUEST['row_action'] == 'delete' ){
 			// booking deleted, no editing/actions possible
 			return $html;
 		}

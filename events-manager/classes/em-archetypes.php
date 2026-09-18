@@ -432,6 +432,9 @@ class Archetypes {
 		if ( empty($type['rewrite']) ) {
 			$archetype['rewrite'] = [ 'slug' => $archetype['slug'], 'with_front' => false ];
 		}
+		if ( !isset( $archetype['taxonomies'] ) || $archetype['taxonomies'] === '' ) {
+			$archetype['taxonomies'] = [];
+		}
 		// return final post type of archetype
 		return $archetype;
 	}
@@ -805,6 +808,9 @@ class Archetypes {
 	 * @return string|false
 	 */
 	public static function get_post_type( $cpt ) {
+		if ( is_array( $cpt ) ) {
+			return false;
+		}
 		if ( !is_string( $cpt ) ) {
 			if( !empty( $cpt->post_type ) ){
 				$cpt = $cpt->post_type;

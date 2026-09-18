@@ -1,11 +1,11 @@
-=== Events Manager - Calendar, Bookings, Tickets, and more!  ===
+=== Events Manager - Calendar, Bookings, Tickets, Appointments and more! ===
 Contributors: msykes, pxlite, nutsmuggler, netweblogic
 Donate link: https://wp-events-plugin.com
-Tags: events, calendar, tickets, bookings, block
+Tags: events, calendar, tickets, bookings, appointments
 Text Domain: events-manager
 Requires at least: 6.1
 Tested up to: 7.0
-Stable tag: 7.4.3
+Stable tag: 7.4.4
 Requires PHP: 7.0
 License: GPLv2
 
@@ -194,6 +194,38 @@ See our [FAQ](http://wp-events-plugin.com/documentation/faq/) page for helps wit
 18. Grid view for displaying your upcoming events at a glance
 
 == Changelog ==
+= 7.4.4 =
+* Security: Fixed an information disclosure vulnerability. Reported via Patchstack.
+* Security: Fixed a missing authorization vulnerability, CVE-2026-92711. Reported by M4r0u4n3 via Wordfence.
+* Security: Fixed a spoofing vulnerability, CVE-2026-92614. Reported by Shirshak via Wordfence.
+* Fixed: calendar date previews still rendered their modals when Date Preview Mode was set to Direct Link
+* Fixed: booking submissions on cached sites failed with "unexpected network error" once the form's security token expired, the form now says it expired and should be reloaded
+* Fixed: newly booked attendees did not show on the event page until caches were flushed on sites with a persistent object cache, the event was cached with an emptied bookings list and never invalidated when bookings changed
+* Fixed: bookings with a zero booking date in the database displayed as "November 29, -0001"
+* Fixed: fatal error on first activation from WP-CLI or other non-admin contexts because the admin notice class was not loaded
+* Fixed: the pending spaces count ignored a forced refresh and could stay stale after a booking
+* Fixed: the booking meta migration from 6.1 could rerun on every page load when a batch of bookings had no meta, slowing or crashing the site after an upgrade
+* Fixed: events created by imports or the REST API were missing from listings until re-saved because their type and archetype were never set, existing events are repaired on upgrade
+* Fixed: repeating event occurrences had every previous occurrence's date appended to their slug, breaking their URLs
+* Fixed: fatal error on the category page after updating when an archetype has both categories and tags disabled
+* Fixed: bulk actions such as Move to Trash in the admin failed to redirect due to a warning from the archetype post type check
+* Fixed: an empty events page setting could write a rewrite rule that broke the page being viewed until rewrite rules regenerated
+* Fixed: a PHP warning was printed above the header row of CSV booking exports
+* Fixed: an event ending after midnight on a later day was flagged as ending before it started
+* Fixed: the day view of the events page could not be paginated
+* Fixed: deleting a booking from the admin bookings table still rendered its row actions and could print a warning into the response
+* Fixed: admin booking tables could stop responding when the export or settings form was picked up before the main table form, notably on multisite
+* Fixed: the booking submit button read "null" after an AJAX submission
+* Fixed: radio buttons were invisible on the admin Add Booking form due to checkbox styling applied to radios
+* Fixed: uninstalling from a sub-site in MS Global mode dropped the shared network event and booking tables, it is now refused with a link to the network settings
+* Fixed: the bookings admin page turned the URL action into a booking lifecycle hook name, so listeners of em_bookings_add could fatal, a dedicated em_bookings_admin_action_* hook now fires alongside the legacy name
+* Fixed: the REST API bookings list only returned bookings on the caller's own events, even for users who can manage all bookings
+* Fixed: the Test Email Settings button reported "Server Error" for administrators without the activate_plugins capability
+* Fixed: EM_Event::set_timeslot_id() could never load a timeslot due to malformed SQL
+* Fixed: the waiting list could not be joined for a fully booked occurrence of a recurring event
+* Added: em_get_my_bookings_url() accepts a person id and runs through the em_get_my_bookings_url filter, so BuddyPress links resolve the booking owner rather than the displayed user
+* Tweaked: typo on the help page
+
 = 7.4.3 =
 * Security: Fixed an XSS vulnerability CVE-2026-66457. Reported by Mukhlis Amien via Patchstack.
 * Security: Fixed low-severity (self-diagnosed) vulnerability allowing unfiltered shortcode output under specific setup/variable circumstances.

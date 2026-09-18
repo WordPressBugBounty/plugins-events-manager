@@ -464,11 +464,12 @@ class EM_Bookings extends EM_Object implements Iterator, ArrayAccess {
 	 */
 	function delete(){
 		global $wpdb;
-		$booking_ids = $event_ids = array();
+		$booking_ids = $event_ids = $event_uids = array();
 		if( !empty($this->bookings) ){
 			//get the booking ids tied to this event or preloaded into this object
 			foreach( $this->bookings as $EM_Booking ){
 				$booking_ids[] = $EM_Booking->booking_id;
+				$event_uids[] = $EM_Booking->get_event_uid();
 			}
 			$result_tickets = true;
 			$result = true;
@@ -484,6 +485,7 @@ class EM_Bookings extends EM_Object implements Iterator, ArrayAccess {
 			$event_id = absint($this->event_id);
 			$event_ids = array($event_id);
 			$timeslot = !empty($this->timeslot_id) ? ' AND timeslot_id = ' . absint($this->timeslot_id) : '';
+			if( !empty($this->timeslot_id) ) $event_uids[] = $event_id . ':' . absint($this->timeslot_id);
 			$booking_ids = $wpdb->get_col("SELECT booking_id FROM ".EM_BOOKINGS_TABLE." WHERE event_id = '$event_id' $timeslot");
 			$result_tickets = $wpdb->query("DELETE FROM ". EM_TICKETS_BOOKINGS_TABLE ." WHERE booking_id IN (SELECT booking_id FROM ".EM_BOOKINGS_TABLE." WHERE event_id = '$event_id' $timeslot)");
 			$result = $wpdb->query("DELETE FROM ".EM_BOOKINGS_TABLE." WHERE event_id = '$event_id' $timeslot");
@@ -494,6 +496,8 @@ class EM_Bookings extends EM_Object implements Iterator, ArrayAccess {
 			//we have not bookings loaded to delete, nor an event to delete bookings from, so bookings are considered 'deleted' since there's nothing ot delete
 			$result = $result_tickets = true;
 		}
+		// this path never runs EM_Booking::delete(), so the events it just emptied are dropped from the cache here
+		EM_Event::flush_cache( array_merge($event_ids, $event_uids) );
 		do_action('em_bookings_deleted', $result, $booking_ids, $event_ids);
 		return apply_filters('em_bookings_delete', $result !== false && $result_tickets !== false, $booking_ids, $this, $event_ids);
 	}
@@ -642,7 +646,7 @@ class EM_Bookings extends EM_Object implements Iterator, ArrayAccess {
 	function get_pending_spaces( $force_refresh = false ){
 		if( em_get_option('dbem_bookings_approval') ) {
 			if ( $this->pending_spaces === null || $force_refresh ) {
-				$pending_spaces = $this->get_status_count( 0 );
+				$pending_spaces = $this->get_status_count( 0, $force_refresh );
 				$this->pending_spaces = $pending_spaces > 0 ? $pending_spaces : 0;
 				$this->pending_spaces = apply_filters('em_bookings_get_pending_spaces', $this->pending_spaces, $this, $force_refresh);
 			}
