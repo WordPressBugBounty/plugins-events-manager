@@ -22,6 +22,7 @@ class EM_Bookings_Table extends EM\List_Table {
 			'default' => 'confirmed',
 			'array_key' => 'statuses'
 		],
+		'archetype' => [ 'default' => '' ],
 	];
 	
 	public $cols = array('user_name','event_name', 'event_date', 'booking_spaces','booking_status','booking_price');
@@ -341,6 +342,10 @@ class EM_Bookings_Table extends EM\List_Table {
 	
 	public function set_default_settings( $settings = array() ) {
 		$settings = parent::set_default_settings( $settings );
+		// one saved-settings record covers every archetype, so remembering this filter would show one archetype's bookings under another
+		if( isset($settings['filters']['archetype']) ) {
+			unset( $settings['filters']['archetype'] );
+		}
 		// if not bookings view we need to save this into the views array and clean it up from redundant data
 		if( $settings['view'] !== 'bookings' ) {
 			// get the context setting
@@ -480,6 +485,38 @@ class EM_Bookings_Table extends EM\List_Table {
 	}
 	
 	/**
+	 * Returns the event archetype bookings should be restricted to, or false to search every archetype.
+	 *
+	 * @param string|null $archetype An archetype CPT name, 'all' for every archetype, or null/invalid to use the archetype currently being viewed.
+	 *
+	 * @return string|false
+	 */
+	public static function get_archetype_search( $archetype = null ) {
+		// without custom archetypes there is nothing to separate, and a condition here would hide bookings whose event row has no archetype value yet
+		if ( empty(\EM\Archetypes::$types) || $archetype === 'all' ) {
+			return false;
+		}
+		if ( !\EM\Archetypes::is_event( $archetype, false ) ) {
+			$archetype = \EM\Archetypes::get_current();
+		}
+		return $archetype;
+	}
+	
+	/**
+	 * Associative array of archetype CPT names and their plural labels, used to build the archetype filter.
+	 *
+	 * @return array
+	 */
+	public function get_archetype_options() {
+		$options = array();
+		foreach ( \EM\Archetypes::get_cpts( ['location', 'repeating'] ) as $cpt ) {
+			$post_type = get_post_type_object( $cpt );
+			$options[$cpt] = $post_type ? $post_type->labels->name : $cpt;
+		}
+		return apply_filters( 'em_bookings_table_archetype_options', $options, $this );
+	}
+	
+	/**
 	 * Gets the bookings for this object instance according to its settings
 	 *
 	 * @return EM_Bookings[]|EM_Ticket_Bookings[]|EM_Ticket_Booking[]
@@ -502,7 +539,7 @@ class EM_Bookings_Table extends EM\List_Table {
 		}
 		// add bookings scope args e.g. if a person's bookings
 		if( $EM_Person !== false ){
-			$args = array( 'person' => $EM_Person->ID, 'scope' => $this->filters['scope'], 'owner' => !current_user_can('manage_others_bookings') ? get_current_user_id() : false );
+			$args = $EM_Person->get_manageable_bookings_args( array( 'scope' => $this->filters['scope'] ) );
 		}elseif( $EM_Ticket !== false ){
 			//searching bookings with a specific ticket
 			$args = array( 'ticket_id' => $EM_Ticket->ticket_id );
@@ -518,6 +555,10 @@ class EM_Bookings_Table extends EM\List_Table {
 			//all bookings for a status
 			$args = array( 'scope' => $this->filters['scope'] );
 			$args['owner'] = !current_user_can('manage_others_bookings') ? get_current_user_id() : false;
+			$archetype = static::get_archetype_search( $this->filters['archetype'] ?? null );
+			if( $archetype ){
+				$args['event_archetype'] = $archetype;
+			}
 		}
 		$count_args = apply_filters('em_bookings_table_get_bookings_args', array_merge( $default_args, $args ), $this);
 		$search_args = array_merge($count_args, $base_args);
@@ -1249,6 +1290,14 @@ class EM_Bookings_Table extends EM\List_Table {
 					}
 				?>
 			</select>
+			<?php if( $this->context === false && !empty(\EM\Archetypes::$types) ): $archetype_search = static::get_archetype_search( $this->filters['archetype'] ?? null ); ?>
+				<select name="archetype" class="<?php echo $id; ?>-filter">
+					<option value="all" <?php selected( $archetype_search, false ); ?>><?php esc_html_e('All Event Types', 'events-manager'); ?></option>
+					<?php foreach( $this->get_archetype_options() as $archetype_cpt => $archetype_label ): ?>
+						<option value="<?php echo esc_attr($archetype_cpt); ?>" <?php selected( $archetype_search, $archetype_cpt ); ?>><?php echo esc_html($archetype_label); ?></option>
+					<?php endforeach; ?>
+				</select>
+			<?php endif; ?>
 			<?php do_action('em_bookings_table_output_table_filters', $this); ?>
 			<input name="pno" type="hidden" value="1">
 			<input id="post-query-submit" class="button button-secondary" type="submit" value="<?php esc_attr_e( 'Filter' ); ?>">

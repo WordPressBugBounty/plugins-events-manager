@@ -1754,8 +1754,8 @@ class Recurrence_Set extends EM_Object {
 		$result = true;
 		foreach ( $this->get_recurrences() as $recurrence ) {
 			$event_id = $recurrence['event_id'];
-			// Delete bookings associated with the event
-			$EM_Bookings = new EM_Bookings( $event_id );
+			// EM_Bookings only recognizes an EM_Event object or an array of bookings, not a bare event id
+			$EM_Bookings = new EM_Bookings( em_get_event( $event_id ) );
 			if ( !$EM_Bookings->delete() ) {
 				$this->add_error( esc_html__( 'There was a problem deleting bookings for the event.', 'events-manager' ) );
 				$result = false;

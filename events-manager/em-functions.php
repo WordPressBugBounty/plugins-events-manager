@@ -658,6 +658,7 @@ function em_get_search_form_defaults($base_args = array(), $context = 'events') 
 	$search_args['id'] = !empty($base_args['id']) ? $base_args['id'] : rand(100, getrandmax());
 	$search_args['css'] = em_get_option('dbem_css_search'); // deprecated
 	$search_args['search_action'] = 'search_events';
+	$search_args['search_url'] = em_get_search_form_url( $context );
 	$search_args['search_advanced_text'] = em_get_option('dbem_search_form_advanced_show');
 	$search_args['search_text_show'] = em_get_option('dbem_search_form_advanced_show'); // deprecated
 	$search_args['search_text_hide'] = em_get_option('dbem_search_form_advanced_hide'); // deprecated

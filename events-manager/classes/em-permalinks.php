@@ -402,6 +402,22 @@ function em_get_my_bookings_url( $person_id = 0 ){
 }
 
 /**
+ * Returns the URL a search form should submit to, for either events or locations.
+ * @param string $context Either 'events' or 'locations', anything else is treated as events.
+ * @return string
+ */
+function em_get_search_form_url( $context = 'events' ){
+	// the page options are translated at runtime by EM_ML, whereas EM_URI is frozen during init before EM_ML registers its option filters
+	$page_id = $context === 'locations' ? em_get_option('dbem_locations_page') : em_get_option('dbem_events_page');
+	if( $page_id ){
+		$url = get_permalink($page_id);
+	}else{
+		$url = defined('EM_URI') ? EM_URI : '';
+	}
+	return apply_filters('em_get_search_form_url', $url, $context);
+}
+
+/**
  * Gets the admin URL for editing events. If called from front-end and there's a front-end edit events page, that will be
  * returned, otherwise a url to the dashboard will be returned.
  */

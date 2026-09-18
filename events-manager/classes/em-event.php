@@ -1452,6 +1452,18 @@ class EM_Event extends EM_Object{
 		return $return;
 	}
 	
+	// only a legacy utf8/utf8mb3 column needs wp_encode_emoji(), a real utf8mb4 column stores emoji natively and encoding it would double-escape on redisplay. MySQL 8 reports the legacy charset as utf8mb3, which wp_insert_post()'s own check misses
+	private function encode_emoji_fields( $event_array ) {
+		global $wpdb;
+		foreach ( array('event_name', 'post_content') as $field ) {
+			$charset = $wpdb->get_col_charset(EM_EVENTS_TABLE, $field);
+			if ( isset($event_array[$field]) && is_string($event_array[$field]) && ($charset === 'utf8' || $charset === 'utf8mb3') ) {
+				$event_array[$field] = wp_encode_emoji($event_array[$field]);
+			}
+		}
+		return $event_array;
+	}
+	
 	function save_meta(){
 		global $wpdb, $EM_SAVING_EVENT;
 		$EM_SAVING_EVENT = true;
@@ -1568,6 +1580,7 @@ class EM_Event extends EM_Object{
 			if( empty($this->event_id) || !$event_truly_exists ){
 				$this->previous_status = 0; //for sure this was previously status 0
 				$this->event_date_created = $event_array['event_date_created'] = current_time('mysql');
+				$event_array = $this->encode_emoji_fields( $event_array );
 				if ( !$wpdb->insert(EM_EVENTS_TABLE, $event_array) ){
 					$this->log_db_error( __('event','events-manager'), EM_EVENTS_TABLE );
 				}else{
@@ -1583,6 +1596,7 @@ class EM_Event extends EM_Object{
 			    $event_array['post_content'] = $this->post_content; //in case the content was removed, which is acceptable
 			    $this->get_previous_status();
 				$this->event_date_modified = $event_array['event_date_modified'] = current_time('mysql');
+				$event_array = $this->encode_emoji_fields( $event_array );
 				if ( $wpdb->update(EM_EVENTS_TABLE, $event_array, array('event_id'=>$this->event_id) ) === false ){
 					$this->log_db_error( __('event','events-manager'), EM_EVENTS_TABLE );
 				}else{

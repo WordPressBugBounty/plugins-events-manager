@@ -5,7 +5,7 @@ Tags: events, calendar, tickets, bookings, appointments
 Text Domain: events-manager
 Requires at least: 6.1
 Tested up to: 7.0
-Stable tag: 7.4.4
+Stable tag: 7.4.5
 Requires PHP: 7.0
 License: GPLv2
 
@@ -194,6 +194,21 @@ See our [FAQ](http://wp-events-plugin.com/documentation/faq/) page for helps wit
 18. Grid view for displaying your upcoming events at a glance
 
 == Changelog ==
+= 7.4.5 =
+* Security: Fixed a broken access control vulnerability. Reported by Hasyros via WPScan.
+* Security: Fixed an information disclosure vulnerability. Reported by Karthik Ramakrishnan via WPScan.
+* Fixed: scheduled imports failed because wp-cron and WP-CLI requests were subject to the public submitter consent check
+* Fixed: deleting a recurring event's bookings reported success without deleting anything
+* Fixed: a PHP deprecation notice was printed on the admin bookings pages when debugging was enabled
+* Fixed: events with an emoji in their name or content could not be saved on older database tables
+* Fixed: events using a custom archetype could not be edited, reporting "Sorry, you are not allowed to edit this post"
+* Fixed: publishing an event in the block editor saved it as a draft when pre-publish checks were disabled
+* Fixed: the events search form could submit to the default language events page under WPML, and to the wrong page on themes overriding the search template
+* Changed: the admin bookings list and pending badge now show only the event type you are viewing, with an All Event Types filter for the combined list
+* Fixed: an end time earlier than the start time was not flagged while editing an event
+* Fixed: the booking form security token was only refreshed for the standard booking form on cached sites
+* Fixed: the edit icon in the admin bookings list spilled out of its column on narrow screens
+
 = 7.4.4 =
 * Security: Fixed an information disclosure vulnerability. Reported via Patchstack.
 * Security: Fixed a missing authorization vulnerability, CVE-2026-92711. Reported by M4r0u4n3 via Wordfence.

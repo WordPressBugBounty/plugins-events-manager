@@ -4,6 +4,17 @@ class EM_Admin_Modals {
 	
 	public static $output_js = false;
 	
+	const PROMO_ENDS = 1790899199; // 2026-10-01 23:59:59 UTC, when the saved-card and comeback offers end
+	
+	/** Dated so a new offer window is not hidden by a dismissal of the previous one. */
+	public static function promo_notice_name() {
+		return 'expired-promo-' . static::PROMO_ENDS;
+	}
+	
+	public static function autorenew_notice_name() {
+		return 'autorenew-promo-' . static::PROMO_ENDS;
+	}
+	
 	public static function init() {
 		add_filter('admin_enqueue_scripts', 'EM_Admin_Modals::admin_enqueue_scripts', 100);
 		add_filter('wp_ajax_em-admin-popup-modal', 'EM_Admin_Modals::ajax');
@@ -14,6 +25,8 @@ class EM_Admin_Modals {
 		}
 		add_filter( 'em_admin_notice_expired-reminder_message', 'EM_Admin_Modals::expired_reminder_notice' );
 		add_filter( 'em_admin_notice_expiry-reminder_message', 'EM_Admin_Modals::expiry_reminder_notice' );
+		add_filter( 'em_admin_notice_' . static::promo_notice_name() . '_message', 'EM_Admin_Modals::expired_promo_notice' );
+		add_filter( 'em_admin_notice_' . static::autorenew_notice_name() . '_message', 'EM_Admin_Modals::autorenew_promo_notice' );
 	}
 	
 	public static function admin_enqueue_scripts(){
@@ -110,20 +123,22 @@ class EM_Admin_Modals {
 		
 		// EM Pro License Expired Promo & Reminder
 		$pro_license_active = defined('EMP_VERSION');
-		$promo_time = 1781510400;
+		$promo_time = static::PROMO_ENDS;
 		if( $pro_license_active ){
 			$key = em_get_option('dbem_pro_api_key');
 			// add a promo for license
 			$license_expired = empty($key['until']) || $key['until'] < time();
 			if( $license_expired ) {
-				if( time() < $promo_time && !EM_Options::get('license_expiry_promo') ) {
-					EM_Options::set('license_expiry_promo', true);
-					$EM_Admin_Notice = new EM_Admin_Notice(array( 'name' => 'expired-promo', 'who' => 'admin', 'where' => 'all' ));
+				if( time() < $promo_time && (int) EM_Options::get('license_expiry_promo', 0) !== $promo_time ) {
+					EM_Options::set('license_expiry_promo', $promo_time);
+					$EM_Admin_Notice = new EM_Admin_Notice(array( 'name' => static::promo_notice_name(), 'who' => 'admin', 'where' => 'all' ));
 					EM_Admin_Notices::add($EM_Admin_Notice, is_multisite());
+					EM_Options::remove('license_expired_reminder');
+					EM_Admin_Notices::remove('expired-reminder');
 				} elseif( time() > $promo_time ) {
 					// promo over, remove data
 					EM_Options::remove('license_expiry_promo');
-					EM_Admin_Notices::remove('expired-promo');
+					EM_Admin_Notices::remove( static::promo_notice_name() );
 					if( !EM_Options::get('license_expired_reminder') ) {
 						EM_Options::set('license_expired_reminder', true);
 						$EM_Admin_Notice = new EM_Admin_Notice(array( 'name' => 'expired-reminder', 'who' => 'admin', 'where' => 'all' ));
@@ -131,7 +146,7 @@ class EM_Admin_Modals {
 						// remove others
 						if ( EM_Options::get('license_expiry_promo') ) {
 							EM_Options::remove( 'license_expiry_promo' );
-							EM_Admin_Notices::remove('expired-promo');
+							EM_Admin_Notices::remove( static::promo_notice_name() );
 						}
 						if ( EM_Options::get('license_expiry_reminder') ) {
 							EM_Options::remove( 'license_expiry_reminder' );
@@ -151,7 +166,7 @@ class EM_Admin_Modals {
 						EM_Options::remove('license_expired_reminder');
 						EM_Admin_Notices::remove('expired-reminder');
 						EM_Options::remove('license_expiry_promo');
-						EM_Admin_Notices::remove('expired-promo');
+						EM_Admin_Notices::remove( static::promo_notice_name() );
 					}
 				} else {
 					// remove all
@@ -161,13 +176,25 @@ class EM_Admin_Modals {
 					}
 					if ( EM_Options::get('license_expiry_promo') ) {
 						EM_Options::remove( 'license_expiry_promo' );
-						EM_Admin_Notices::remove('expired-promo');
+						EM_Admin_Notices::remove( static::promo_notice_name() );
 					}
 					if ( EM_Options::get('license_expired_reminder') ) {
 						EM_Options::remove( 'license_expired_reminder' );
 						EM_Admin_Notices::remove('expired-reminder');
 					}
 				}
+			}
+			// saved-card offer for active licenses: 350 days or more left means a fresh purchase or renewal, and the last 14 days belong to the expiry reminder
+			$autorenew_promo = !empty($key['until']) && !$license_expired && time() < static::PROMO_ENDS && $key['until'] >= strtotime('+14 days');
+			if ( $autorenew_promo ) {
+				if ( (int) EM_Options::get('license_autorenew_promo', 0) !== static::PROMO_ENDS ) {
+					EM_Options::set('license_autorenew_promo', static::PROMO_ENDS);
+					$EM_Admin_Notice = new EM_Admin_Notice(array( 'name' => static::autorenew_notice_name(), 'who' => 'admin', 'where' => 'plugin' ));
+					EM_Admin_Notices::add($EM_Admin_Notice, is_multisite());
+				}
+			} elseif ( EM_Options::get('license_autorenew_promo', 0) ) {
+				EM_Options::remove('license_autorenew_promo');
+				EM_Admin_Notices::remove( static::autorenew_notice_name() );
 			}
 		}
 	}
@@ -385,8 +412,59 @@ class EM_Admin_Modals {
 			<div>
 				<h3>Events Manager Pro - Your License is Expiring Soon...</h3>
 				<p>Your Pro license is expiring on <?php echo $expiry_date; ?>. By renewing on time, you maintain your current plan pricing and conditions.</p>
-				<p>Renew now to maintain access to our latest updates and Pro support. We hope you're finding the plugin useful and we look forward to providing you with more exciting new features!</p>
-				<a href="https://eventsmanagerpro.com/gopro/?utm_source=events-manager&utm_medium=plugin-notice&utm_campaign=plugins" class="button button-primary input" target="_blank" style="margin-right:10px; --accent-color:#429543; --accent-color-hover:#429543;">Renew Now!</a>
+				<?php if ( time() < static::PROMO_ENDS ) : ?>
+				<p>Save a payment method and enable automatic renewal from your account page before 1 October 2026 and your next renewal is 10% off. You can turn it off again at any time.</p>
+				<?php else : ?>
+				<p>Renew now to maintain access to our latest updates and Pro support, or enable automatic renewal from your account page so a renewal is never missed.</p>
+				<?php endif; ?>
+				<a href="https://pxlink.cc/notice-expiry" class="button button-primary input" target="_blank" style="margin-right:10px; --accent-color:#429543; --accent-color-hover:#429543;">Renew Now</a>
+				<a href="https://pxlink.cc/notice-expiry" class="button button-secondary" target="_blank">Enable Automatic Renewal</a>
+			</div>
+		</div><!-- content -->
+		<?php
+		return ob_get_clean();
+	}
+	
+	public static function autorenew_promo_notice(){
+		$key = em_get_option('dbem_pro_api_key');
+		$expiry_date = date_i18n( get_option('date_format'), $key['until'] );
+		ob_start();
+		?>
+		<div style="display: grid; grid-template-columns: 80px auto; grid-gap: 20px;">
+			<div style="text-align: center; padding-left: 10px; padding-top:10px;">
+				<img src="<?php echo EM_DIR_URI . '/includes/images/events-manager.svg'; ?>" style="width: 100%;">
+			</div>
+			<div>
+				<h3>Events Manager Pro - Save 10% on Your Next Renewal</h3>
+				<p>Your Pro license expires on <?php echo esc_html( $expiry_date ); ?>. Save a payment method and enable automatic renewal from your account page before 1 October 2026 and that renewal is 10% off. Your current plan pricing stays as it is, and you can turn automatic renewal off again at any time.</p>
+				<a href="https://pxlink.cc/promo-autorenew" class="button button-primary input" target="_blank" style="margin-right:10px; --accent-color:#429543; --accent-color-hover:#429543;">Enable Automatic Renewal</a>
+				<a href="<?php echo esc_url( admin_url('admin-ajax.php?action=em_dismiss_admin_notice&notice=' . static::autorenew_notice_name() . '&redirect=1&nonce='. wp_create_nonce('em_dismiss_admin_notice' . static::autorenew_notice_name() . get_current_user_id()) ) ); ?>" class="button button-secondary"><?php esc_html_e('Dismiss', 'events-manager'); ?></a>
+			</div>
+		</div><!-- content -->
+		<?php
+		return ob_get_clean();
+	}
+	
+	public static function expired_promo_notice(){
+		$key = em_get_option('dbem_pro_api_key');
+		$never_activated = empty($key['until']);
+		ob_start();
+		?>
+		<div style="display: grid; grid-template-columns: 80px auto; grid-gap: 20px;">
+			<div style="text-align: center; padding-left: 10px; padding-top:10px;">
+				<img src="<?php echo EM_DIR_URI . '/includes/images/events-manager.svg'; ?>" style="width: 100%;">
+			</div>
+			<div>
+				<?php if ( $never_activated ) : ?>
+				<h3>Events Manager Pro - Activate Your License</h3>
+				<p>Your Pro license is not activated on this site, so it is not receiving Pro updates or support. Activate it from your account page, or if it has expired, renew before 1 October 2026 to keep your previous pricing.</p>
+				<?php else : ?>
+				<h3>Events Manager Pro - Keep Your Previous Pricing Until 1 October</h3>
+				<p>Your Pro license has expired, so this site is not receiving Pro updates or support. Renew before 1 October 2026 and you keep your previous pricing rather than today's. Log in to your account to see your rate.</p>
+				<p>Depending on your plan, your next renewal is 10% off by keeping automatic renewals enabled. You can turn it off from your account page at any time.</p>
+				<?php endif; ?>
+				<a href="https://pxlink.cc/promo-comeback" class="button button-primary input" target="_blank" style="margin-right:10px; --accent-color:#429543; --accent-color-hover:#429543;">Renew Now</a>
+				<a href="https://pxlink.cc/promo-comeback" class="button button-secondary" target="_blank">My Account</a>
 			</div>
 		</div><!-- content -->
 		<?php

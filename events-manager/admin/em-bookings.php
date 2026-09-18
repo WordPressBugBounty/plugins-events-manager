@@ -734,14 +734,7 @@ function em_bookings_single(){
  */
 function em_bookings_person(){	
 	global $EM_Person, $EM_Notices;
-	$EM_Person->get_bookings();
-	$has_booking = false;
-	foreach($EM_Person->get_bookings() as $EM_Booking){
-		if($EM_Booking->can_manage('manage_bookings','manage_others_bookings')){
-			$has_booking = true;
-		}
-	}
-	if( !$has_booking && !current_user_can('manage_others_bookings') ){
+	if( !$EM_Person->can_manage_bookings() ){
 		?>
 		<div class="wrap <?php em_template_classes('bookings-admin'); ?>">
 			<h2><?php esc_html_e('Unauthorized Access','events-manager'); ?></h2>

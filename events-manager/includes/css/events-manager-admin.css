@@ -6679,8 +6679,11 @@
   .wp-admin .em .em-list-table .wp-list-table thead th.column-primary {
     content: "";
   }
-  .wp-admin .em .em-list-table .wp-list-table tbody th.check-column {
-    width: 77px;
+  .wp-admin .em .em-list-table .wp-list-table thead .check-column {
+    width: 96px;
+  }
+  .wp-admin .em .em-list-table .wp-list-table tbody .check-column {
+    width: 96px;
   }
   .wp-admin .em .em-list-table .wp-list-table tbody td:not(.check-column) {
     display: block !important;

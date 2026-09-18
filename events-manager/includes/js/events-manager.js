@@ -1748,31 +1748,12 @@ function em_setup_timepicker( container ){
 		this.dataset.seconds = start.val() ? start.em_timepicker('getSecondsFromMidnight') : '';
 		retargetEvent(e);
 	});
-	// An end time before the start time is only an error when the event starts and ends on the same day.
-	let validateEndTime = function ( el ) {
-		let end = jQuery(el);
-		let start = end.prevAll('.em-time-start');
-		if ( !start.val() ) {
-			return;
-		}
-		if ( !end.val() ) {
-			el.classList.remove('error');
-			return;
-		}
-		let dates_wrapper = el.closest('.event-form-when') || el.closest('.em-time-range');
-		let start_date_element = dates_wrapper.querySelector('input[name="event_start_date"]');
-		let end_date_element = dates_wrapper.querySelector('input[name="event_end_date"]');
-		let start_date = start_date_element ? start_date_element.value : '';
-		let end_date = end_date_element ? end_date_element.value : '';
-		let hasError = start.em_timepicker('getTime') > end.em_timepicker('getTime') && ( !end_date || start_date === end_date );
-		el.classList.toggle('error', hasError);
-	};
 	// Validate.
 	container.querySelectorAll('.em-time-range').forEach( el => el.addEventListener('change', function (e) {
 		if ( e.target.matches('input.em-time-end') ) {
 			let end = jQuery(e.target);
 			e.target.dataset.seconds = end.val() ? end.em_timepicker('getSecondsFromMidnight') : '';
-			validateEndTime( e.target );
+			em_validate_end_time( e.target );
 		} else if ( e.target.matches('input.em-time-all-day') ) {
 			e.currentTarget.querySelectorAll('.em-time-input').forEach(function (input) {
 				input.readOnly = e.target.checked;
@@ -1787,11 +1768,40 @@ function em_setup_timepicker( container ){
 	// Re-validate on either date changing, so that a multi-day event no longer flags an end time earlier than its start time.
 	wrap.find('input[name="event_start_date"], input[name="event_end_date"]').off('change.em_timepicker').on('change.em_timepicker', function () {
 		jQuery(this).closest('.event-form-when').find('.em-time-range input.em-time-end').each( function () {
-			validateEndTime( this );
+			em_validate_end_time( this );
 		});
 	});
 	// listen to and dispatch the event
 	wrap.find(".em-time-range input.em-time-end").on('change', retargetEvent );
+}
+
+/**
+ * Flags an end time that falls before its start time, which is only an error when the event starts and ends on the same day.
+ * Global because the timeranges editor clears the error class off a whole editor and has to put this one back.
+ *
+ * @param {HTMLInputElement} el
+ */
+function em_validate_end_time( el ) {
+	let range = el.closest('.em-time-range');
+	let start = jQuery( range ? range.querySelector('input.em-time-start') : null );
+	let end = jQuery(el);
+	if ( !start.val() ) {
+		return;
+	}
+	if ( !end.val() ) {
+		el.classList.remove('error');
+		return;
+	}
+	// Ticket availability dates its own range, everything else is dated by the event.
+	let range_dates = range ? range.querySelectorAll('input[type="date"]') : [];
+	let dates_wrapper = el.closest('.event-form-when');
+	let start_date_element = range_dates.length === 2 ? range_dates[0] : ( dates_wrapper ? dates_wrapper.querySelector('input[name="event_start_date"]') : null );
+	let end_date_element = range_dates.length === 2 ? range_dates[1] : ( dates_wrapper ? dates_wrapper.querySelector('input[name="event_end_date"]') : null );
+	let start_date = start_date_element ? start_date_element.value : '';
+	let end_date = end_date_element ? end_date_element.value : '';
+	// A recurrence set crosses midnight on its duration in days rather than a date range, and reconciles its own times.
+	let hasError = !el.closest('.em-recurrence-set') && start.em_timepicker('getTime') > end.em_timepicker('getTime') && ( !end_date || start_date === end_date );
+	el.classList.toggle('error', hasError);
 }
 
 function em_unsetup_timepicker( container ) {

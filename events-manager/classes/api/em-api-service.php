@@ -422,7 +422,12 @@ class Service {
 		if ( !$EM_Ticket->can_manage() ) {
 			return Utils::object_error( 'em_api_ticket_forbidden', $EM_Ticket, __( 'You do not have permission to update this ticket.', 'events-manager' ), 403 );
 		}
-		$EM_Ticket->get_post( Utils::normalize_input( $data ) );
+		$data = Utils::normalize_input( $data );
+		// An update keeps the identifiers of the record we actually authorised. EM_Ticket::get_post() reads ticket_id and event_id straight off this array, so a body carrying someone else's ticket_id re-points the UPDATE at their row, and save()'s own can_manage() re-resolves through the body's event_id, which an event the caller owns satisfies. The creation handler above strips these for the same reason.
+		unset( $data['id'] );
+		$data['ticket_id'] = $EM_Ticket->ticket_id;
+		$data['event_id'] = $EM_Ticket->event_id;
+		$EM_Ticket->get_post( $data );
 		if ( !$EM_Ticket->save() ) {
 			return Utils::object_error( 'em_api_ticket_save_failed', $EM_Ticket, __( 'Ticket could not be saved.', 'events-manager' ), 400 );
 		}
