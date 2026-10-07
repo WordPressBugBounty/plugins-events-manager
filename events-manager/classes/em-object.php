@@ -221,7 +221,7 @@ class EM_Object {
 				$defaults['scope'][1] = '';
 			}
 			if( empty($defaults['scope'][0]) && empty($defaults['scope'][1]) ){
-				if( !empty($defaults['scope']['name']) ) {
+				if( !empty($defaults['scope']['name']) && !is_array($defaults['scope']['name']) ) {
 					$defaults['scope'] = $defaults['scope']['name'];
 				}else{
 					$defaults['scope'] = $super_defaults['scope'];
@@ -435,9 +435,9 @@ class EM_Object {
 				$date_start = EM_DateTime::create( $scope[0], $timezone_scope )->getDate('UTC');
 				$date_end = EM_DateTime::create( $scope[0], $timezone_scope )->getDate('UTC');
 			} else {
-				//This is an array, let's split it up
-				$date_start = $scope[0];
-				$date_end = $scope[1];
+				//This is an array, let's split it up. Only validated dates may reach the CAST() clauses below, since they are concatenated into the query rather than prepared.
+				$date_start = ( !empty($scope[0]) && preg_match("/^[0-9]{4}-[0-9]{1,2}-[0-9]{1,2}$/", $scope[0]) ) ? $scope[0] : '';
+				$date_end = ( !empty($scope[1]) && preg_match("/^[0-9]{4}-[0-9]{1,2}-[0-9]{1,2}$/", $scope[1]) ) ? $scope[1] : '';
 			}
 			if( !empty($date_start) && empty($date_end) ){
 				//do a from till infinity

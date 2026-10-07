@@ -5,7 +5,7 @@ Tags: events, calendar, tickets, bookings, appointments
 Text Domain: events-manager
 Requires at least: 6.1
 Tested up to: 7.1
-Stable tag: 7.4.6
+Stable tag: 7.4.7
 Requires PHP: 7.0
 License: GPLv2
 
@@ -221,6 +221,9 @@ See our [FAQ](http://wp-events-plugin.com/documentation/faq/) page for help with
 18. Grid view for displaying your upcoming events at a glance
 
 == Changelog ==
+= 7.4.7 =
+* Security: Fixed an authenticated SQL injection vulnerability in the REST API events and bookings search, disclosed by neurotx via Patchstack.
+
 = 7.4.6 =
 * Fixed: fatal error on tag pages, and in the admin area after updating, when an event type had no categories or tags enabled
 * Fixed: tag pages skipped upcoming events for event types with tags but no categories
