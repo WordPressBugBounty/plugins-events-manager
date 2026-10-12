@@ -324,7 +324,9 @@ class EM_Calendar extends EM_Object {
 						$event_start->setTimezone( $timezone );
 						$event_end->setTimezone( $timezone );
 					}
-					if( $event_end->getTimestamp() > $scope_datetime_end->getTimestamp() ) $event_end = $scope_datetime_end;
+					// Clamp to the end of the last displayed day, not its midnight: a timed event on that day otherwise starts after the clamped end and never enters the loop below, so the last grid cell showed only all-day events.
+					$range_end = $scope_datetime_end->copy()->setTime( 23, 59, 59 );
+					if( $event_end->getTimestamp() > $range_end->getTimestamp() ) $event_end = $range_end;
 					while( $event_start->getTimestamp() <= $event_end->getTimestamp() ){ //we loop until the last day of our time-range, not the end date of the event, which could be in a year
 						//Ensure date is within event dates and also within the limits of events to show per day, if so add to eventful days array
 						$event_eventful_date = $event_start->getDate();

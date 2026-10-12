@@ -30,6 +30,8 @@ class Consent {
 			'destination' => self::destination_label( $params['redirect_uri'] ),
 			// A client that registered itself through the open /register endpoint has been vetted by nobody, so say so rather than letting its chosen name imply otherwise.
 			'self_registered' => ! empty( $params['client']['dynamic'] ),
+			// Whether the credential will be limited to the registered scopes' REST routes (see Scope_Guard) or carries the account's full access.
+			'restricted'  => null !== Server::routes_for_scope( $params['scope'] ),
 			'hidden'      => array_filter( array(
 				'response_type'         => 'code',
 				'client_id'             => $params['client_id'],
@@ -46,6 +48,9 @@ class Consent {
 		status_header( 200 );
 		nocache_headers();
 		header( 'Content-Type: text/html; charset=' . get_option( 'blog_charset' ) );
+		// This is a front-end URL, so WordPress's own anti-framing headers (sent on admin_init/login_init only) do not cover it; without these the Approve button can be framed and overlaid.
+		header( 'X-Frame-Options: DENY' );
+		header( "Content-Security-Policy: frame-ancestors 'none'" );
 
 		// Expose $view to the template.
 		$pixelite_oauth_view = $view;

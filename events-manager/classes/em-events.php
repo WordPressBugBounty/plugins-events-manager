@@ -665,7 +665,7 @@ $orderby_sql";
 					$conditions['blog'] = "(".EM_EVENTS_TABLE.".blog_id={$args['blog']})";
 				}
 		    }else{
-		        if( !is_array($args['blog']) && preg_match('/^([\-0-9],?)+$/', $args['blog']) ){
+		        if( !is_array($args['blog']) && preg_match('/^([\-0-9],?)+$/D', $args['blog']) ){
 		            $conditions['blog'] = "(".EM_EVENTS_TABLE.".blog_id IN ({$args['blog']}) )";
 			    }elseif( is_array($args['blog']) && self::array_is_numeric($args['blog']) ){
 			        $conditions['blog'] = "(".EM_EVENTS_TABLE.".blog_id IN (".implode(',',$args['blog']).") )";

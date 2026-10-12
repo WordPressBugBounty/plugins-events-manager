@@ -5,7 +5,7 @@ Tags: events, calendar, tickets, bookings, appointments
 Text Domain: events-manager
 Requires at least: 6.1
 Tested up to: 7.1
-Stable tag: 7.4.7
+Stable tag: 7.4.8
 Requires PHP: 7.0
 License: GPLv2
 
@@ -221,6 +221,16 @@ See our [FAQ](http://wp-events-plugin.com/documentation/faq/) page for help with
 18. Grid view for displaying your upcoming events at a glance
 
 == Changelog ==
+= 7.4.8 =
+* Security: Fixed a clickjacking vulnerability and restricted the permissions granted to AI/MCP connections. Reported by Alexander Ströher.
+* Security: Fixed a cross-site scripting vulnerability. Reported by Alexander Ströher.
+* Security: Fixed an information disclosure vulnerability in the REST API. Reported by Alexander Ströher.
+* Security: Additional hardening of the OAuth endpoints, uploads and search parameters.
+* Fixed: Calendars with long_events enabled hid timed events on the last displayed day of the grid
+* Fixed: Location searches with array coordinates, country-name lookups and timezone-scoped date ranges returned wrong results
+* Fixed: REST API events and bookings endpoints returned an error for some search parameters
+* Fixed: Missing text domain in the general settings tab
+
 = 7.4.7 =
 * Security: Fixed an authenticated SQL injection vulnerability in the REST API events and bookings search, disclosed by neurotx via Patchstack.
 

@@ -271,7 +271,13 @@ $user     = $v['user'];
 								esc_html_e( 'Acts as your account', 'wp-oauth-app-passwords' );
 							}
 							?></div>
-							<div class="wpoap-perm-desc"><?php esc_html_e( 'The application can only do what your account is permitted to do.', 'wp-oauth-app-passwords' ); ?></div>
+							<div class="wpoap-perm-desc"><?php
+							if ( ! empty( $v['restricted'] ) ) {
+								esc_html_e( 'Access is limited to the features listed above, within what your account is permitted to do.', 'wp-oauth-app-passwords' );
+							} else {
+								esc_html_e( 'The application can only do what your account is permitted to do.', 'wp-oauth-app-passwords' );
+							}
+							?></div>
 						</div>
 					</div>
 				</div>

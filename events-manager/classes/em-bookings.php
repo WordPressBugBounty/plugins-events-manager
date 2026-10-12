@@ -664,7 +664,7 @@ class EM_Bookings extends EM_Object implements Iterator, ArrayAccess {
 		}
 		$status = str_replace(' ', '', $status);
 		// run if $status is clean
-		if ( preg_match('/^[0-9,]+$/', $status) ) {
+		if ( preg_match('/^[0-9,]+$/D', $status) ) {
 			if ( !isset( $this->status_counts[ $status ] ) || $force_refresh ) {
 				if ( $this->get_event()->is_recurring( true ) ) {
 					$subquery = "SELECT event_id FROM " . EM_EVENTS_TABLE . " WHERE recurrence_set_id IN ( SELECT recurrence_set_id FROM " . EM_EVENT_RECURRENCES_TABLE . " WHERE event_id = '{$this->event_id}' )";
@@ -1273,7 +1273,7 @@ class EM_Bookings extends EM_Object implements Iterator, ArrayAccess {
 			$conditions['status'] = 'booking_status='.$args['status'];
 		}elseif( self::array_is_numeric($args['status']) && count($args['status']) > 0 ){
 			$conditions['status'] = 'booking_status IN ('.implode(',',$args['status']).')';
-		}elseif( !is_array($args['status']) && preg_match('/^([0-9],?)+$/', $args['status']) ){
+		}elseif( !is_array($args['status']) && preg_match('/^([0-9],?)+$/D', $args['status']) ){
 			$conditions['status'] = 'booking_status IN ('.$args['status'].')';
 		}
 		// RSVP status
@@ -1284,7 +1284,7 @@ class EM_Bookings extends EM_Object implements Iterator, ArrayAccess {
 				$conditions['rsvp_status'] = 'booking_rsvp_status IS NULL';
 			}elseif( self::array_is_numeric($args['rsvp_status']) && count($args['rsvp_status']) > 0 ){
 				$conditions['rsvp_status'] = 'booking_status IN ('.implode(',',$args['rsvp_status']).')';
-			}elseif( !is_array($args['rsvp_status']) && preg_match('/^(([0-9]|null),?)+$/i', $args['rsvp_status']) ){
+			}elseif( !is_array($args['rsvp_status']) && preg_match('/^(([0-9]|null),?)+$/iD', $args['rsvp_status']) ){
 				$conditions['rsvp_status'] = 'booking_rsvp_status IN ('.$args['rsvp_status'].')';
 			}
 		}
@@ -1314,7 +1314,7 @@ class EM_Bookings extends EM_Object implements Iterator, ArrayAccess {
 			$search_conditions[] = EM_BOOKINGS_TABLE.'.person_id IN (SELECT user_id FROM '.$wpdb->usermeta ." WHERE meta_value LIKE '$search' AND meta_key NOT LIKE '%_settings')";
 			$search_conditions[] = EM_BOOKINGS_TABLE.'.booking_id IN (SELECT booking_id FROM '.EM_BOOKINGS_META_TABLE." WHERE meta_value LIKE '$search')";
 			$search_conditions[] = EM_BOOKINGS_TABLE.'.person_id IN (SELECT ID FROM '.$wpdb->users." WHERE user_nicename LIKE '$search' OR user_email LIKE '$search' OR display_name LIKE '$search' OR user_login LIKE '$search')";
-			if( preg_match('/^[a-zA-Z0-9]{32}$/', $args['search']) ) {
+			if( preg_match('/^[a-zA-Z0-9]{32}$/D', $args['search']) ) {
 				$search_conditions[] = EM_BOOKINGS_TABLE . '.booking_id IN (SELECT booking_id FROM ' . EM_TICKETS_BOOKINGS_TABLE . " WHERE ticket_uuid = '{$args['search']}')";
 			}
 			$conditions['search'] = '('. implode(' OR ', $search_conditions) . ')';

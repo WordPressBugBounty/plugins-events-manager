@@ -374,7 +374,10 @@ class Service {
 			return Utils::error( 'em_api_event_forbidden', __( 'You do not have permission to view this event.', 'events-manager' ), 403 );
 		}
 		$items = array();
+		$can_manage = $EM_Event->can_manage( 'manage_bookings', 'manage_others_bookings' );
 		foreach ( $EM_Event->get_tickets( true ) as $EM_Ticket ) {
+			// Readers get what the booking form would show them; hidden and unavailable tickets are a manager's view.
+			if ( !$can_manage && !$EM_Ticket->is_displayable() ) continue;
 			$items[] = static::prepare_ticket( $EM_Ticket, $params['context'] ?? 'view' );
 		}
 		return array(
@@ -388,6 +391,9 @@ class Service {
 		if ( is_wp_error( $EM_Ticket ) ) return $EM_Ticket;
 		if ( !static::can_read_event( $EM_Ticket->get_event(), $context ) ) {
 			return Utils::error( 'em_api_ticket_forbidden', __( 'You do not have permission to view this ticket.', 'events-manager' ), 403 );
+		}
+		if ( !$EM_Ticket->can_manage() && !$EM_Ticket->is_displayable() ) {
+			return Utils::error( 'em_api_ticket_not_found', __( 'Ticket not found.', 'events-manager' ), 404 );
 		}
 		return static::prepare_ticket( $EM_Ticket, $context );
 	}
@@ -1117,6 +1123,10 @@ class Service {
 			'order' => $EM_Ticket->ticket_order === null ? null : absint( $EM_Ticket->ticket_order ),
 			'bookings_count' => $EM_Ticket->ticket_id ? absint( $EM_Ticket->get_bookings_count() ) : 0,
 		);
+		if ( !$EM_Ticket->can_manage() ) {
+			// Booking counters and the member role list are management data; the booking form shows a reader none of it.
+			unset( $api['members_roles'], $api['reserved_spaces'], $api['pending_spaces'], $api['bookings_count'] );
+		}
 		if ( $context === 'edit' ) {
 			$api['meta'] = is_array( $EM_Ticket->ticket_meta ) ? $EM_Ticket->ticket_meta : array();
 			$api['permissions'] = array(
@@ -1575,12 +1585,24 @@ class Service {
 	 * Confirms every address the host resolves to is publicly routable, guarding source_url sideloads against SSRF to loopback, private, reserved or link-local ranges (notably the 169.254.0.0/16 cloud-metadata range that wp_http_validate_url permits).
 	 */
 	protected static function is_public_url( $url ) {
+		$scheme = strtolower( (string) wp_parse_url( $url, PHP_URL_SCHEME ) );
+		if ( !in_array( $scheme, array( 'http', 'https' ), true ) ) {
+			return false;
+		}
 		$host = wp_parse_url( $url, PHP_URL_HOST );
-		if ( empty( $host ) ) {
+		if ( empty( $host ) || strtolower( $host ) === 'localhost' ) {
 			return false;
 		}
 		$host = trim( $host, '[]' );
-		$ips  = filter_var( $host, FILTER_VALIDATE_IP ) ? array( $host ) : gethostbynamel( $host );
+		if ( filter_var( $host, FILTER_VALIDATE_IP ) ) {
+			$ips = array( $host );
+		} else {
+			// gethostbynamel() is IPv4-only, so an AAAA-only name pointing at a private address would otherwise pass.
+			$ips = (array) gethostbynamel( $host );
+			foreach ( (array) @dns_get_record( $host, DNS_AAAA ) as $record ) {
+				if ( !empty( $record['ipv6'] ) ) $ips[] = $record['ipv6'];
+			}
+		}
 		if ( empty( $ips ) ) {
 			return false;
 		}

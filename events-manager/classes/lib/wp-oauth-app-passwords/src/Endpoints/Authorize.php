@@ -111,10 +111,8 @@ class Authorize {
 		$client_id = self::param( 'client_id' );
 		$client    = $client_id ? Clients::get( $client_id ) : null;
 		$redirect  = self::param( 'redirect_uri' );
-		$scope     = self::param( 'scope' );
-		if ( '' === $scope ) {
-			$scope = Server::default_scope();
-		}
+		// Unknown scope names are dropped (and an empty request falls back to the default) so a client cannot ask for an unregistered scope and end up with an unrestricted grant.
+		$scope     = Server::normalize_scope( self::param( 'scope' ) );
 		// The displayed name comes from the stored client record, never from the request. Taking it from a `client_name` parameter let anyone who could register a client (registration is open by RFC 7591's open profile) put an arbitrary trusted-looking name on a consent screen served from the site's own domain.
 		$client_name = is_array( $client ) ? (string) ( $client['name'] ?? '' ) : '';
 
@@ -174,6 +172,8 @@ class Authorize {
 		status_header( 400 );
 		nocache_headers();
 		header( 'Content-Type: text/html; charset=' . get_option( 'blog_charset' ) );
+		header( 'X-Frame-Options: DENY' );
+		header( "Content-Security-Policy: frame-ancestors 'none'" );
 		echo '<!DOCTYPE html><meta charset="utf-8"><title>' . esc_html__( 'Authorization error', 'wp-oauth-app-passwords' ) . '</title>';
 		echo '<div style="font-family:sans-serif;max-width:480px;margin:4em auto;padding:1.5em;border:1px solid #dcdcde;border-radius:8px">';
 		echo '<h1 style="font-size:1.2em">' . esc_html__( 'Authorization error', 'wp-oauth-app-passwords' ) . '</h1>';
