@@ -31,6 +31,20 @@ function em_get_booking($id = false) {
 	}
 }
 /**
+ * Resolve a booking from a request-supplied id. Accepts only a positive integer id or a 32-character booking UUID; any other value (notably an array, which would otherwise be mass-assigned onto a new EM_Booking) returns an empty booking.
+ * @param mixed $value
+ * @return EM_Booking
+ */
+function em_get_booking_request( $value ) {
+	if ( is_numeric( $value ) ) {
+		return em_get_booking( absint( $value ) );
+	}
+	if ( is_string( $value ) && preg_match( '/^[A-Za-z0-9]{32}$/', $value ) ) {
+		return em_get_booking( $value );
+	}
+	return em_get_booking();
+}
+/**
  * Contains all information and relevant functions surrounding a single booking made with Events Manager
  * @property int|false $booking_status
  * @property string $language
@@ -1336,8 +1350,12 @@ class EM_Booking extends EM_Object{
 		global $wpdb;
 		$action_string = strtolower($this->status_array[$status]);
 		//if we're approving we can't approve a booking if spaces are full, so check before it's approved.
+		// Hold a per-event lock across the full-check and the status write so two concurrent approvals can't both pass a stale space count and overbook.
+		$status_lock_event_id = ( !$ignore_spaces && $status == 1 ) ? $this->get_event_id() : 0;
+		$status_locked = $status_lock_event_id ? EM_Bookings::acquire_lock( $status_lock_event_id ) : false;
 		if(!$ignore_spaces && $status == 1){
-			if( !$this->is_reserved() && $this->get_event()->get_bookings()->get_available_spaces() < $this->get_spaces() && !$this->get_option('dbem_bookings_approval_overbooking') ){
+			if( !$this->is_reserved() && $this->get_event()->get_bookings()->get_available_spaces(true) < $this->get_spaces() && !$this->get_option('dbem_bookings_approval_overbooking') ){
+				if( $status_locked ) EM_Bookings::release_lock( $status_lock_event_id );
 				$this->feedback_message = sprintf(__('Not approved, spaces full.','events-manager'), $action_string);
 				$this->add_error($this->feedback_message);
 				return apply_filters('em_booking_set_status', false, $this);
@@ -1346,6 +1364,7 @@ class EM_Booking extends EM_Object{
 		$this->previous_status = $this->booking_status;
 		$this->booking_status = absint($status);
 		$result = $wpdb->query($wpdb->prepare('UPDATE '.EM_BOOKINGS_TABLE.' SET booking_status=%d WHERE booking_id=%d', array($status, $this->booking_id)));
+		if( $status_locked ) EM_Bookings::release_lock( $status_lock_event_id );
 		if($result !== false){
 			$this->flush_event_cache();
 			$this->update_meta('previous_status', $this->previous_status);

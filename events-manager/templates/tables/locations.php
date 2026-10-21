@@ -9,21 +9,21 @@
 	/* @var int $limit */
 	/* @var int $page */
 	/* @var int $offset */
-	$url = esc_url(add_query_arg(array('scope'=>null,'status'=>null,'location_id'=>null)));
+	$url = add_query_arg(array('scope'=>null,'status'=>null,'location_id'=>null));
 ?>
 <div class="<?php em_template_classes('locations-admin'); ?> em-locations-admin-list">
 <?php if(!is_admin()) echo $EM_Notices; ?>			  
 <form id='locations-filter' method='post' action='' class="input">
 	<?php
 	//add new button will only appear if called from em_location_admin template tag, or if the $show_add_new var is set
-	if(!empty($show_add_new) && current_user_can('edit_locations')) echo '<a class="em-button button add-new-h2" href="'.add_query_arg('action', 'edit', $url).'">'.__('Add New','events-manager').'</a>';
+	if(!empty($show_add_new) && current_user_can('edit_locations')) echo '<a class="em-button button add-new-h2" href="'.esc_url( add_query_arg('action', 'edit', $url) ).'">'.__('Add New','events-manager').'</a>';
 	?>
 	<input type='hidden' name='pno' value='<?php echo esc_attr($page) ?>' />
 	<div class="subsubsub">
-		<a href='<?php echo add_query_arg(array('view'=>null, 'pno'=>null), $url); ?>' <?php echo ( empty($_REQUEST['view']) ) ? 'class="current"':''; ?>><?php echo sprintf( __( 'My %s', 'events-manager'), __('Locations','events-manager')); ?> <span class="count">(<?php echo $locations_mine_count; ?>)</span></a>
+		<a href='<?php echo esc_url( add_query_arg(array('view'=>null, 'pno'=>null), $url) ); ?>' <?php echo ( empty($_REQUEST['view']) ) ? 'class="current"':''; ?>><?php echo sprintf( __( 'My %s', 'events-manager'), __('Locations','events-manager')); ?> <span class="count">(<?php echo $locations_mine_count; ?>)</span></a>
 		<?php if( current_user_can('read_others_locations') ): ?>
 		&nbsp;|&nbsp;
-		<a href='<?php echo add_query_arg(array('view'=>'others', 'pno'=>null), $url); ?>' <?php echo ( !empty($_REQUEST['view']) && $_REQUEST['view'] == 'others' ) ? 'class="current"':''; ?>><?php echo sprintf( __( 'All %s', 'events-manager'), __('Locations','events-manager')); ?><span class="count">(<?php echo $locations_all_count; ?>)</span></a>
+		<a href='<?php echo esc_url( add_query_arg(array('view'=>'others', 'pno'=>null), $url) ); ?>' <?php echo ( !empty($_REQUEST['view']) && $_REQUEST['view'] == 'others' ) ? 'class="current"':''; ?>><?php echo sprintf( __( 'All %s', 'events-manager'), __('Locations','events-manager')); ?><span class="count">(<?php echo $locations_all_count; ?>)</span></a>
 		<?php endif; ?>
 	</div>
 	<?php if ( $locations_count > 0 ) : ?>

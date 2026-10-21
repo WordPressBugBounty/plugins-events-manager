@@ -5,7 +5,7 @@ Tags: events, calendar, tickets, bookings, appointments
 Text Domain: events-manager
 Requires at least: 6.1
 Tested up to: 7.1
-Stable tag: 7.4.8
+Stable tag: 7.4.9
 Requires PHP: 7.0
 License: GPLv2
 
@@ -221,6 +221,12 @@ See our [FAQ](http://wp-events-plugin.com/documentation/faq/) page for help with
 18. Grid view for displaying your upcoming events at a glance
 
 == Changelog ==
+= 7.4.9 =
+* Security: Fixed a cross-site scripting vulnerability, disclosed by AndrewN via Patchstack.
+* Security: Fixed several cross-site scripting vulnerabilities, with thanks to R3D, crow, Wordfence and Kuba.
+* Security: Fixed a race condition that could let concurrent bookings exceed an event's capacity (CVE-2026-42689), disclosed by Ananda Dhakal via Patchstack.
+* Fixed: Saving a user or profile failed with "Please provide a valid phone number" when phone validation was enabled and the stored number had no country code (props @willpom)
+
 = 7.4.8 =
 * Security: Fixed a clickjacking vulnerability and restricted the permissions granted to AI/MCP connections. Reported by Alexander Ströher.
 * Security: Fixed a cross-site scripting vulnerability. Reported by Alexander Ströher.

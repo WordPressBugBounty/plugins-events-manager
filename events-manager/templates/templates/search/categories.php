@@ -9,8 +9,8 @@
 	<label for="em-search-category-<?php echo absint($args['id']) ?>" class="screen-reader-text"><?php echo esc_html($args['category_label']); ?></label>
 
 	<select name="category[]" class="em-search-category em-selectize <?php echo $args['search_multiselect_style']; ?> checkboxes" id="em-search-category-<?php echo absint($args['id']) ?>" multiple
-	        data-default="<?php echo $args['categories_label']; ?>"
-	        data-label="<?php echo $args['category_label']; ?>"
+	        data-default="<?php echo esc_attr($args['categories_label']); ?>"
+	        data-label="<?php echo esc_attr($args['category_label']); ?>"
             data-clear-text="<?php echo esc_attr($args['categories_clear_text']); ?>"
             data-selected-text="<?php echo esc_attr($args['categories_count_text']); ?>"
 	        placeholder="<?php echo esc_attr($args['categories_placeholder']); ?>">

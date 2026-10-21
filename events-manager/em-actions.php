@@ -339,7 +339,7 @@ function em_init_actions_start() {
 	if( !empty($_REQUEST['action']) && in_array($_REQUEST['action'], $booking_actions) && (is_user_logged_in() || (in_array($_REQUEST['action'], $booking_nopriv_actions) && em_get_option('dbem_bookings_anonymous'))) ){
 		global $EM_Event, $EM_Booking, $EM_Person;
 		//Load the booking object, with saved booking if requested
-		$EM_Booking = ( !empty($_REQUEST['booking_id']) ) ? em_get_booking($_REQUEST['booking_id']) : em_get_booking();
+		$EM_Booking = em_get_booking_request( $_REQUEST['booking_id'] ?? false );
 		if( !empty($EM_Booking->event_id) ){
 			//Load the event object, with saved event if requested
 			$EM_Event = $EM_Booking->get_event();
@@ -677,7 +677,7 @@ function em_init_actions_start() {
 		}
 	}elseif( !empty($_REQUEST['action']) && $_REQUEST['action'] == 'booking_add' && !is_user_logged_in() && !em_get_option('dbem_bookings_anonymous')){
 		global $EM_Booking;
-		$EM_Booking = ( !empty($_REQUEST['booking_id']) ) ? em_get_booking($_REQUEST['booking_id']) : em_get_booking();
+		$EM_Booking = em_get_booking_request( $_REQUEST['booking_id'] ?? false );
 		$EM_Notices->add_error( $EM_Booking->get_option('dbem_booking_feedback_log_in') );
 		if( defined('DOING_AJAX') ){
 			$return = array('result'=>false, 'success'=>false, 'message'=> $EM_Booking->get_option('dbem_booking_feedback_log_in'), 'errors'=>$EM_Notices->get_errors());

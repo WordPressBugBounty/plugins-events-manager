@@ -6,7 +6,7 @@ $id =  esc_attr( $args['id'] );
 	<div class="em-search-views" aria-label="<?php esc_attr_e('View Types', 'events-manager'); ?>">
 		<?php $search_views = em_get_search_views(); ?>
 		<div class="em-search-views-trigger" data-template="em-search-views-options-<?php echo $id; ?>">
-			<button type="button" class="em-search-view-option em-clickable em-search-view-type-<?php echo $args['view']; ?>" data-view="<?php echo esc_attr($args['view']); ?>"><?php echo esc_html($search_views[$args['view']]['name']); ?></button>
+			<button type="button" class="em-search-view-option em-clickable em-search-view-type-<?php echo esc_attr($args['view']); ?>" data-view="<?php echo esc_attr($args['view']); ?>"><?php echo esc_html($search_views[$args['view']]['name']); ?></button>
 		</div>
 		<div class="em-search-views-options input" id="em-search-views-options-<?php echo $id; ?>">
 			<fieldset class="em-search-views-options-list" id="em-search-views-options-select-<?php echo $id; ?>">
@@ -21,5 +21,5 @@ $id =  esc_attr( $args['id'] );
 		</div>
 	</div>
 <?php else: ?>
-	<input name="view" type="hidden" value="<?php echo $args['view']; ?>">
+	<input name="view" type="hidden" value="<?php echo esc_attr($args['view']); ?>">
 <?php endif; ?>

@@ -155,6 +155,39 @@ class EM_Bookings extends EM_Object implements Iterator, ArrayAccess {
 	 * @param EM_Booking $EM_Booking
 	 * @return boolean
 	 */
+	/**
+	 * Acquire a short-lived MySQL advisory lock scoped to one event's bookings, so the availability check and the insert run as one critical section and concurrent requests can't each pass a stale space count and oversell. Best-effort: returns false if the lock can't be taken, in which case callers fall back to a non-atomic re-check rather than blocking a legitimate booking.
+	 * @param int $event_id
+	 * @param int $timeout seconds to wait for the lock
+	 * @return bool whether the lock was acquired
+	 */
+	public static function acquire_lock( $event_id, $timeout = 10 ){
+		global $wpdb;
+		if( empty($event_id) ) return false;
+		$got = $wpdb->get_var( $wpdb->prepare( 'SELECT GET_LOCK(%s, %d)', self::lock_name($event_id), $timeout ) );
+		return $got === '1' || $got === 1;
+	}
+
+	/**
+	 * Release a lock previously taken with acquire_lock(). Safe to call only when acquire_lock() returned true.
+	 * @param int $event_id
+	 */
+	public static function release_lock( $event_id ){
+		global $wpdb;
+		if( empty($event_id) ) return;
+		$wpdb->get_var( $wpdb->prepare( 'SELECT RELEASE_LOCK(%s)', self::lock_name($event_id) ) );
+	}
+
+	/**
+	 * GET_LOCK names are global to the MySQL server and capped at 64 characters, so namespace by database and table prefix: a collision between unrelated installs on a shared server would only cost extra serialization, never correctness.
+	 * @param int $event_id
+	 * @return string
+	 */
+	protected static function lock_name( $event_id ){
+		global $wpdb;
+		return 'em_bk_' . md5( DB_NAME . '|' . $wpdb->prefix . '|' . absint($event_id) );
+	}
+
 	function add( $EM_Booking ){
 		//Save the booking
 		$email = false;
@@ -162,7 +195,18 @@ class EM_Bookings extends EM_Object implements Iterator, ArrayAccess {
 		if( empty($EM_Booking->booking_status) ){ //if status is not set, give 1 or 0 depending on approval settings
 			$EM_Booking->booking_status = em_get_option('dbem_bookings_approval') ? 0:1;
 		}
+		// Re-check availability against a fresh count, holding a per-event lock across the check and the insert so two concurrent bookings can't both pass a stale space count. The caller already validated, but that count can be stale by the time we save. Skipped when restrictions are disabled (e.g. manual bookings, which may intentionally overbook).
+		$lock_event_id = $EM_Booking->get_event_id();
+		$booking_locked = self::acquire_lock( $lock_event_id );
+		if( !self::$disable_restrictions && $EM_Booking->get_event()->get_bookings()->get_available_spaces(true) < $EM_Booking->get_spaces() ){
+			if( $booking_locked ) self::release_lock( $lock_event_id );
+			$EM_Booking->add_error( $EM_Booking->get_option('dbem_booking_feedback_full') );
+			$this->feedback_message = $EM_Booking->get_option('dbem_booking_feedback_full');
+			$this->errors = array_merge( $this->errors, $EM_Booking->get_errors() );
+			return apply_filters('em_bookings_add', false, $EM_Booking);
+		}
 		$result = $EM_Booking->save(false);
+		if( $booking_locked ) self::release_lock( $lock_event_id );
 		if ( $result ){
 			//Success
 		    do_action('em_bookings_added', $EM_Booking);

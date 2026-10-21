@@ -386,7 +386,7 @@ class EM_Bookings_Table extends EM\List_Table {
 		do_action( static::$basename . '_ajax_table_row_action_' . $requested_action );
 		do_action( static::$basename . '_ajax_table_row_action', $requested_action );
 		$allowed_actions = array('bookings_approve'=>'approve','bookings_reject'=>'reject','bookings_unapprove'=>'unapprove', 'bookings_delete'=>'delete');
-		$EM_Booking = ( !empty($_REQUEST['booking_id']) ) ? em_get_booking($_REQUEST['booking_id']) : em_get_booking();
+		$EM_Booking = em_get_booking_request( $_REQUEST['booking_id'] ?? false );
 		if( ( array_key_exists($requested_action, $allowed_actions) || in_array( $requested_action, $allowed_actions )) && $EM_Booking->can_manage('manage_bookings','manage_others_bookings') ){
 			//Event Admin only actions
 			$action = $allowed_actions[$requested_action] ?? $requested_action;

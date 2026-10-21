@@ -1161,7 +1161,7 @@ class EM_Event extends EM_Object{
 				}
 		    }else{
 				// if no rsvp cut-off date supplied, make it the event start date
-				$this->event_rsvp_date = ( !empty($_POST['event_rsvp_date']) ) ? wp_kses_data($_POST['event_rsvp_date']) : $this->event_start_date;
+				$this->event_rsvp_date = ( !empty($_POST['event_rsvp_date']) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $_POST['event_rsvp_date']) ) ? sanitize_text_field($_POST['event_rsvp_date']) : $this->event_start_date;
 				// if no specificed time, default to event start time
 				if ( empty($_POST['event_rsvp_time']) ) $this->event_rsvp_time = $this->event_start_time;
 		    }

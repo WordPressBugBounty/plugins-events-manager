@@ -187,7 +187,7 @@ $reschedule_warnings = !empty($EM_Event->event_id) && $EM_Event->is_recurring( t
 				<span class="em-booking-date-normal em-datepicker">
 					<input type="hidden" class="em-date-input em-date-input-start" aria-hidden="true" aria-label="<?php esc_html_e('Booking Cut-Off Date','events-manager'); ?>">
 					<span class="em-datepicker-data">
-						<input type="date" name="event_rsvp_date" value="<?php echo $EM_Event->event_rsvp_date; ?>">
+						<input type="date" name="event_rsvp_date" value="<?php echo esc_attr($EM_Event->event_rsvp_date); ?>">
 					</span>
 				</span>
 				<span class="em-booking-date-recurring">

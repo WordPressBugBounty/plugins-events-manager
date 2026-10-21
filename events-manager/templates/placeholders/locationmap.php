@@ -19,7 +19,7 @@
 		if( em_get_option('dbem_gmap_type') == 'embed' ){
 			$map_url = $EM_Location->get_google_maps_embed_url();
 			?>
-			<div class="em-location-map-container"  style='position:relative; background: #CDCDCD; width: <?php echo $width ?>; height: <?php echo $height ?>;'>
+			<div class="em-location-map-container"  style='position:relative; background: #CDCDCD; width: <?php echo esc_attr($width) ?>; height: <?php echo esc_attr($height) ?>;'>
 				<iframe class="em-location-map" style="width:100%; height:100%; border:0;" src="<?php echo esc_attr($map_url); ?>" allowfullscreen></iframe>
 			</div>
 			<?php

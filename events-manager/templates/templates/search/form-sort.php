@@ -7,7 +7,7 @@
 ?>
 <div class="em-search-sort" aria-label="<?php esc_attr_e('Sorting Order', 'events-manager'); ?>">
 	<div class="em-search-sort-trigger" id="em-search-sort-trigger-<?php echo $id; ?>">
-		<button type="button" class="em-search-sort-option em-clickable em-search-sort-type-<?php echo $args['order']; ?>" data-sort="<?php echo esc_attr($args['order']); ?>"><?php esc_attr_e('Sorting Order', 'events-manager'); ?></button>
-		<input name="order" type="hidden" value="<?php echo $args['order']; ?>">
+		<button type="button" class="em-search-sort-option em-clickable em-search-sort-type-<?php echo esc_attr($args['order']); ?>" data-sort="<?php echo esc_attr($args['order']); ?>"><?php esc_attr_e('Sorting Order', 'events-manager'); ?></button>
+		<input name="order" type="hidden" value="<?php echo esc_attr($args['order']); ?>">
 	</div>
 </div>

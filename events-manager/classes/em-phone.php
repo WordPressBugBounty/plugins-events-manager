@@ -70,7 +70,9 @@ class Phone {
 	public static function validate( $value, $options = array() ) {
 		$phoneUtil = static::get();
 		try {
-			$phone = $phoneUtil->parse( $value ); // we expect a +... number so in theory no region required
+			// Parse against the configured default country, the same region parse() uses, so a stored national-format number (e.g. a value saved before validation was enabled, or an admin profile edit where the E.164 input script hasn't run) validates the way it is displayed instead of throwing for want of a leading "+".
+			$region = !empty($options['country']) ? $options['country'] : em_get_option('dbem_phone_default_country');
+			$phone = $phoneUtil->parse( $value, $region );
 			if ( $phoneUtil->isValidNumber( $phone ) ) {
 				return true;
 			}
