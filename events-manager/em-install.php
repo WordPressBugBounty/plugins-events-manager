@@ -1203,6 +1203,13 @@ function em_upgrade_current_installation(){
 		update_site_option('dbem_data', $data);
 	}
 
+	//the timestamp is EM_Admin_Modals::HUNT_ENDS, existing installs only so a fresh install is not greeted with a promo
+	if( !empty($current_version) && time() < 1793663999 ) {
+		if( empty($data['admin-modals']) ) $data['admin-modals'] = array();
+		$data['admin-modals']['security-hunt'] = true;
+		update_site_option('dbem_data', $data);
+	}
+
 	// Check EM Pro update min
 	if( defined('EMP_VERSION') && EMP_VERSION < EM_PRO_MIN_VERSION && !defined('EMP_DISABLE_WARNINGS') ) {
 		$message = esc_html__('There is a newer version of Events Manager Pro which is recommended for this current version of Events Manager as new features have been added. Please go to the plugin website and download the latest update.','events-manager');

@@ -513,10 +513,16 @@ class EM_Booking extends EM_Object{
 	public function update_user_meta( $meta_key, $meta_value ) {
 		global $wpdb;
 		// set the meta in booking object first
-		$this->booking_meta['registration'][$meta_key] = $meta_key;
+		$this->booking_meta['registration'][$meta_key] = $meta_value;
 		// check if this is in no-user mode, if so we save directly to the DB, otherwise we save it directly to the usermeta table
-		if( $this->person_id === 0 ) {
-			$wpdb->update( EM_BOOKINGS_META_TABLE, array('meta_key' => '_registration|'.$meta_key, 'meta_value' => $meta_value), array('booking_id' => $this->booking_id) );
+		if( (int) $this->person_id === 0 ) {
+			$meta_row_key = '_registration|' . $meta_key;
+			$exists = $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM '. EM_BOOKINGS_META_TABLE .' WHERE booking_id=%d AND meta_key=%s', $this->booking_id, $meta_row_key ) );
+			if( $exists ) {
+				$wpdb->update( EM_BOOKINGS_META_TABLE, array('meta_value' => $meta_value), array('booking_id' => $this->booking_id, 'meta_key' => $meta_row_key) );
+			} else {
+				$wpdb->insert( EM_BOOKINGS_META_TABLE, array('booking_id' => $this->booking_id, 'meta_key' => $meta_row_key, 'meta_value' => $meta_value) );
+			}
 		} else {
 			update_user_meta( $this->person_id, $meta_key, $meta_value );
 		}

@@ -6,6 +6,7 @@ class EM_Admin_Modals {
 	
 	const PROMO_ENDS = 1791183600; // 2026-10-05 07:00:00 UTC, when the saved-card and comeback offers end
 	const FLASH_SALE_ENDS = 1791183600; // 2026-10-05 07:00:00 UTC, when the Go Pro flash sale shown to sites without Pro ends
+	const HUNT_ENDS = 1793663999; // 2026-11-02 23:59:59 UTC; the sale runs to November 5 and the hunt itself to November 30
 	
 	/** Dated so a new offer window is not hidden by a dismissal of the previous one. */
 	public static function promo_notice_name() {
@@ -23,6 +24,9 @@ class EM_Admin_Modals {
 		//add_filter('em_admin_notice_newsletter-signup_message', 'EM_Admin_Modals::newsletter_notice');
 		if( time() < static::FLASH_SALE_ENDS ) {
 			add_filter( 'em_admin_notice_promo-popup_message', 'EM_Admin_Modals::promo_notice' );
+		}
+		if( time() < static::HUNT_ENDS ) {
+			add_filter( 'em_admin_notice_security-hunt_message', 'EM_Admin_Modals::hunt_notice' );
 		}
 		add_filter( 'em_admin_notice_expired-reminder_message', 'EM_Admin_Modals::expired_reminder_notice' );
 		add_filter( 'em_admin_notice_expiry-reminder_message', 'EM_Admin_Modals::expiry_reminder_notice' );
@@ -87,6 +91,29 @@ class EM_Admin_Modals {
 						update_site_option('dbem_data', $data);
 						// notify user of new update
 						$EM_Admin_Notice = new EM_Admin_Notice(array( 'name' => 'newsletter-signup', 'who' => 'admin', 'where' => 'plugin' ));
+						EM_Admin_Notices::add($EM_Admin_Notice, is_multisite());
+					}
+				}
+			}
+			
+			// security hunt, held back a page load if the review nudge is already showing so two modals never stack
+			$hunt_review_showing = has_filter( 'admin_footer', 'EM_Admin_Modals::review_popup' ) || has_filter( 'admin_footer', 'EM_Admin_Modals::newsletter_popup' );
+			if( time() < static::HUNT_ENDS && !empty($data['admin-modals']['security-hunt']) && !$hunt_review_showing && !static::has_lifetime_license() ) {
+				if( $show_plugin_pages || $show_network_admin ) {
+					if( empty($data['admin-modals']['security-hunt-count']) ){
+						$data['admin-modals']['security-hunt-count'] = 0;
+					}
+					if( $data['admin-modals']['security-hunt-count'] < 1 ) {
+						if( !wp_script_is('events-manager-admin') ) EM_Scripts_and_Styles::admin_enqueue(true);
+						add_filter('admin_footer', 'EM_Admin_Modals::hunt_popup');
+						$data['admin-modals']['security-hunt-count']++;
+						update_site_option('dbem_data', $data);
+					}else{
+						// move it into a regular admin notice and stop displaying
+						unset($data['admin-modals']['security-hunt-count']);
+						unset($data['admin-modals']['security-hunt']);
+						update_site_option('dbem_data', $data);
+						$EM_Admin_Notice = new EM_Admin_Notice(array( 'name' => 'security-hunt', 'who' => 'admin', 'where' => 'plugin' ));
 						EM_Admin_Notices::add($EM_Admin_Notice, is_multisite());
 					}
 				}
@@ -382,6 +409,75 @@ class EM_Admin_Modals {
 			</div><!-- content -->
 			<?php
 		}
+		return ob_get_clean();
+	}
+	
+	public static function has_lifetime_license() {
+		if ( !defined('EMP_VERSION') ) return false;
+		$key = em_get_option('dbem_pro_api_key');
+		return !empty($key['until']) && date('Y', $key['until']) === '2125';
+	}
+	
+	/** Pro sites get a renew or upgrade link, everyone else goes to the Go Pro page. */
+	public static function hunt_sale_link( $source = 'modal' ) {
+		if ( defined('EMP_VERSION') ) {
+			return array( 'url' => 'https://pxlink.cc/hunt-renew-' . $source, 'label' => 'Renew or Upgrade' );
+		}
+		return array( 'url' => 'https://pxlink.cc/hunt-gopro-' . $source, 'label' => 'Go Pro' );
+	}
+	
+	public static function hunt_popup(){
+		$sale = static::hunt_sale_link('modal');
+		?>
+		<div class="em pixelbones em-modal <?php em_template_classes('search', 'search-advanced'); ?> em-admin-modal" id="em-security-hunt" data-nonce="<?php echo wp_create_nonce('em-security-hunt'); ?>">
+			<div class="em-modal-popup">
+				<header>
+					<a class="em-close-modal dismiss-modal" href="#"></a><!-- close modal -->
+					<div class="em-modal-title">We want YOUR AI to Break Events Manager</div>
+				</header>
+				<div class="em-modal-content has-image" style="--font-size:16px;">
+					<div>
+						<p>Think your AI can break Events Manager? Prove it. Until November 30, find a real security vulnerability, report it to us privately, and earn up to 12 months of Pro. Whoever tops the scoreboard on November 30 wins a lifetime Events Manager Pro license.</p>
+						<p>Our recent sale is also back, <strong>with up to 35% off Pro</strong> on new licenses, upgrades and renewals.</p>
+					</div>
+					<div class="image">
+						<img src="<?php echo EM_DIR_URI . '/includes/images/hunt-promo.jpg'; ?>">
+					</div>
+				</div><!-- content -->
+				<footer class="em-submit-section input">
+					<div>
+						<a href="https://pxlink.cc/hunt-rules-modal" class="button button-primary input" target="_blank" style="margin:10px auto; --accent-color:#429543; --accent-color-hover:#429543;">Read More</a>
+					</div>
+					<div>
+						<button class="button button-secondary dismiss-modal">Dismiss Notice</button>
+					</div>
+				</footer>
+			</div><!-- modal -->
+		</div>
+		<?php
+		static::output_js();
+	}
+	
+	public static function hunt_notice(){
+		// checked here rather than in init(), which runs before Pro has loaded
+		if ( time() >= static::HUNT_ENDS || static::has_lifetime_license() ) return '';
+		$sale = static::hunt_sale_link('notice');
+		ob_start();
+		?>
+		<div style="display: grid; grid-template-columns: 100px auto; grid-gap: 20px; margin: 15px 0;">
+			<div style="text-align: center;  align-self: start;">
+				<img src="<?php echo EM_DIR_URI . '/includes/images/hunt-promo.jpg'; ?>" style="width: 100%;">
+			</div>
+			<div>
+				<h3 style="margin: 0 0 5px; padding-bottom:0;">Think your AI can break Events Manager?</h3>
+				<p>Prove it. Find a real security vulnerability by November 30 and earn up to 12 months of Pro, and the top of the scoreboard wins a lifetime license. Our sale is also back <strong>with up to 35% off Pro</strong>.</p>
+				<div>
+					<a href="https://pxlink.cc/hunt-rules-notice" class="button button-primary input" target="_blank" style="margin-right:10px; --accent-color:#429543; --accent-color-hover:#429543;">Read More</a>
+					<a href="<?php echo esc_url( admin_url('admin-ajax.php?action=em_dismiss_admin_notice&notice=security-hunt&redirect=1&nonce='. wp_create_nonce('em_dismiss_admin_noticesecurity-hunt'.get_current_user_id()) ) ); ?>" class="button button-secondary"><?php esc_html_e('Dismiss', 'events-manager'); ?></a>
+				</div>
+			</div>
+		</div><!-- content -->
+		<?php
 		return ob_get_clean();
 	}
 	

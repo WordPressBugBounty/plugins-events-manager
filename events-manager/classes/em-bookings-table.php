@@ -476,12 +476,17 @@ class EM_Bookings_Table extends EM\List_Table {
 	 */
 	function get_status_search() {
 		$status = $this->filters['status'] ?? 'all';
-		if ( !empty($this->statuses[ $status ]) && is_array( $this->statuses[ $status ]['search'] ) ) {
-			return implode( ',', $this->statuses[ $status ]['search'] );
-		} else {
-			$status = 'all';
+		if ( !empty($this->statuses[ $status ]) && isset($this->statuses[ $status ]['search']) ) {
+			$search = $this->statuses[ $status ]['search'];
+			if ( is_array( $search ) ) {
+				return implode( ',', $search );
+			}
+			// tolerate a single scalar status id (e.g. an add-on registering one status) rather than silently falling back to every booking
+			if ( is_scalar( $search ) && !is_bool( $search ) && $search !== '' ) {
+				return (string) $search;
+			}
 		}
-		return $this->statuses[ $status ]['search'];
+		return $this->statuses['all']['search'];
 	}
 	
 	/**

@@ -154,6 +154,10 @@ class Consent {
 				$EM_Booking->get_person()->{static::$options['meta_key']} = current_time( 'mysql', true );
 			}
 		} else {
+			// When the checkbox was intentionally hidden because this user's consent is remembered, its absence from the POST is not a revocation — carry the stored consent forward.
+			if ( is_user_logged_in() && em_get_option( static::$options['remember'] ) == 1 && get_user_meta( get_current_user_id(), static::$options['meta_key'], true ) ) {
+				return $result;
+			}
 			if ( $EM_Booking->get_user_meta( static::$options['meta_key']) ) {
 				$EM_Booking->booking_meta['registration'][ static::$options['meta_key'] . '_revoked' ] = current_time( 'mysql', true );
 				$EM_Booking->get_person()->{static::$options['meta_key'] . '_revoked'} = current_time( 'mysql', true );
@@ -199,8 +203,8 @@ class Consent {
 	public static function em_booking_save( $result, $EM_Booking ){
 		if( $result ){
 			if( $EM_Booking->person_id != 0  ){
-				$consent_given_already = get_user_meta( get_current_user_id(), static::$options['meta_key'], true );
-				$consent_given = !empty($EM_Booking->booking_meta['registration'][ static::$prefix ]);
+				$consent_given_already = get_user_meta( $EM_Booking->person_id, static::$options['meta_key'], true );
+				$consent_given = !empty($EM_Booking->booking_meta['registration'][ static::$options['meta_key'] ]);
 				if ( $consent_given ) {
 					if( !$consent_given_already ) {
 						update_user_meta( $EM_Booking->person_id, static::$options['meta_key'], current_time( 'mysql', true ) );

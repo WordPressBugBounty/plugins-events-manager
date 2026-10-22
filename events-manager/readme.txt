@@ -5,7 +5,7 @@ Tags: events, calendar, tickets, bookings, appointments
 Text Domain: events-manager
 Requires at least: 6.1
 Tested up to: 7.1
-Stable tag: 7.4.9
+Stable tag: 7.4.10
 Requires PHP: 7.0
 License: GPLv2
 
@@ -221,6 +221,12 @@ See our [FAQ](http://wp-events-plugin.com/documentation/faq/) page for help with
 18. Grid view for displaying your upcoming events at a glance
 
 == Changelog ==
+= 7.4.10 =
+* Fixed: Consent given during a logged-in booking was not saved, and optional consent could be revoked when booking again (props @willpom)
+* Fixed: Consent was recorded against the wrong user when an admin booked on someone's behalf (props @willpom)
+* Fixed: A booking meta helper stored the wrong value and could overwrite other guest-booking meta (props @willpom)
+* Fixed: Bookings table status filters could fall back to showing every booking (props @willpom)
+
 = 7.4.9 =
 * Security: Fixed a cross-site scripting vulnerability, disclosed by AndrewN via Patchstack.
 * Security: Fixed several cross-site scripting vulnerabilities, with thanks to R3D, crow, Wordfence and Kuba.
