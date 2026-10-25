@@ -302,9 +302,9 @@ class Uploader {
 				// Use mime_content_type to guess the MIME type; you may use other libraries for more reliability.
 				$file_type = mime_content_type( $stored_file );
 				
-				if ( !empty($REQUEST[$file_key.'--names'][$file_id]) ) {
-					$file_name = $REQUEST[$file_key.'--names'][$file_id];
-				} else {
+				// the display name comes from the submitter and is shown to admins, so it is stored as plain text
+				$file_name = !empty($REQUEST[$file_key.'--names'][$file_id]) && is_string($REQUEST[$file_key.'--names'][$file_id]) ? sanitize_text_field( $REQUEST[$file_key.'--names'][$file_id] ) : '';
+				if ( $file_name === '' ) {
 					$file_name = $file_id;
 				}
 				

@@ -2608,6 +2608,17 @@ class EM_Event extends EM_Object{
 		$format = $this->get_option( 'dbem_single_event_format' );
 		return apply_filters('em_event_output_single', $this->output($format, $target), $this, $target);
 	}
+
+	/**
+	 * Whether #_CONTACTMETA may output a user meta key. Protected keys (leading underscore), keys prefixed with the database prefix such as capabilities, and session tokens are refused, since formats can reach visitors.
+	 * @param string $meta_key
+	 * @return bool
+	 */
+	public static function is_contact_meta_key_allowed( $meta_key ){
+		global $wpdb;
+		$allowed = is_string($meta_key) && !is_protected_meta($meta_key, 'user') && strpos($meta_key, $wpdb->base_prefix) !== 0 && !in_array($meta_key, array('session_tokens', 'user_pass', 'user_activation_key', 'default_password_nag'), true);
+		return apply_filters('em_event_contact_meta_key_allowed', $allowed, $meta_key);
+	}
 	
 	/**
 	 * Will output a event in the format passed in $format by replacing placeholders within the format.
@@ -3306,8 +3317,9 @@ class EM_Event extends EM_Object{
 					}
 					break;
 				case '#_CONTACTMETA':
-					if( !empty($placeholders[3][$key]) ){
+					if( !empty($placeholders[3][$key]) && static::is_contact_meta_key_allowed($placeholders[3][$key]) ){
 						$replace = get_user_meta($this->event_owner, $placeholders[3][$key], true);
+						if( !is_scalar($replace) ) $replace = '';
 					}
 					break;
 				case '#_ATTENDEES':

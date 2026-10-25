@@ -302,7 +302,7 @@ class EM_Object {
 			$is_location_status = $status_type == "location_status" && static::$context == 'location';
 			$is_event_status = $status_type == "event_status" && static::$context == 'event';
 			//$is_joined_status decides whether this status we're dealing with is part of a joined table or the main table
-			$is_joined_status = (!$is_location_status || !$is_event_status) && $args[$status_type] !== false;
+			$is_joined_status = !$is_location_status && !$is_event_status && $args[$status_type] !== false;
 			//we add a status condition if this is the main status context or if joining a table and joined status arg is not exactly false
 			if( $is_location_status || $is_event_status || $args[$status_type] !== false ){
 				$condition_status = $is_joined_status ? $status_type : 'status'; //the key for this condition type

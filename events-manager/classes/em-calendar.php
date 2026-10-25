@@ -16,8 +16,16 @@ class EM_Calendar extends EM_Object {
 		$original_args = $args;
 		$args = self::get_default_search($args);
 		if( !empty($args['format']) ) {
-			// escape the format if supplied via $_REQUEST, we are abundantly cautious here and won't test for a match, in case there's any kind of difference due to escaping, encoding etc.
 			if( !empty($_REQUEST['format']) ) {
+				// placeholders such as #_CONTACTMETA and #_ATTENDEESLIST expand server-side, so a request may only send back a format this site signed when it output the calendar
+				$args['format'] = wp_unslash( $args['format'] );
+				$format_sig = !empty($_REQUEST['format_sig']) && is_string($_REQUEST['format_sig']) ? $_REQUEST['format_sig'] : '';
+				if( !is_string($args['format']) || !hash_equals( static::get_format_signature($args['format']), $format_sig ) ) {
+					$args['format'] = '';
+				}
+			}
+			// escape a signed format too, we are abundantly cautious here in case there's any kind of difference due to escaping, encoding etc.
+			if( !empty($args['format']) && !empty($_REQUEST['format']) ) {
 				global $allowedposttags;
 				// for optimal performance, if you do not need to use HTML in your formats (for example, if just outputting #_EVENTIMAGE for example), we recommend you add this to your functions.php or similar:
 				// add_filter('em_calendar_allowed_format_html', '__return_empty_array');
@@ -32,6 +40,8 @@ class EM_Calendar extends EM_Object {
 					$args['format'] = wp_kses( $args['format'], $allowed_format_html );
 				}
 			}
+		}
+		if( !empty($args['format']) ) {
 			$calendar_array['format'] = $args['format'];
 		} else {
 			// get the default format, future iterations will also deduce the format for different display styles.
@@ -608,6 +618,9 @@ class EM_Calendar extends EM_Object {
 						$custom_args['calendar'][$name] = $value;
 					}
 				}
+				foreach( $custom_args as $group => $group_args ){
+					if( !empty($group_args['format']) ) $custom_args[$group]['format_sig'] = static::get_format_signature( $group_args['format'] );
+				}
 				?>
 				<form class="em-view-custom-data-search" id="em-view-custom-data-search-<?php echo absint($args['id']); ?>">
 					<?php foreach( array_merge($custom_args['search'], $custom_args['global']) as $name => $value ): ?>
@@ -627,6 +640,15 @@ class EM_Calendar extends EM_Object {
 		return apply_filters('em_calendar_output', ob_get_clean(), $args);
 	}
 
+
+	/**
+	 * Signs a calendar format so that it can be sent back by a request, such as when navigating months, without letting a request supply a format of its own.
+	 * @param string $format
+	 * @return string
+	 */
+	public static function get_format_signature( $format ){
+		return wp_hash( 'em_calendar_format|' . $format );
+	}
 
 	public static function days_in_month($month, $year) {
 		return date('t', mktime(0,0,0,$month,1,$year));

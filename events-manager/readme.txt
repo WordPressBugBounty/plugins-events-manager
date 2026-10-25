@@ -5,7 +5,7 @@ Tags: events, calendar, tickets, bookings, appointments
 Text Domain: events-manager
 Requires at least: 6.1
 Tested up to: 7.1
-Stable tag: 7.4.10
+Stable tag: 7.4.11
 Requires PHP: 7.0
 License: GPLv2
 
@@ -221,6 +221,13 @@ See our [FAQ](http://wp-events-plugin.com/documentation/faq/) page for help with
 18. Grid view for displaying your upcoming events at a glance
 
 == Changelog ==
+= 7.4.11 =
+* Security: Fixed an unauthenticated information disclosure vulnerability that could expose event owner details, reported by mercurystorm via the Security Hunt
+* Security: File upload display names are now stored as plain text, reported by mercurystorm via the Security Hunt
+* Security: Fixed an unauthenticated information disclosure where request status parameters could expose draft, pending and trashed events and locations, reported by Lewis Studios via the Security Hunt
+* Security: Fixed a booking takeover where a contributor or author could re-save another user's booking onto an event they own, exposing that booker's details, reported by Lewis Studios via the Security Hunt
+* Security: An OAuth connection limited to Events Manager is now refused over XML-RPC instead of acting with the account's full access, reported by Will Pom via the Security Hunt
+
 = 7.4.10 =
 * Fixed: Consent given during a logged-in booking was not saved, and optional consent could be revoked when booking again (props @willpom)
 * Fixed: Consent was recorded against the wrong user when an admin booked on someone's behalf (props @willpom)

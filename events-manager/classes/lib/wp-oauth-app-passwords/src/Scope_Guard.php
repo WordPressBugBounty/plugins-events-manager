@@ -20,6 +20,10 @@ class Scope_Guard {
 	public static function boot(): void {
 		add_action( 'application_password_did_authenticate', array( static::class, 'on_authenticated' ), 10, 2 );
 		add_filter( 'rest_pre_dispatch', array( static::class, 'enforce' ), 0, 3 );
+		// Scope can only be checked on the REST transport. WordPress also accepts Application Passwords over XML-RPC and any other non-REST surface, where no scope check runs, so a route-restricted credential is refused there outright rather than acting with the user's full capabilities.
+		add_filter( 'determine_current_user', array( static::class, 'enforce_non_rest' ), 30 );
+		// The XML-RPC login path authenticates through the `authenticate` filter rather than determine_current_user (e.g. the app password passed as the XML-RPC password argument), so it is refused there too.
+		add_filter( 'authenticate', array( static::class, 'enforce_authenticate' ), 30, 3 );
 	}
 
 	/**
@@ -40,6 +44,40 @@ class Scope_Guard {
 		// A password of ours with no grant on file (meta lost or hand-edited) is treated as the default scope rather than as unrestricted.
 		$scope = $match ? (string) ( $match['grant']['scope'] ?? '' ) : '';
 		self::$allowed = Server::routes_for_scope( Server::normalize_scope( $scope ) );
+	}
+
+	/**
+	 * Refuse a route-restricted credential of ours on any non-REST request. on_authenticated() has already run by this priority and set self::$allowed when one of our passwords authenticated; a restricted scope cannot be honoured off REST, so the request is left unauthenticated rather than granting the user's full capabilities (for example over XML-RPC).
+	 *
+	 * @param int|false|null $user_id
+	 * @return int|false|null
+	 */
+	public static function enforce_non_rest( $user_id ) {
+		if ( empty( $user_id ) || null === self::$allowed ) {
+			return $user_id;
+		}
+		if ( defined( 'REST_REQUEST' ) && REST_REQUEST ) {
+			return $user_id;
+		}
+		return null;
+	}
+
+	/**
+	 * As enforce_non_rest(), but for the `authenticate` filter that the XML-RPC login path runs through. on_authenticated() fires during core's app-password check on this same filter, so by this priority self::$allowed reflects whether one of our route-restricted passwords just authenticated.
+	 *
+	 * @param null|\WP_User|\WP_Error $user
+	 * @param string                 $username
+	 * @param string                 $password
+	 * @return null|\WP_User|\WP_Error
+	 */
+	public static function enforce_authenticate( $user, $username, $password ) {
+		if ( ! $user instanceof \WP_User || null === self::$allowed ) {
+			return $user;
+		}
+		if ( defined( 'REST_REQUEST' ) && REST_REQUEST ) {
+			return $user;
+		}
+		return new \WP_Error( 'insufficient_scope', __( 'This credential is limited to the features it was approved for and cannot be used here.', 'wp-oauth-app-passwords' ) );
 	}
 
 	/**

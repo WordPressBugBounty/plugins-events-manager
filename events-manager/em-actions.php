@@ -356,9 +356,13 @@ function em_init_actions_start() {
 			//ADD/EDIT Booking
 			ob_start();
 			em_verify_booking_nonce('booking_add');
+			// Authorise against the booking's persisted event before get_post() re-assigns event_id from the request. Otherwise a user could pass another user's booking_id together with an event they manage and have that booking re-saved onto their event, the same substitution already guarded in booking_form_summary. A new booking (no booking_id) is unaffected.
+			$can_edit_booking = empty($EM_Booking->booking_id) || $EM_Booking->can_manage('manage_bookings','manage_others_bookings') || ( is_user_logged_in() && !empty($EM_Booking->person->ID) && $EM_Booking->person->ID == get_current_user_id() );
 			if( !is_user_logged_in() || $EM_Booking->get_option('dbem_bookings_double') || !$EM_Event->get_bookings()->has_booking(get_current_user_id()) ){
 				if ( $EM_Event->event_status != 1 || $EM_Event->event_active_status != 1 ) {
 					$EM_Notices->add_error( __('This event is not available or has been cancelled', 'events-manager') ); // uncommon, not needed for custom error.
+				} elseif ( !$can_edit_booking ) {
+					$EM_Notices->add_error( __('You do not have permission to manage this booking.', 'events-manager') );
 				} else {
 				    $EM_Booking->get_post();
 					$post_validation = $EM_Booking->validate();
