@@ -683,6 +683,15 @@ class EM_Location extends EM_Object {
 	}
 	
 	/**
+	 * Whether this location may be shown to the current visitor, e.g. on a map. Only published, publicly viewable locations qualify; pending, draft and private locations are hidden unless the visitor can read that specific post. The EM location_status column is 1 for private locations too, so visibility is judged on the post, not that column.
+	 * @return boolean
+	 */
+	public function is_publicly_viewable(){
+		$viewable = !empty($this->post_id) && $this->status == 1 && ( is_post_publicly_viewable($this->post_id) || ( is_user_logged_in() && current_user_can('read_post', $this->post_id) ) );
+		return apply_filters('em_location_is_publicly_viewable', $viewable, $this);
+	}
+
+	/**
 	 * Whether this location's post is password-protected and the current visitor hasn't unlocked it. Anyone who can manage the location sees it regardless, matching how map balloons already behave.
 	 * @return boolean
 	 */

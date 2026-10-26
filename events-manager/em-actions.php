@@ -46,8 +46,11 @@ function em_init_actions_start() {
 			$EM_Locations = EM_Locations::get( $_REQUEST );
 			$json_locations = array();
 			foreach($EM_Locations as $location_key => $EM_Location) {
+				if ( ! $EM_Location->is_publicly_viewable() ) continue; // never disclose pending, draft or private locations to visitors who can't read them
 				$json_locations[$location_key] = $EM_Location->to_array();
-				$json_locations[$location_key]['location_balloon'] = $EM_Location->output( em_get_option('dbem_map_text_format') );
+				if ( ! $EM_Location->password_required() ) {
+					$json_locations[$location_key]['location_balloon'] = $EM_Location->output( em_get_option('dbem_map_text_format') );
+				}
 			}
 			echo EM_Object::json_encode($json_locations);
 		 	die();
@@ -60,8 +63,11 @@ function em_init_actions_start() {
 			$locations = array();
 			foreach($EM_Events as $EM_Event) {
 				$EM_Location = $EM_Event->get_location();
-				$location_array = $EM_Event->get_location()->to_array();
-				$location_array['location_balloon'] = $EM_Location->output(em_get_option('dbem_map_text_format'));
+				if ( ! $EM_Location->is_publicly_viewable() ) continue; // the joined location is only clamped on the main table, so re-check visibility before disclosing a pending/private venue (incl. venues of password-protected events)
+				$location_array = $EM_Location->to_array();
+				if ( ! $EM_Location->password_required() ) {
+					$location_array['location_balloon'] = $EM_Location->output(em_get_option('dbem_map_text_format'));
+				}
 				$json_locations[] = $location_array;
 			}
 			echo EM_Object::json_encode($json_locations);

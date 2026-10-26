@@ -5,7 +5,7 @@ Tags: events, calendar, tickets, bookings, appointments
 Text Domain: events-manager
 Requires at least: 6.1
 Tested up to: 7.1
-Stable tag: 7.4.11
+Stable tag: 7.4.12
 Requires PHP: 7.0
 License: GPLv2
 
@@ -221,6 +221,9 @@ See our [FAQ](http://wp-events-plugin.com/documentation/faq/) page for help with
 18. Grid view for displaying your upcoming events at a glance
 
 == Changelog ==
+= 7.4.12 =
+* Security: Fixed an unauthenticated information disclosure where the event and location map data endpoints could expose pending and private venue details, reported by 0xtrung via the Security Hunt
+
 = 7.4.11 =
 * Security: Fixed an unauthenticated information disclosure vulnerability that could expose event owner details, reported by mercurystorm via the Security Hunt
 * Security: File upload display names are now stored as plain text, reported by mercurystorm via the Security Hunt
