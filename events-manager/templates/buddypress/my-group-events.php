@@ -54,7 +54,7 @@
 				if( ($rowno < $limit || empty($limit)) && ($event_count >= $offset || $offset === 0) ) {
 					$rowno++;
 					$class = ($rowno % 2) ? 'alternate' : '';
-					$location_summary = "<b>" . $EM_Event->get_location()->name . "</b><br/>" . $EM_Event->get_location()->address . " - " . $EM_Event->get_location()->town;
+					$location_summary = $EM_Event->get_location()->is_viewable() ? "<b>" . $EM_Event->get_location()->name . "</b><br/>" . $EM_Event->get_location()->address . " - " . $EM_Event->get_location()->town : '';
 					
 					if( $EM_Event->start()->getTimestamp() < time() && $EM_Event->end()->getTimestamp() < time() ){
 						$class .= " past";

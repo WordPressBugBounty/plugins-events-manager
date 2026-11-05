@@ -1204,9 +1204,10 @@ function em_upgrade_current_installation(){
 	}
 
 	//the timestamp is EM_Admin_Modals::HUNT_ENDS, existing installs only so a fresh install is not greeted with a promo
-	if( !empty($current_version) && time() < 1793663999 ) {
+	if( !empty($current_version) && time() < 1794477600 ) {
 		if( empty($data['admin-modals']) ) $data['admin-modals'] = array();
 		$data['admin-modals']['security-hunt'] = true;
+		unset($data['admin-modals']['security-hunt-count']);
 		update_site_option('dbem_data', $data);
 	}
 

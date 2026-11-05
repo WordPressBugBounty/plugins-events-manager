@@ -129,7 +129,7 @@
 							<?php if( em_get_option('dbem_locations_enabled') ): ?>
 								<td>
 									<?php
-									if( $EM_Event->has_location() ){
+									if( $EM_Event->has_location() && ( empty($EM_Event->location_id) || $EM_Event->get_location()->is_viewable() ) ){
 										echo "<b>" . esc_html($EM_Event->get_location()->location_name) . "</b><br/>" . esc_html($EM_Event->get_location()->location_address) . " - " . esc_html($EM_Event->get_location()->location_town);
 									}elseif( $EM_Event->has_event_location() ) {
 										echo $EM_Event->get_event_location()->get_admin_column();

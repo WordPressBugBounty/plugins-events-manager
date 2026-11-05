@@ -229,6 +229,7 @@ class EM_Tickets extends EM_Object implements Iterator, Countable {
 			    		$EM_Ticket = $current_tickets[$ticket_data['ticket_id']];
 			    	}else{
 			    		$EM_Ticket = new EM_Ticket();
+			    		unset($ticket_data['ticket_id']);
 			    	}
 					$ticket_data['event_id'] = $this->event_id;
 					// check if a ticket is to be deleted

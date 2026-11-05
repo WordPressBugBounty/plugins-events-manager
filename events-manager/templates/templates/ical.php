@@ -88,7 +88,7 @@ while ( count($EM_Events) > 0 ){
 		$url = 'URL:'.$EM_Event->get_permalink();
 		$url = wordwrap($url, 74, "\n ", true);
 		$location = $location_raw = $geo = $apple_geo = $apple_location = $apple_location_title = $apple_structured_location = $categories = false;
-		if( $EM_Event->location_id ){
+		if( $EM_Event->location_id && $EM_Event->get_location()->is_viewable() ){
 			$location_raw = $EM_Event->output($location_format, 'ical');
 			if( $EM_Event->get_location()->location_latitude || $EM_Event->get_location()->location_longitude ){
 				$geo = 'GEO:'.$EM_Event->get_location()->location_latitude.";".$EM_Event->get_location()->location_longitude;

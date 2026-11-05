@@ -2105,6 +2105,27 @@ class EM_Event extends EM_Object{
 		}
 		return apply_filters('em_event_password_required', $required, $this);
 	}
+
+	/**
+	 * Whether the current visitor may read this event when it is rendered outside its own permalink, such as by ID in a shortcode. Judged on the WordPress post the event renders from, so postless recurrences and timeslots inherit their parent's visibility, and password-protected events stay hidden until unlocked.
+	 * @return boolean
+	 */
+	public function is_viewable(){
+		$EM_Event = $this;
+		if ( empty($EM_Event->post_id) && $this->get_parent() ) {
+			$EM_Event = $this->get_parent();
+		}
+		$viewable = false;
+		if ( !empty($EM_Event->post_id) ) {
+			if ( EM_MS_GLOBAL && !empty($EM_Event->blog_id) && get_current_blog_id() != $EM_Event->blog_id ) {
+				switch_to_blog($EM_Event->blog_id);
+				$switch_back = true;
+			}
+			$viewable = ( is_post_publicly_viewable($EM_Event->post_id) || current_user_can('read_post', $EM_Event->post_id) ) && !$EM_Event->password_required();
+			if ( !empty($switch_back) ) restore_current_blog();
+		}
+		return apply_filters('em_event_is_viewable', $viewable, $this);
+	}
 	
 	/**
 	 * Returns an EM_DateTime object of the event start date/time in local timezone of event.
@@ -2707,10 +2728,10 @@ class EM_Event extends EM_Object{
 						$show_condition = !$this->has_event_location() && !$this->has_location();
 					}elseif ($condition == 'has_location'){
 						//does this event have a valid location?
-						$show_condition = ( $this->has_location() && $this->get_location()->location_status ) || $this->has_event_location();
+						$show_condition = ( $this->has_location() && $this->get_location()->is_viewable() ) || $this->has_event_location();
 					}elseif ($condition == 'has_location_venue'){
 						//does this event have a valid physical location?
-						$show_condition = ( $this->has_location() && $this->get_location()->location_status ) || $this->has_location();
+						$show_condition = $this->has_location() && ( empty($this->location_id) || $this->get_location()->is_viewable() );
 					}elseif ($condition == 'no_location_venue'){
 						//does this event NOT have a valid physical location?
 						$show_condition = !$this->has_location();
@@ -3504,7 +3525,7 @@ class EM_Event extends EM_Object{
 		}
 		//Now do dependent objects
 		if( $this->get_option('dbem_locations_enabled') ){
-			if( !empty($this->location_id) && ($this->get_location()->location_status || $this->get_location()->location_status === $this->event_status) ){
+			if( !empty($this->location_id) && $this->get_location()->is_viewable() ){
 				$event_string = $this->get_location()->output($event_string, $target);
 			}else{
 				$EM_Location = new EM_Location();
@@ -3557,7 +3578,8 @@ class EM_Event extends EM_Object{
 		$url = str_replace('event_name', urlencode($this->event_name), $url);
 		$url = str_replace('start_date', urlencode($dateStart), $url);
 		$url = str_replace('end_date', urlencode($dateEnd), $url);
-		$url = str_replace('location_name', urlencode($this->get_location()->get_full_address(', ', true)), $url);
+		$location_name = ( !empty($this->location_id) && $this->get_location()->is_viewable() ) ? $this->get_location()->get_full_address(', ', true) : '';
+		$url = str_replace('location_name', urlencode($location_name), $url);
 		$url = str_replace('blog_name', urlencode(get_bloginfo()), $url);
 		$url = str_replace('event_url', urlencode($this->get_permalink()), $url);
 		$url = str_replace('event_timezone', urlencode($this->event_timezone), $url); // Google specific
@@ -4086,7 +4108,7 @@ class EM_Event extends EM_Object{
 		}
 		if( $this->has_location() ) {
 			$EM_Location = $this->get_location();
-			$event['location'] = $EM_Location->to_api();
+			if ( empty($this->location_id) || $EM_Location->is_viewable() ) $event['location'] = $EM_Location->to_api();
 		}elseif( $this->has_event_location() ){
 			$event['location_type'] = $this->event_location_type;
 			$event['location'] = $this->get_event_location()->to_api();

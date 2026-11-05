@@ -1353,7 +1353,7 @@ class EM_Bookings extends EM_Object implements Iterator, ArrayAccess {
 		}
 		if( !empty($args['search']) ){
 			// escape the value directly, because otherwise it messes up with % marks in prepare
-			$search = '%' . $wpdb->_real_escape($args['search']) . '%';
+			$search = '%' . $wpdb->_real_escape($wpdb->esc_like($args['search'])) . '%';
 			$search_conditions = array();
 			$search_conditions[] = EM_BOOKINGS_TABLE.'.person_id IN (SELECT user_id FROM '.$wpdb->usermeta ." WHERE meta_value LIKE '$search' AND meta_key NOT LIKE '%_settings')";
 			$search_conditions[] = EM_BOOKINGS_TABLE.'.booking_id IN (SELECT booking_id FROM '.EM_BOOKINGS_META_TABLE." WHERE meta_value LIKE '$search')";

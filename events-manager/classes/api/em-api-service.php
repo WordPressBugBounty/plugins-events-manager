@@ -698,8 +698,8 @@ class Service {
 			$args['person'] = get_current_user_id();
 			$args['owner'] = get_current_user_id();
 		} else {
-			// EM_Bookings::get_default_search() scopes to the current user's own events unless owner is passed explicitly, so a manager with no owner override would otherwise only see their own bookings.
-			$args['owner'] = false;
+			// Owner is passed explicitly because it overrides get_default_search(); the count below runs on these args too, so anyone who can't manage others' bookings must stay scoped to their own events or the total leaks matches across the site.
+			$args['owner'] = current_user_can( 'manage_others_bookings' ) ? false : get_current_user_id();
 		}
 		if ( !empty( $params['event_id'] ) && empty( $args['event'] ) ) {
 			$args['event'] = $params['event_id'];
@@ -1532,7 +1532,10 @@ class Service {
 		// Multipart upload from /media POST.
 		if ( !empty( $data['_files_file'] ) ) {
 			$file = $data['_files_file'];
-			$overrides = array( 'test_form' => false, 'action' => 'em_api_media_upload' );
+			if ( !is_array( $file ) || empty( $file['tmp_name'] ) || !is_uploaded_file( $file['tmp_name'] ) ) {
+				return Utils::error( 'em_api_media_invalid_upload', __( 'Invalid file upload.', 'events-manager' ), 400 );
+			}
+			$overrides = array( 'test_form' => false );
 			// media_handle_upload expects $_FILES key — stage the file as $_FILES['em_api_media'].
 			$_FILES['em_api_media'] = $file;
 			$attachment_id = media_handle_upload( 'em_api_media', !empty( $data['post_id'] ) ? absint( $data['post_id'] ) : 0, array(), $overrides );
@@ -1549,7 +1552,17 @@ class Service {
 			}
 			$post_id = !empty( $data['post_id'] ) ? absint( $data['post_id'] ) : 0;
 			$desc = !empty( $data['title'] ) ? sanitize_text_field( $data['title'] ) : null;
-			$attachment_id = media_sideload_image( $source_url, $post_id, $desc, 'id' );
+			// The host is resolved again when the download connects and on every redirect, so a DNS answer that changes after the check above (rebinding) or a redirect to a private address would slip past it. Re-check each hop and pin cURL to the address just validated.
+			$pin = array( static::class, 'pin_public_request' );
+			$redirect_guard = array( static::class, 'guard_redirect' );
+			add_action( 'http_api_curl', $pin, 10, 1 );
+			add_action( 'requests-requests.before_redirect', $redirect_guard, 10, 1 );
+			try {
+				$attachment_id = media_sideload_image( $source_url, $post_id, $desc, 'id' );
+			} finally {
+				remove_action( 'http_api_curl', $pin, 10 );
+				remove_action( 'requests-requests.before_redirect', $redirect_guard, 10 );
+			}
 			if ( is_wp_error( $attachment_id ) ) return $attachment_id;
 			return absint( $attachment_id );
 		}
@@ -1585,6 +1598,13 @@ class Service {
 	 * Confirms every address the host resolves to is publicly routable, guarding source_url sideloads against SSRF to loopback, private, reserved or link-local ranges (notably the 169.254.0.0/16 cloud-metadata range that wp_http_validate_url permits).
 	 */
 	protected static function is_public_url( $url ) {
+		return (bool) static::public_ips( $url );
+	}
+
+	/**
+	 * Resolves the URL's host and returns its addresses only when every one is publicly routable, otherwise false.
+	 */
+	protected static function public_ips( $url ) {
 		$scheme = strtolower( (string) wp_parse_url( $url, PHP_URL_SCHEME ) );
 		if ( !in_array( $scheme, array( 'http', 'https' ), true ) ) {
 			return false;
@@ -1603,6 +1623,7 @@ class Service {
 				if ( !empty( $record['ipv6'] ) ) $ips[] = $record['ipv6'];
 			}
 		}
+		$ips = array_filter( $ips );
 		if ( empty( $ips ) ) {
 			return false;
 		}
@@ -1611,7 +1632,41 @@ class Service {
 				return false;
 			}
 		}
-		return true;
+		return array_values( $ips );
+	}
+
+	/**
+	 * http_api_curl callback for source_url sideloads: re-validates the URL this cURL handle is about to fetch (each redirect hop gets its own handle) and pins the connection to the address just checked.
+	 */
+	public static function pin_public_request( $handle ) {
+		$url = curl_getinfo( $handle, CURLINFO_EFFECTIVE_URL );
+		$ips = static::public_ips( $url );
+		if ( !$ips ) {
+			static::refuse_request();
+		}
+		$host = trim( wp_parse_url( $url, PHP_URL_HOST ), '[]' );
+		if ( !filter_var( $host, FILTER_VALIDATE_IP ) ) {
+			$port = wp_parse_url( $url, PHP_URL_PORT ) ?: ( strtolower( wp_parse_url( $url, PHP_URL_SCHEME ) ) === 'https' ? 443 : 80 );
+			$ip = $ips[0];
+			curl_setopt( $handle, CURLOPT_RESOLVE, array( $host . ':' . $port . ':' . ( strpos( $ip, ':' ) !== false ? '[' . $ip . ']' : $ip ) ) );
+		}
+	}
+
+	/**
+	 * Redirect check for source_url sideloads, covering non-cURL transports too, since WordPress' own redirect validation resolves IPv4 only and older versions still allow the 169.254 cloud-metadata range.
+	 */
+	public static function guard_redirect( $location ) {
+		if ( !static::is_public_url( $location ) ) {
+			static::refuse_request();
+		}
+	}
+
+	/**
+	 * Aborts the in-flight request; WP_Http turns a Requests exception into a WP_Error for the caller.
+	 */
+	protected static function refuse_request() {
+		$class = class_exists( '\WpOrg\Requests\Exception' ) ? '\WpOrg\Requests\Exception' : '\Requests_Exception';
+		throw new $class( __( 'Invalid source URL.', 'events-manager' ), 'em_api_media_invalid_url' );
 	}
 
 	/**

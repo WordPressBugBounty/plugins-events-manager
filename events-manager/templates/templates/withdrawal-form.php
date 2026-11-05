@@ -4,7 +4,7 @@
  *
  * Override by copying to: yourtheme/plugins/events-manager/templates/withdrawal-form.php
  *
- * @var array $view Supplied by EM_Withdrawal::shortcode() — keys: step, labels, errors, reference, email, policy, action_url, and (per step) booking, statement, timestamp.
+ * @var array $view Supplied by EM_Withdrawal::shortcode() — keys: step, labels, errors, reference, email, policy, action_url, and (per step) booking, token, bookings, access, statement, timestamp.
  */
 if ( ! defined( 'ABSPATH' ) ) exit;
 $labels = $view['labels'];
@@ -67,6 +67,7 @@ $id     = rand(); // unique per-render view id, following the EM template conven
 			<input type="hidden" name="em_wd_action" value="confirm">
 			<input type="hidden" name="em_wd_booking_id" value="<?php echo esc_attr( $EM_Booking->booking_id ); ?>">
 			<input type="hidden" name="em_wd_email" value="<?php echo esc_attr( $EM_Booking->get_person()->user_email ); ?>">
+			<input type="hidden" name="em_wd_token" value="<?php echo esc_attr( $view['token'] ?? '' ); ?>">
 			<?php wp_nonce_field( 'em_wd_confirm', 'em_wd_nonce' ); ?>
 			<div class="em-withdrawal-actions">
 				<button type="submit" class="button button-primary em-withdrawal-confirm"><?php echo esc_html( $labels['confirm'] ); ?></button>
@@ -88,6 +89,8 @@ $id     = rand(); // unique per-render view id, following the EM template conven
 			</p>
 			<input type="hidden" name="em_wd_action" value="select">
 			<input type="hidden" name="em_wd_email" value="<?php echo esc_attr( $view['email'] ); ?>">
+			<input type="hidden" name="em_wd_u" value="<?php echo esc_attr( $view['access']['u'] ?? '' ); ?>">
+			<input type="hidden" name="em_wd_t" value="<?php echo esc_attr( $view['access']['t'] ?? '' ); ?>">
 			<?php wp_nonce_field( 'em_wd_select', 'em_wd_nonce' ); ?>
 			<div class="em-withdrawal-actions">
 				<button type="submit" class="button button-primary em-withdrawal-submit"><?php echo esc_html( $labels['button'] ); ?></button>

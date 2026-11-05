@@ -5,7 +5,7 @@ Tags: events, calendar, tickets, bookings, appointments
 Text Domain: events-manager
 Requires at least: 6.1
 Tested up to: 7.1
-Stable tag: 7.4.12
+Stable tag: 7.4.13
 Requires PHP: 7.0
 License: GPLv2
 
@@ -221,6 +221,16 @@ See our [FAQ](http://wp-events-plugin.com/documentation/faq/) page for help with
 18. Grid view for displaying your upcoming events at a glance
 
 == Changelog ==
+= 7.4.13 =
+* Security: Fixed a file handling vulnerability in the REST API, reported by Greg on 30A via the Security Hunt
+* Security: Fixed an information disclosure vulnerability in the REST API, reported by Greg on 30A via the Security Hunt
+* Security: Fixed an access control vulnerability affecting tickets, reported by Greg on 30A via the Security Hunt
+* Security: Fixed an access control vulnerability in bookings, reported by mercurystorm via the Security Hunt
+* Security: Fixed an information disclosure vulnerability affecting locations, reported by Benjamin Kincses via the Security Hunt
+* Security: Fixed an information disclosure vulnerability in shortcodes, reported by mercurystorm via the Security Hunt
+* Security: Fixed a vulnerability in booking withdrawals, reported by mercurystorm via the Security Hunt
+* Security: Hardened remote image downloads in the REST API
+
 = 7.4.12 =
 * Security: Fixed an unauthenticated information disclosure where the event and location map data endpoints could expose pending and private venue details, reported by 0xtrung via the Security Hunt
 

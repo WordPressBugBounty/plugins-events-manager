@@ -6,7 +6,7 @@ class EM_Admin_Modals {
 	
 	const PROMO_ENDS = 1791183600; // 2026-10-05 07:00:00 UTC, when the saved-card and comeback offers end
 	const FLASH_SALE_ENDS = 1791183600; // 2026-10-05 07:00:00 UTC, when the Go Pro flash sale shown to sites without Pro ends
-	const HUNT_ENDS = 1793663999; // 2026-11-02 23:59:59 UTC; the sale runs to November 5 and the hunt itself to November 30
+	const HUNT_ENDS = 1794477600; // 2026-11-12 10:00:00 UTC, so Wednesday November 11 holds through Hawaii; the sale ends then and the hunt itself runs to November 30
 	
 	/** Dated so a new offer window is not hidden by a dismissal of the previous one. */
 	public static function promo_notice_name() {
@@ -421,9 +421,9 @@ class EM_Admin_Modals {
 	/** Pro sites get a renew or upgrade link, everyone else goes to the Go Pro page. */
 	public static function hunt_sale_link( $source = 'modal' ) {
 		if ( defined('EMP_VERSION') ) {
-			return array( 'url' => 'https://pxlink.cc/hunt-renew-' . $source, 'label' => 'Renew or Upgrade' );
+			return array( 'url' => 'https://eventsmanagerpro.com/gopro/?utm_source=events-manager&utm_medium=hunt-' . $source . '&utm_campaign=hunt-sale-renew', 'label' => 'Renew or Upgrade' );
 		}
-		return array( 'url' => 'https://pxlink.cc/hunt-gopro-' . $source, 'label' => 'Go Pro' );
+		return array( 'url' => 'https://eventsmanagerpro.com/gopro/?utm_source=events-manager&utm_medium=hunt-' . $source . '&utm_campaign=hunt-sale-gopro', 'label' => 'Go Pro' );
 	}
 	
 	public static function hunt_popup(){
@@ -433,12 +433,12 @@ class EM_Admin_Modals {
 			<div class="em-modal-popup">
 				<header>
 					<a class="em-close-modal dismiss-modal" href="#"></a><!-- close modal -->
-					<div class="em-modal-title">We want YOUR AI to Break Events Manager</div>
+					<div class="em-modal-title">The Security Hunt Scoreboard is Live</div>
 				</header>
 				<div class="em-modal-content has-image" style="--font-size:16px;">
 					<div>
-						<p>Think your AI can break Events Manager? Prove it. Until November 30, find a real security vulnerability, report it to us privately, and earn up to 12 months of Pro. Whoever tops the scoreboard on November 30 wins a lifetime Events Manager Pro license.</p>
-						<p>Our recent sale is also back, <strong>with up to 35% off Pro</strong> on new licenses, upgrades and renewals.</p>
+						<p>We invited anyone with an AI to try and break Events Manager, and the security fixes in this update came from what they found. You can now see who's in the lead. The hunt runs until November 30, anyone can still enter, and whoever tops the scoreboard then wins a lifetime Events Manager Pro license.</p>
+						<p>Our sale is also back until <strong>Wednesday, November 11</strong>, with <strong>up to 35% off Pro</strong> on new licenses, upgrades and renewals.</p>
 					</div>
 					<div class="image">
 						<img src="<?php echo EM_DIR_URI . '/includes/images/hunt-promo.jpg'; ?>">
@@ -446,7 +446,8 @@ class EM_Admin_Modals {
 				</div><!-- content -->
 				<footer class="em-submit-section input">
 					<div>
-						<a href="https://pxlink.cc/hunt-rules-modal" class="button button-primary input" target="_blank" style="margin:10px auto; --accent-color:#429543; --accent-color-hover:#429543;">Read More</a>
+						<a href="https://pxlink.cc/hunt-rules-modal" class="button button-primary input" target="_blank" style="margin:10px 5px; --accent-color:#429543; --accent-color-hover:#429543;">See the Scoreboard</a>
+						<a href="<?php echo esc_url( $sale['url'] ); ?>" class="button button-primary input" target="_blank" style="margin:10px 5px;"><?php echo esc_html( $sale['label'] ); ?></a>
 					</div>
 					<div>
 						<button class="button button-secondary dismiss-modal">Dismiss Notice</button>
@@ -469,10 +470,11 @@ class EM_Admin_Modals {
 				<img src="<?php echo EM_DIR_URI . '/includes/images/hunt-promo.jpg'; ?>" style="width: 100%;">
 			</div>
 			<div>
-				<h3 style="margin: 0 0 5px; padding-bottom:0;">Think your AI can break Events Manager?</h3>
-				<p>Prove it. Find a real security vulnerability by November 30 and earn up to 12 months of Pro, and the top of the scoreboard wins a lifetime license. Our sale is also back <strong>with up to 35% off Pro</strong>.</p>
+				<h3 style="margin: 0 0 5px; padding-bottom:0;">The Security Hunt scoreboard is live</h3>
+				<p>The security fixes in this update came from our AI security hunt, and you can now see who's in the lead. Our sale is also back until <strong>Wednesday, November 11</strong>, with <strong>up to 35% off Pro</strong>.</p>
 				<div>
-					<a href="https://pxlink.cc/hunt-rules-notice" class="button button-primary input" target="_blank" style="margin-right:10px; --accent-color:#429543; --accent-color-hover:#429543;">Read More</a>
+					<a href="https://pxlink.cc/hunt-rules-notice" class="button button-primary input" target="_blank" style="margin-right:10px; --accent-color:#429543; --accent-color-hover:#429543;">See the Scoreboard</a>
+					<a href="<?php echo esc_url( $sale['url'] ); ?>" class="button button-primary input" target="_blank" style="margin-right:10px;"><?php echo esc_html( $sale['label'] ); ?></a>
 					<a href="<?php echo esc_url( admin_url('admin-ajax.php?action=em_dismiss_admin_notice&notice=security-hunt&redirect=1&nonce='. wp_create_nonce('em_dismiss_admin_noticesecurity-hunt'.get_current_user_id()) ) ); ?>" class="button button-secondary"><?php esc_html_e('Dismiss', 'events-manager'); ?></a>
 				</div>
 			</div>

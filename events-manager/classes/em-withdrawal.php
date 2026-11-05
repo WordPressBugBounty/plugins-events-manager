@@ -306,13 +306,21 @@ class EM_Withdrawal {
 			$view['step'] = 'sent';
 			return $view;
 		}
+		// Only the unguessable booking UUID proves the visitor holds the booking. A sequential booking ID plus a known email does not, so it gets the emailed link, with the same response as a blank reference.
+		$reference = strtolower( $reference );
+		if ( ! preg_match( '/^[a-f0-9]{32}$/', $reference ) ) {
+			self::send_access_link( $email );
+			$view['step'] = 'sent';
+			return $view;
+		}
 		$EM_Booking = em_get_booking( $reference );
-		if ( ! self::booking_matches( $EM_Booking, $email ) ) {
+		if ( ! is_object( $EM_Booking ) || ! hash_equals( (string) $EM_Booking->booking_uuid, $reference ) || ! self::booking_matches( $EM_Booking, $email ) ) {
 			$view['errors'][] = __( 'We could not find a booking matching that reference and email address. Please check both and try again.', 'events-manager' );
 			return $view;
 		}
 		$view['step']    = 'confirm';
 		$view['booking'] = $EM_Booking;
+		$view['token']   = self::issue_confirm_token( $EM_Booking, $email );
 		return $view;
 	}
 
@@ -324,14 +332,22 @@ class EM_Withdrawal {
 			$view['errors'][] = __( 'Your session expired, please try again.', 'events-manager' );
 			return $view;
 		}
-		$booking_id = absint( $_POST['em_wd_booking_id'] ?? 0 );
-		$email      = sanitize_email( wp_unslash( $_POST['em_wd_email'] ?? '' ) );
+		// The booking and email come from the token issued once the visitor proved they hold the booking, never from the posted fields, so this step can't be driven directly with a guessed booking ID.
+		$token = preg_replace( '/[^a-f0-9]/', '', (string) ( $_POST['em_wd_token'] ?? '' ) );
+		$data  = $token !== '' ? get_transient( 'em_wd_cf_' . $token ) : false;
+		if ( ! is_array( $data ) || empty( $data['booking_id'] ) || empty( $data['email'] ) ) {
+			$view['errors'][] = __( 'We could not verify that booking. Please start again.', 'events-manager' );
+			return $view;
+		}
+		$booking_id = (int) $data['booking_id'];
+		$email      = $data['email'];
 		$reason     = sanitize_textarea_field( wp_unslash( $_POST['em_wd_reason'] ?? '' ) );
 		$EM_Booking = em_get_booking( $booking_id );
 		if ( ! self::booking_matches( $EM_Booking, $email ) ) {
 			$view['errors'][] = __( 'We could not verify that booking. Please start again.', 'events-manager' );
 			return $view;
 		}
+		delete_transient( 'em_wd_cf_' . $token );
 		$timestamp = current_time( 'mysql' );
 		$statement = self::build_statement( $EM_Booking, $email, $reason );
 		$record    = array(
@@ -363,6 +379,28 @@ class EM_Withdrawal {
 		}
 		$booking_email = $EM_Booking->get_person()->user_email;
 		return strtolower( trim( (string) $booking_email ) ) === strtolower( trim( $email ) );
+	}
+
+	/**
+	 * Issue a single-use, one-hour token that lets the confirmation step record a withdrawal for this booking only.
+	 */
+	protected static function issue_confirm_token( $EM_Booking, $email ) {
+		$token = bin2hex( random_bytes( 16 ) );
+		set_transient( 'em_wd_cf_' . $token, array( 'booking_id' => (int) $EM_Booking->booking_id, 'email' => $email ), HOUR_IN_SECONDS );
+		return $token;
+	}
+
+	/**
+	 * The email-keyed magic-link record for a hash and token pair, or false if the link is unknown, expired or doesn't match.
+	 */
+	protected static function access_data( $u, $t ) {
+		$u    = preg_replace( '/[^a-f0-9]/', '', (string) $u );
+		$t    = preg_replace( '/[^a-f0-9]/', '', (string) $t );
+		$data = $u !== '' ? get_transient( 'em_wd_token_' . $u ) : false;
+		if ( ! is_array( $data ) || empty( $data['token'] ) || empty( $data['email'] ) || ! hash_equals( $data['token'], $t ) ) {
+			return false;
+		}
+		return $data;
 	}
 
 	/**
@@ -486,8 +524,8 @@ class EM_Withdrawal {
 	protected static function handle_access( $view ) {
 		$u    = isset( $_GET['u'] ) ? preg_replace( '/[^a-f0-9]/', '', $_GET['u'] ) : '';
 		$t    = isset( $_GET['t'] ) ? preg_replace( '/[^a-f0-9]/', '', $_GET['t'] ) : '';
-		$data = $u !== '' ? get_transient( 'em_wd_token_' . $u ) : false;
-		if ( ! is_array( $data ) || empty( $data['token'] ) || ! hash_equals( $data['token'], $t ) ) {
+		$data = self::access_data( $u, $t );
+		if ( ! $data ) {
 			$view['errors'][] = __( 'This link is invalid or has expired. Please request a new one.', 'events-manager' );
 			return $view;
 		}
@@ -500,6 +538,7 @@ class EM_Withdrawal {
 		$view['step']     = 'select';
 		$view['email']    = $email;
 		$view['bookings'] = $bookings;
+		$view['access']   = array( 'u' => $u, 't' => $t );
 		return $view;
 	}
 
@@ -511,15 +550,18 @@ class EM_Withdrawal {
 			$view['errors'][] = __( 'Your session expired, please try again.', 'events-manager' );
 			return $view;
 		}
+		// Re-check the magic link itself so a booking can only be picked from the list the link-verified email owns.
+		$data       = self::access_data( $_POST['em_wd_u'] ?? '', $_POST['em_wd_t'] ?? '' );
 		$booking_id = absint( $_POST['em_wd_booking_id'] ?? 0 );
-		$email      = sanitize_email( wp_unslash( $_POST['em_wd_email'] ?? '' ) );
-		$EM_Booking = em_get_booking( $booking_id );
-		if ( ! self::booking_matches( $EM_Booking, $email ) ) {
+		$bookings   = $data ? self::find_bookings_by_email( $data['email'] ) : array();
+		if ( empty( $bookings[ $booking_id ] ) ) {
 			$view['errors'][] = __( 'We could not verify that booking. Please start again.', 'events-manager' );
 			return $view;
 		}
+		$EM_Booking      = $bookings[ $booking_id ];
 		$view['step']    = 'confirm';
 		$view['booking'] = $EM_Booking;
+		$view['token']   = self::issue_confirm_token( $EM_Booking, $data['email'] );
 		return $view;
 	}
 

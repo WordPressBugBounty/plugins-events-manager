@@ -692,6 +692,23 @@ class EM_Location extends EM_Object {
 	}
 
 	/**
+	 * Whether the current visitor may see this location's details, for example as the venue of an event they can read. Unlike is_publicly_viewable() this also admits pending or draft locations to users who can read that post, so owners still see the venue when previewing their own pending event.
+	 * @return boolean
+	 */
+	public function is_viewable(){
+		$viewable = false;
+		if ( !empty($this->post_id) ) {
+			if ( EM_MS_GLOBAL && !empty($this->blog_id) && get_current_blog_id() != $this->blog_id ) {
+				switch_to_blog($this->blog_id);
+				$switch_back = true;
+			}
+			$viewable = $this->is_publicly_viewable() || current_user_can('read_post', $this->post_id);
+			if ( !empty($switch_back) ) restore_current_blog();
+		}
+		return apply_filters('em_location_is_viewable', $viewable, $this);
+	}
+
+	/**
 	 * Whether this location's post is password-protected and the current visitor hasn't unlocked it. Anyone who can manage the location sees it regardless, matching how map balloons already behave.
 	 * @return boolean
 	 */

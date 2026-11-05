@@ -291,6 +291,7 @@ class REST {
 
 	public static function upload_media( $request ) {
 		$data = Utils::get_request_data( $request );
+		unset( $data['_files_file'] );
 		// Multipart file uploads come through $_FILES, not the parsed body.
 		if ( !empty( $_FILES['file'] ) && is_array( $_FILES['file'] ) ) {
 			$data['_files_file'] = $_FILES['file'];

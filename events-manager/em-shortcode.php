@@ -148,10 +148,12 @@ function em_get_event_shortcode($args, $format='') {
 	$args = em_clean_shortcode_args( (array) $args, $format );
 	if( !empty($args['event']) && is_numeric($args['event']) ){
 		$EM_Event = em_get_event($args['event']);
-		$return = ( !empty($args['format']) ) ? $EM_Event->output($args['format']) : $EM_Event->output_single();
 	}elseif( !empty($args['post_id']) && is_numeric($args['post_id']) ){
 		$EM_Event = em_get_event($args['post_id'], 'post_id');
-		$return = ( !empty($args['format']) ) ? $EM_Event->output($args['format']) : $EM_Event->output_single();
+	}
+	// an explicit ID lets any author embed another user's event, so it must be one this visitor could read on its own permalink
+	if( !empty($EM_Event) && !$EM_Event->is_viewable() ){
+		return '';
 	}
 	//no specific event or post id supplied, check globals
 	if( !empty($EM_Event) ){
@@ -192,9 +194,12 @@ function em_get_location_shortcode($args, $format='') {
 	$args = em_clean_shortcode_args( (array) $args, $format );
 	if( !empty($args['location']) && is_numeric($args['location']) ){
 		$EM_Location = em_get_location($args['location']);
-		return ( !empty($args['format']) ) ? $EM_Location->output($args['format']) : $EM_Location->output_single();
 	}elseif( !empty($args['post_id']) && is_numeric($args['post_id']) ){
 		$EM_Location = em_get_location($args['post_id'],'post_id');
+	}
+	if( !empty($EM_Location) ){
+		// as with [event], an explicit ID must point at a location this visitor could read on its own page
+		if( !$EM_Location->is_viewable() || $EM_Location->password_required() ) return '';
 		return ( !empty($args['format']) ) ? $EM_Location->output($args['format']) : $EM_Location->output_single();
 	}
 	//no specific location or post id supplied, check globals
