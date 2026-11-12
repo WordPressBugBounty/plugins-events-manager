@@ -149,7 +149,7 @@ class Schemas {
 
 				'em_tickets' => array(
 					'type'        => 'object',
-					'description' => 'Tickets bound to this event. Object keyed by ticket ID (existing) or 1-based sequential index (new). Key `0` is reserved by `EM_Tickets::get_post()` (admin-form template row); the API auto-shifts 0-indexed payloads. Requires `event_rsvp:1` on the event to take effect.',
+					'description' => 'Tickets bound to this event. A row with `ticket_id`, or keyed by one of this event\'s ticket IDs, updates that ticket; any other row adds a new ticket. Keys numbered 1, 2, 3... in order are positional, so a row there needs `ticket_id` to update a ticket. Key `0` is reserved by `EM_Tickets::get_post()` (admin-form template row); the API auto-shifts 0-indexed payloads. Requires `event_rsvp:1` on the event to take effect.',
 					'additionalProperties' => static::ticket_input(),
 				),
 				'em_attributes' => array(
@@ -203,7 +203,7 @@ class Schemas {
 				'event_id'            => array( 'type' => 'string',  'description' => 'Owning event ID. Auto-populated when the ticket is nested under an event POST/PATCH; required when sending to `/tickets/{id}` directly.' ),
 				'ticket_name'         => array( 'type' => 'string',  'description' => 'Ticket display name. Required.' ),
 				'ticket_description'  => array( 'type' => 'string',  'description' => 'Long-form ticket description (e.g. what\'s included). Accepts HTML.' ),
-				'ticket_status'       => array( 'type' => 'integer', 'description' => '`1` = bookable, `0` = disabled. Defaults to `0` (disabled) if omitted — set explicitly to `1` to make tickets bookable.' ),
+				'ticket_status'       => array( 'type' => 'integer', 'description' => '`1` = bookable, `0` = disabled. If omitted, a new ticket is bookable and an update keeps the current status.' ),
 				'ticket_price'        => array( 'type' => 'number',  'description' => 'Ticket price in the site currency. `0` = free.' ),
 				'ticket_spaces'       => array( 'type' => 'integer', 'minimum' => 0, 'description' => 'Total spaces available at this ticket. `0` = unlimited (subject to `event_spaces`).' ),
 				'ticket_min'          => array( 'type' => 'integer', 'minimum' => 0, 'description' => 'Minimum spaces a single booking must request at this ticket.' ),
@@ -294,7 +294,7 @@ class Schemas {
 				'dbem_country'=> array( 'type' => 'string', 'description' => 'Booker\'s country (ISO 3166-1 alpha-2). Optional, used by some Pro forms.' ),
 
 				'booking_comment'      => array( 'type' => 'string',  'description' => 'Free-text note attached to the booking.' ),
-				'gateway'              => array( 'type' => 'string',  'description' => 'Payment gateway slug (e.g. `offline`, `stripe_checkout`, `paypal_advanced`). See the gateway introspection endpoint for the active list.' ),
+				'gateway'              => array( 'type' => 'string',  'description' => 'Payment gateway slug (e.g. `offline`, `stripe_checkout`, `paypal_advanced`). See the gateway introspection endpoint for the active list. Create-only. The gateway is set when the booking is made and cannot be changed afterwards. On update, a different gateway is rejected with a 400 error, and resending the booking\'s current gateway is accepted but ignored, the same as omitting the field. A free booking made without a gateway ignores it on update, unless the update makes the booking paid, which is rejected.' ),
 				'coupon_code'          => array( 'type' => 'string',  'description' => 'Promotional discount code to apply to this booking. ::pro::' ),
 				'waitlist'             => array( 'type' => 'boolean', 'description' => '::pro:: Set to `true` to opt this booking into the waitlist when the event is full.' ),
 				'waitlist_spaces'      => array( 'type' => 'integer', 'minimum' => 1, 'description' => '::pro:: Spaces requested when joining the waitlist.' ),

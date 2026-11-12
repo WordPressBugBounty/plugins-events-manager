@@ -240,14 +240,12 @@ class Timeranges extends \EM\Timeranges {
 							$sql = 'DELETE FROM ' . EM_EVENT_TIMESLOTS_TABLE . ' WHERE timeslot_id IN (' . implode( ',', $events_timeslots_unmatched ) . ')';
 							$wpdb->query( $sql );
 						} else {
-							// Update the timeslot_status to 0 for cancelled events
-							$sql = 'UPDATE ' . EM_EVENT_TIMESLOTS_TABLE . ' SET timeslot_status=0 WHERE timeslot_id IN (' . implode( ',', $events_timeslots_unmatched ) . ')';
-							$wpdb->query( $sql );
-							// Instantiate events and trigger a status change
+							// cancelling through each slot's own event sets its timeslot_status and cancels only that slot's bookings, cancelling $this->event would cancel the whole event and every booking on it
 							foreach ( $events_timeslots_unmatched as $timeslot_id ) {
 								$Timeslot = new Timeslot( $timeslot_id, $this->event );
-								$this->event->cancel();
-								apply_filters('em_event_set_active_status', true, 0, $Timeslot->get_event() );
+								if ( $Timeslot->timeslot_id ) {
+									$Timeslot->get_event()->cancel();
+								}
 							}
 						}
 					}

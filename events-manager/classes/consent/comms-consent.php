@@ -30,7 +30,7 @@ class Comms extends Consent {
 		add_filter('em_bookings_sql_fields_orderby_user_meta', array( static::class, 'em_bookings_sql_fields_orderby_user_meta'), 10, 2);
 		
 		// add consent confirmation to profile and booking info areas
-		add_action('em_person_get_summary', [ static::class, 'em_person_get_summary' ] ); // add to summary for exporting etc.
+		add_filter('em_person_get_summary', [ static::class, 'em_person_get_summary' ], 10, 2 ); // add to summary for exporting etc.
 		// add field to wp dashboard profile in contact information section
 		add_action( 'show_user_profile', [ static::class, 'show_profile_fields' ], 10 );
 		add_action( 'edit_user_profile', [ static::class, 'show_profile_fields' ], 10 );

@@ -53,7 +53,7 @@ class Abilities {
 		static::register_data_ability( 'list-bookings', __( 'List bookings', 'events-manager' ), __( 'Retrieves bookings visible to the current user.', 'events-manager' ), Schemas::collection_input(), array( static::class, 'list_bookings' ), array( static::class, 'can_read_bookings' ) );
 		static::register_data_ability( 'get-booking', __( 'Get booking', 'events-manager' ), __( 'Retrieves one booking by ID if visible to the current user.', 'events-manager' ), Schemas::id_input( __( 'Booking ID.', 'events-manager' ) ), array( static::class, 'get_booking' ), array( static::class, 'can_read_bookings' ) );
 		static::register_management_ability( 'create-booking', __( 'Create booking', 'events-manager' ), __( "Creates an Events Manager booking. Call get-booking-requirements first to get this event's required fields, payload locations, and an example payload.", 'events-manager' ), Schemas::booking_input(), array( static::class, 'create_booking' ), array( static::class, 'can_create_booking' ), array( 'destructive' => false, 'idempotent' => false ) );
-		static::register_management_ability( 'update-booking', __( 'Update booking', 'events-manager' ), __( 'Updates an Events Manager booking.', 'events-manager' ), Schemas::booking_input( true ), array( static::class, 'update_booking' ), array( static::class, 'can_manage_bookings' ), array( 'destructive' => true, 'idempotent' => false ) );
+		static::register_management_ability( 'update-booking', __( 'Update booking', 'events-manager' ), __( 'Updates an Events Manager booking. The payment gateway cannot be changed after the booking is made: sending a different gateway is rejected, and resending the current one is ignored.', 'events-manager' ), Schemas::booking_input( true ), array( static::class, 'update_booking' ), array( static::class, 'can_manage_bookings' ), array( 'destructive' => true, 'idempotent' => false ) );
 		static::register_management_ability( 'set-booking-status', __( 'Set booking status', 'events-manager' ), __( 'Changes a booking status, such as approving, rejecting, or cancelling it.', 'events-manager' ), Schemas::booking_status_input(), array( static::class, 'set_booking_status' ), array( static::class, 'can_manage_bookings' ), array( 'destructive' => true, 'idempotent' => true ) );
 		static::register_management_ability( 'delete-booking', __( 'Delete booking', 'events-manager' ), __( 'Permanently deletes an Events Manager booking.', 'events-manager' ), Schemas::id_input( __( 'Booking ID.', 'events-manager' ) ), array( static::class, 'delete_booking' ), array( static::class, 'can_manage_bookings' ), array( 'destructive' => true, 'idempotent' => false ) );
 
@@ -83,7 +83,7 @@ class Abilities {
 		}, array( static::class, 'can_delete_terms' ), array( 'destructive' => true, 'idempotent' => false ) );
 	}
 
-	protected static function register_data_ability( $name, $label, $description, $input_schema, $execute_callback, $permission_callback = '__return_true' ) {
+	protected static function register_data_ability( $name, $label, $description, $input_schema, $execute_callback, $permission_callback = 'is_user_logged_in' ) {
 		static::register_ability( $name, array(
 			'label' => $label,
 			'description' => $description,

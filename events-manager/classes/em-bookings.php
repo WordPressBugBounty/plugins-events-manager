@@ -198,6 +198,14 @@ class EM_Bookings extends EM_Object implements Iterator, ArrayAccess {
 		// Re-check availability against a fresh count, holding a per-event lock across the check and the insert so two concurrent bookings can't both pass a stale space count. The caller already validated, but that count can be stale by the time we save. Skipped when restrictions are disabled (e.g. manual bookings, which may intentionally overbook).
 		$lock_event_id = $EM_Booking->get_event_id();
 		$booking_locked = self::acquire_lock( $lock_event_id );
+		// checked under the lock so a second click that arrives while the first request is still saving waits for it and then finds it
+		if( $EM_Booking->get_resubmitted_booking_id() ){
+			if( $booking_locked ) self::release_lock( $lock_event_id );
+			$EM_Booking->add_error( __('This booking has already been submitted, please check your email for its confirmation.', 'events-manager') );
+			$this->feedback_message = $EM_Booking->feedback_message = __('This booking has already been submitted, please check your email for its confirmation.', 'events-manager');
+			$this->errors = array_merge( $this->errors, $EM_Booking->get_errors() );
+			return apply_filters('em_bookings_add', false, $EM_Booking);
+		}
 		if( !self::$disable_restrictions && $EM_Booking->get_event()->get_bookings()->get_available_spaces(true) < $EM_Booking->get_spaces() ){
 			if( $booking_locked ) self::release_lock( $lock_event_id );
 			$EM_Booking->add_error( $EM_Booking->get_option('dbem_booking_feedback_full') );

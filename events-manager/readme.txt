@@ -5,8 +5,8 @@ Tags: events, calendar, tickets, bookings, appointments
 Text Domain: events-manager
 Requires at least: 6.1
 Tested up to: 7.1
-Stable tag: 7.4.13
-Requires PHP: 7.0
+Stable tag: 7.4.14
+Requires PHP: 7.4
 License: GPLv2
 
 Events calendar and booking system: bookings, reservations, appointments, scheduling, event registration, tickets and recurring events.
@@ -221,6 +221,54 @@ See our [FAQ](http://wp-events-plugin.com/documentation/faq/) page for help with
 18. Grid view for displaying your upcoming events at a glance
 
 == Changelog ==
+= 7.4.14 =
+* Added: "Add Reply-To booker?" email setting so replies to admin booking emails go to the person who booked, off by default
+* Added: Booking Notes column for the bookings table and export
+* Added: Privacy Consent column for the bookings table and export, also shown in the booker details
+* Fixed: Events and locations being deleted instead of reassigned when deleting a user on WordPress 7.1
+* Fixed: `[locations_map]` showing no locations when a location in the results was not publicly viewable, regression in 7.4.12
+* Fixed: Ticket booking list being empty for admins who do not own the event
+* Fixed: Time slots not saving on event archetypes
+* Fixed: Fatal error on PHP 8 when viewing a booking with a non-numeric surcharge
+* Fixed: `next-month` and `x-months` scopes returning the wrong range on the 29th to 31st of a month
+* Fixed: Calendar `location` attribute being lost when navigating between months
+* Fixed: Registration email templates being hidden when the registration email is enabled
+* Fixed: PHP warning when reading an event's created or modified date
+* Fixed: Edit and delete links for repeating events pointing nowhere when repeating events are disabled
+* Fixed: PHP 8.4 deprecation notices in the phone number library
+* Fixed: Updating an event through the REST API or MCP added a free bookable ticket to it
+* Fixed: Event updates through the REST API or MCP added a new ticket instead of updating the one sent under its ticket ID
+* Fixed: Tickets created through the REST API or MCP without a status could not be booked, and updates without a status disabled them
+* Fixed: Time changes to existing events through the REST API or MCP reported success without being saved
+* Fixed: Updating a booking's payment gateway through the REST API or MCP reported success without changing it, it is now refused
+* Fixed: Booking updates through the REST API or MCP that resent the booking's gateway reset its status with older Events Manager Pro versions
+* Fixed: Repeating events created through the REST API or MCP losing ticket availability dates and tags on their recurrences
+* Fixed: Ticket changes on an existing repeating event through the REST API or MCP not reaching its recurrences
+* Fixed: New recurring events copying only their last ticket to each recurrence
+* Fixed: Recurrences of recurring events not matching category and tag filters, including category and tag pages
+* Fixed: Rescheduling a timeslotted event cancelling the whole event and its bookings instead of only the removed time slots
+* Fixed: Duplicated events keeping the original's booking cut-off date, which could close bookings on the copy straight away
+* Fixed: Submitting the booking form again while it is still sending creating duplicate bookings when JavaScript is unavailable
+* Fixed: `{is_user_attendee}` and `{not_user_attendee}` conditional placeholders never matching when given several booking statuses
+* Fixed: Personal data export failing with a fatal error on bookings made without a user account
+* Fixed: Consent given on event and location submission forms not being recorded, and communications consent being removed on front-end saves
+* Fixed: Blank location details in emails about events submitted by guests with a new location
+* Fixed: Front-end location editor being blocked by security plugins due to mismatched action parameters
+* Fixed: MS Global subsite event and location links that match nothing showing a blank item instead of a 404
+* Fixed: Warning notices displaying in the default notice colors
+* Fixed: OAuth integration settings such as Zoom displaying without their settings box
+* Fixed: Events Manager Connect 1.0.1 not receiving plugin updates
+* Tweaked: Removed a duplicate recurrence save during quick edit
+* Tweaked: Paginated location searches no longer use the deprecated `SQL_CALC_FOUND_ROWS`, added the `em_locations_get_sql_count` filter
+* Tweaked: Removed the unimplemented `events/validate` endpoint from the REST API docs
+* Security: Fixed a privilege escalation vulnerability in bookings, reported by mercurystorm via the Security Hunt
+* Security: Fixed an access control vulnerability affecting bookings on private events, reported by elaprendiz1927 via the Security Hunt
+* Security: Fixed access control and information disclosure vulnerabilities in the bookings REST API, reported by mercurystorm via the Security Hunt
+* Security: Fixed an access control vulnerability affecting media uploads in the REST API, reported by mercurystorm via the Security Hunt
+* Security: Fixed a low severity content restriction bypass on event previews, reported by Jon Eiseman via the Security Hunt
+* Security: Fixed a medium severity REST API moderation bypass, reported by Scott Lewis via the Security Hunt
+* Security: Fixed a medium severity information disclosure vulnerability in the abilities API, reported by Scott Lewis via the Security Hunt
+
 = 7.4.13 =
 * Security: Fixed a file handling vulnerability in the REST API, reported by Greg on 30A via the Security Hunt
 * Security: Fixed an information disclosure vulnerability in the REST API, reported by Greg on 30A via the Security Hunt

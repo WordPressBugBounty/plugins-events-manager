@@ -91,8 +91,6 @@ class EM_Locations extends EM_Object {
 			}else{
 				$selectors = $locations_table.'.post_id';
 			}
-			if( $calc_found_rows ) $selectors = 'SQL_CALC_FOUND_ROWS ' . $selectors; //for storing total rows found
-			$selectors = $selectors; //duplicate avoidance
 		}
 		
 		$join_events_table = self::check_events_table_join( $args, $event_fields );
@@ -148,8 +146,9 @@ FROM (
 	) AS lookup
 ) {$locations_table}
 WHERE RowNumber = 1
-$orderby_sql
-$limit $offset";
+$orderby_sql";
+				$sql_count = "SELECT COUNT(*) FROM ( $sql ) em_found_rows";
+				$sql .= "\n$limit $offset";
 			}
 		}
 
@@ -160,13 +159,19 @@ $limit $offset";
 SELECT DISTINCT $selectors FROM $locations_table
 $event_optional_join
 $where
-$orderby_sql
-$limit $offset
-			";
+$orderby_sql";
+			$sql_count = "SELECT COUNT(*) FROM ( $sql ) em_found_rows";
+			$sql .= "\n$limit $offset";
 		}
 		
 		//the query filter
 		$sql = apply_filters('em_locations_get_sql', $sql, $args); 
+		if ( has_filter('em_locations_get_sql') && !has_filter('em_locations_get_sql_count') ) {
+			// a filtered query is counted as is, minus its limit and offset
+			$sql_count = 'SELECT COUNT(*) FROM ( ' . preg_replace( '/\s+LIMIT\s+\d+(?:\s*,\s*\d+)?(?:\s+OFFSET\s+\d+)?\s*$/i', '', $sql ) . ' ) em_found_rows';
+		} else {
+			$sql_count = apply_filters('em_locations_get_sql_count', $sql_count, $args);
+		}
 		//if( em_wp_is_super_admin() && WP_DEBUG_DISPLAY ){ echo "<pre>"; print_r($sql); echo '</pre>'; }
 		
 		//If we're only counting results, return the number of results
@@ -179,7 +184,7 @@ $limit $offset
 		$results = $wpdb->get_results( $sql, ARRAY_A);
 		self::$num_rows = $wpdb->num_rows;
 		if( $calc_found_rows ){
-			self::$num_rows_found = $wpdb->get_var('SELECT FOUND_ROWS()');
+			self::$num_rows_found = $wpdb->get_var($sql_count);
 		}else{
 			self::$num_rows_found = self::$num_rows;
 		}

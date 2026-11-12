@@ -151,8 +151,8 @@ class EM_Event_Post {
 				if( em_get_option('dbem_cp_events_formats') && !post_password_required() ){
 					$EM_Event = em_get_event($post);
 					//do a little check for preview mode and re-insert content from $post
-					if( !empty($_REQUEST['preview']) ){
-						//we don't do extra checks here because WP will have already done the work for us here...
+					if( !empty($_REQUEST['preview']) && current_user_can('edit_post', $post->ID) ){
+						//Only trust the raw post body for someone who can actually preview this event. A bare ?preview=1 on a published event would otherwise hand back the unfiltered content, bypassing access control a membership plugin applied through the_content.
 						$EM_Event->post_content = $post->post_content;
 						$EM_Event->post_content_filtered = $post->post_content_filtered;
 					}else{
@@ -317,7 +317,7 @@ class EM_Event_Post {
 				}
 			}elseif ($scope == "month" || $scope == "next-month" || $scope == 'this-month'){
 				$EM_DateTime = new EM_DateTime(); //create default time in blog timezone
-				if( $scope == 'next-month' ) $EM_DateTime->add('P1M');
+				if( $scope == 'next-month' ) $EM_DateTime->modify('first day of next month'); // adding P1M to the 31st overflows past the next month
 				$start_month = $scope == 'this-month' ? $EM_DateTime->getDate() : $EM_DateTime->modify('first day of this month')->getDate();
 				$end_month = $EM_DateTime->modify('last day of this month')->getDate();
 				if( em_get_option('dbem_events_current_are_past') && $wp_query->query_vars['post_type'] != 'event-recurring' ){
@@ -339,7 +339,7 @@ class EM_Event_Post {
 				$EM_DateTime = new EM_DateTime(); //create default time in blog timezone
 				$months_to_add = $matches[1];
 				$start_month = $EM_DateTime->getDate();
-				$end_month = $EM_DateTime->add('P'.$months_to_add.'M')->format('Y-m-t');
+				$end_month = $EM_DateTime->modify('first day of +'.$months_to_add.' month')->format('Y-m-t');
 				if( em_get_option('dbem_events_current_are_past') && $wp_query->query_vars['post_type'] != 'event-recurring' ){
 					$query[] = array( 'key' => '_event_start_date', 'value' => array($start_month,$end_month), 'type' => 'DATE', 'compare' => 'BETWEEN');
 				}else{

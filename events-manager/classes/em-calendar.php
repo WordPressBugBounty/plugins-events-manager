@@ -607,6 +607,7 @@ class EM_Calendar extends EM_Object {
 				$custom_args = array('global' => array(), 'search' => array(), 'calendar' => array());
 				foreach( $args as $name => $value ){
 					if( in_array($name, $ignore_keys) ) continue;
+					if( $name === 'location' || $name === 'event' ) $name .= '_id'; // get_query_args() renames these two, so they'd never match $calendar_exclusive_args_keys
 					if( $name === 'scope' && !empty($value['name']) ) $value = $value['name'];
 					if( is_array($value) ) $value = implode(',', $value);
 					if( $value === true || $value === false ) $value = $value ? 1:0; // make sure we get a 1 or 0

@@ -2,7 +2,7 @@
 class EM_People extends EM_Object {
 	
 	public static function init(){
-		add_action('delete_user', 'EM_People::delete_user', 10, 1);
+		add_action('delete_user', 'EM_People::delete_user', 10, 2);
 		add_filter( 'user_contactmethods', 'EM_People::user_contactmethods', 10, 1);
 		add_filter('pre_option_dbem_bookings_registration_user', 'EM_People::dbem_bookings_registration_user');
 	}
@@ -10,13 +10,14 @@ class EM_People extends EM_Object {
 	/**
 	 * Handles the action of someone being deleted on WordPress
 	 * @param int $id
+	 * @param int|null $reassign ID of the user receiving this user's content, null if the content is being deleted
 	 */
-	public static function delete_user( $id ){
+	public static function delete_user( $id, $reassign = null ){
 		global $wpdb;
 		//if events are set to be deleted, we hook in correctly already, if they're meant to be reassigned, we only need to update our tables as WP updated theirs
-		if( !empty($_REQUEST['delete_option']) && $_REQUEST['delete_option'] == 'reassign' && is_numeric($_REQUEST['reassign_user']) ){
-			$wpdb->update(EM_EVENTS_TABLE, array('event_owner'=>$_REQUEST['reassign_user']), array('event_owner'=>$id));
-			$wpdb->update(EM_LOCATIONS_TABLE, array('location_owner'=>$_REQUEST['reassign_user']), array('location_owner'=>$id));
+		if( is_numeric($reassign) ){
+			$wpdb->update(EM_EVENTS_TABLE, array('event_owner'=>$reassign), array('event_owner'=>$id));
+			$wpdb->update(EM_LOCATIONS_TABLE, array('location_owner'=>$reassign), array('location_owner'=>$id));
 		}else{
 			//We delete all the events and locations owned by this user
 			foreach( EM_Events::get( array('owner'=>$id, 'status'=>'everything') ) as $EM_Event ) $EM_Event->delete();

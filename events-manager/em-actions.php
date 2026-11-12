@@ -52,7 +52,7 @@ function em_init_actions_start() {
 					$json_locations[$location_key]['location_balloon'] = $EM_Location->output( em_get_option('dbem_map_text_format') );
 				}
 			}
-			echo EM_Object::json_encode($json_locations);
+			echo EM_Object::json_encode( array_values($json_locations) ); // a skipped location leaves a gap in the keys, which encodes as an object the map can't read
 		 	die();
 	 	}
 		if(isset($_REQUEST['query']) && $_REQUEST['query'] == 'GlobalEventsMapData') {
@@ -86,7 +86,7 @@ function em_init_actions_start() {
 				if ( !empty( $_REQUEST['event_id'] ) && !empty( $_REQUEST['nonce'] ) && wp_verify_nonce( $_REQUEST['nonce'], 'booking_form' ) ) {
 					$EM_Event = em_get_event( $_REQUEST['event_id'] );
 					do_action('em_ajax_output_booking_form', $EM_Event);
-					if ( $EM_Event->is_published() ) {
+					if ( $EM_Event->is_published() && ( $EM_Event->is_viewable() || $EM_Event->can_manage('manage_bookings','manage_others_bookings') ) ) {
 						echo $EM_Event->output_booking_form();
 					} else {
 						echo '<div class="em-booking-form-error">' . __( 'This event is not available or has been cancelled', 'events-manager' ) . '</div>';
@@ -371,6 +371,9 @@ function em_init_actions_start() {
 			if( !is_user_logged_in() || $EM_Booking->get_option('dbem_bookings_double') || !$EM_Event->get_bookings()->has_booking(get_current_user_id()) ){
 				if ( $EM_Event->event_status != 1 || $EM_Event->event_active_status != 1 ) {
 					$EM_Notices->add_error( __('This event is not available or has been cancelled', 'events-manager') ); // uncommon, not needed for custom error.
+				} elseif ( !$EM_Event->is_viewable() && !$EM_Event->can_manage('manage_bookings','manage_others_bookings') ) {
+					// The booking_add nonce is global, so a visitor can reuse one from any public event. Refuse a booking on an event they cannot view (private, pending or password-protected) unless they manage it, matching the booking form's own visibility.
+					$EM_Notices->add_error( __('This event is not available or has been cancelled', 'events-manager') );
 				} elseif ( !$can_edit_booking ) {
 					$EM_Notices->add_error( __('You do not have permission to manage this booking.', 'events-manager') );
 				} else {

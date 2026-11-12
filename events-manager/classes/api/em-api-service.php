@@ -3,6 +3,8 @@ namespace EM\API;
 
 class Service {
 
+	const BOOKING_FIELD_GROUPS = array( 'booking', 'booking_fields', 'fields', 'registration' );
+
 	public static function list_events( $params = array() ) {
 		$params = Utils::normalize_input( $params );
 		$accepted = array( 'search', 'scope', 'status', 'active_status', 'cancelled', 'active', 'category', 'tag', 'location', 'location_id', 'town', 'state', 'country', 'region', 'near', 'near_unit', 'near_distance', 'event_type', 'event_archetype', 'orderby', 'order', 'blog', 'private', 'private_only', 'timeslots' );
@@ -48,8 +50,11 @@ class Service {
 			return Utils::error( 'em_api_event_forbidden', __( 'You do not have permission to view this event.', 'events-manager' ), 403 );
 		}
 		$EM_Bookings = $EM_Event->get_bookings();
+		$can_manage = $EM_Event->can_manage( 'manage_bookings', 'manage_others_bookings' );
 		$tickets = array();
 		foreach ( $EM_Event->get_tickets() as $EM_Ticket ) {
+			// Readers get only what the booking form would show them; hidden or restricted tickets are a manager's view, as list_event_tickets() already enforces.
+			if ( !$can_manage && !$EM_Ticket->is_displayable() ) continue;
 			$tickets[] = array(
 				'id' => absint( $EM_Ticket->ticket_id ),
 				'name' => $EM_Ticket->ticket_name,
@@ -85,8 +90,11 @@ class Service {
 			return Utils::error( 'em_api_event_forbidden', __( 'You do not have permission to view this event.', 'events-manager' ), 403 );
 		}
 		$EM_Bookings = $EM_Event->get_bookings();
+		$can_manage = $EM_Event->can_manage( 'manage_bookings', 'manage_others_bookings' );
 		$tickets = array();
 		foreach ( $EM_Event->get_tickets() as $EM_Ticket ) {
+			// Readers get only what the booking form would show them; hidden or restricted tickets are a manager's view, as list_event_tickets() already enforces.
+			if ( !$can_manage && !$EM_Ticket->is_displayable() ) continue;
 			$price = (float) $EM_Ticket->get_price();
 			$tickets[] = array(
 				'id'               => absint( $EM_Ticket->ticket_id ),
@@ -305,6 +313,10 @@ class Service {
 		$data = static::translate_event_input( $data );
 		// Translate the recurrence/timeslot shape (recurrences.sets[] + when.timeranges[]) into the internal form-array.
 		$data = static::translate_recurrence_input( $data );
+		// Ticket changes on an existing recurring event are ignored without the admin form's confirmation nonce, so mint it when the caller sends tickets, as with the reschedule nonces.
+		if ( $id && !empty( $data['em_tickets'] ) && $EM_Event->is_recurring( true ) ) {
+			$data['modify_recurring_tickets'] = wp_create_nonce( 'modify_recurring_tickets' );
+		}
 		// to_request_data() re-emits the event's time as a timerange with no timerange_id.
 		// On update, timeranges::get_post() can't match it to the existing row, so it appends
 		// a duplicate and the save fails with "Timeranges cannot overlap". Only re-post the
@@ -319,9 +331,23 @@ class Service {
 					$data['event_timeranges'][0]['timerange_id'] = $first->timerange_id;
 				}
 			}
+			// Saved events only accept new times after the editor's unlock confirmation, which an API caller gives by sending them. A row that omits its timeslot rules keeps the stored ones, since clearing them would make the save delete the event's timeslots.
+			if ( !empty( $data['event_timeranges'] ) && is_array( $data['event_timeranges'] ) && !$EM_Event->is_recurring( true ) ) {
+				$Timeranges = $EM_Event->get_timeranges();
+				$Timeranges->allow_edit = true;
+				$stored = array();
+				foreach ( $Timeranges as $Timerange ) {
+					$stored[ $Timerange->timerange_id ] = $Timerange;
+				}
+				foreach ( $data['event_timeranges'] as $k => $tr ) {
+					if ( is_array( $tr ) && !array_key_exists( 'timeslots', $tr ) && !empty( $tr['timerange_id'] ) && !empty( $stored[ $tr['timerange_id'] ] ) && $stored[ $tr['timerange_id'] ]->has_timeslots() ) {
+						$data['event_timeranges'][ $k ]['timeslots'] = 1;
+					}
+				}
+			}
 		}
 		// Consent must travel in the request data, not be pre-set on the object: EM core's consent handler reads $_REQUEST[data_privacy_consent] during get_post (cpt_get_post on em_event_get_post_meta) and get_post rebuilds event_attributes from the request, wiping anything set beforehand. Defaults to granted so admin event creation doesn't trip the privacy-consent validator that fires when the site requires it. Mirrors what booking_request_data already does for bookings.
-		$request_data = static::apply_consent_to_request_data( static::normalize_em_tickets_keys( array_merge( $base, $data ) ), $data, 'event' );
+		$request_data = static::apply_consent_to_request_data( static::prepare_em_tickets( static::normalize_em_tickets_keys( array_merge( $base, $data ) ), $EM_Event ), $data, 'event' );
 		$valid = Utils::with_request_data( $request_data, function() use ( $EM_Event, $data ) {
 			if ( !$EM_Event->get_post( true ) ) {
 				return false;
@@ -332,7 +358,16 @@ class Service {
 		if ( !$valid ) {
 			return Utils::object_error( 'em_api_event_invalid', $EM_Event, __( 'Event data is invalid.', 'events-manager' ), 400 );
 		}
-		if ( !$EM_Event->save() ) {
+		// Terms also go on as soon as the event's post exists, because saving a repeating event copies the template's tags to its recurrences before save() returns. They are applied again afterwards since EM's own category save runs after the post insert.
+		$apply_terms = function( $post_id, $post ) use ( $EM_Event, $data, &$apply_terms ) {
+			if ( !in_array( $post->post_type, array( EM_POST_TYPE_EVENT, 'event-recurring' ), true ) ) return;
+			remove_action( 'wp_insert_post', $apply_terms, 10 );
+			static::save_event_terms( $EM_Event, $data, $post_id );
+		};
+		add_action( 'wp_insert_post', $apply_terms, 10, 2 );
+		$saved = $EM_Event->save();
+		remove_action( 'wp_insert_post', $apply_terms, 10 );
+		if ( !$saved ) {
 			return Utils::object_error( 'em_api_event_save_failed', $EM_Event, __( 'Event could not be saved.', 'events-manager' ), 500 );
 		}
 		static::save_event_terms( $EM_Event, $data );
@@ -409,6 +444,7 @@ class Service {
 		$data = Utils::normalize_input( $data );
 		unset( $data['id'], $data['ticket_id'] );
 		$data['event_id'] = $EM_Event->get_event_id();
+		$data = static::default_ticket_status( $data );
 		$EM_Ticket = new \EM_Ticket();
 		$EM_Ticket->event = $EM_Event;
 		$EM_Ticket->get_post( $data );
@@ -433,6 +469,7 @@ class Service {
 		unset( $data['id'] );
 		$data['ticket_id'] = $EM_Ticket->ticket_id;
 		$data['event_id'] = $EM_Ticket->event_id;
+		$data = static::default_ticket_status( $data, $EM_Ticket );
 		$EM_Ticket->get_post( $data );
 		if ( !$EM_Ticket->save() ) {
 			return Utils::object_error( 'em_api_ticket_save_failed', $EM_Ticket, __( 'Ticket could not be saved.', 'events-manager' ), 400 );
@@ -633,7 +670,8 @@ class Service {
 		if ( is_wp_error( $attachment_id ) ) return $attachment_id;
 		if ( !$attachment_id ) return null;
 		set_post_thumbnail( $post_id, $attachment_id );
-		if ( !empty( $data['featured_image_alt'] ) ) {
+		// Writing alt text edits the attachment itself, so only when the caller can edit it. Otherwise passing an existing attachment id lets someone overwrite the alt text on any image in the Media Library.
+		if ( !empty( $data['featured_image_alt'] ) && current_user_can( 'edit_post', $attachment_id ) ) {
 			update_post_meta( $attachment_id, '_wp_attachment_image_alt', sanitize_text_field( $data['featured_image_alt'] ) );
 		}
 		return true;
@@ -755,15 +793,39 @@ class Service {
 		if ( !$id && !static::can_create_booking() ) {
 			return Utils::error( 'em_api_booking_forbidden', __( 'You do not have permission to create bookings through the API.', 'events-manager' ), 403 );
 		}
+		// Booking-manager authority is per event, so resolve the event being booked and check management against it. On create $EM_Booking is unsaved, so its own can_manage() is unconditionally true, and the site-wide manage_bookings capability (held by contributors and authors by default) would otherwise let a caller manage bookings on events they do not own.
+		$target_event_id = $data['event_id'] ?? $data['event'] ?? ( !empty( $EM_Booking->event_id ) ? $EM_Booking->event_id : 0 );
+		$target_event = $target_event_id ? em_get_event( $target_event_id ) : false;
+		if ( $target_event && $target_event->event_id ) {
+			$can_manage_target = $target_event->can_manage( 'manage_bookings', 'manage_others_bookings' );
+		} elseif ( $id ) {
+			$can_manage_target = $EM_Booking->can_manage( 'manage_bookings', 'manage_others_bookings' );
+		} else {
+			$can_manage_target = false;
+		}
 		// Let an add-on (Events Manager Pro) reshape the request data — e.g. map a structured booker `person` object onto the booking-form field names. Core books under the authenticated account, so it leaves the request data as-is.
-		$request_data = apply_filters( 'em_api_booking_request_data', static::booking_request_data( $data, $EM_Booking ), $data, $EM_Booking, $id );
-		$override_availability = !empty( $data['override_availability'] ) && current_user_can( 'manage_bookings' );
+		$request_data = apply_filters( 'em_api_booking_request_data', static::booking_request_data( $data, $EM_Booking, $can_manage_target ), $data, $EM_Booking, $id );
+		// The gateway is only applied when a booking is made, so an update naming a different one would report success while changing nothing; a free booking is made without one, so there it is ignored unless the update makes the booking paid.
+		$stored_gateway = (string) $EM_Booking->get_meta( 'gateway' );
+		$gateway_change = $id && isset( $request_data['gateway'] ) && $request_data['gateway'] !== '' && $request_data['gateway'] !== $stored_gateway;
+		if ( $gateway_change && $stored_gateway !== '' ) {
+			return static::booking_gateway_immutable_error();
+		}
+		$override_availability = !empty( $data['override_availability'] ) && $can_manage_target;
 		// "Booking on behalf of someone else" — attributing a booking to a guest or another user instead of the authenticated account — is a Pro capability (it depends on Pro's manual-booking / custom-form machinery). Core never does it: it always books as the authenticated account. Pro opts a create in by returning true here, and core then flips EM_Bookings::$force_registration for the save cycle so the booking form reads the supplied booker details rather than the current user. The API add() path never calls em_booking_add_registration(), so this can't create a WordPress account on its own — it only steers the form's person resolution.
 		$force_registration = (bool) apply_filters( 'em_api_booking_force_registration', false, $EM_Booking, $data, $id );
 		// Run the whole get_post → validate → save cycle with the form-post environment in place. EM core and the Pro booking form re-read $_REQUEST during validate() and add()/save() (gateways, custom form fields, uploads), so the request data has to stay in $_REQUEST for the entire cycle, not just get_post().
-		$persist = function() use ( $EM_Booking, $data, $id, $override_availability ) {
+		$persist = function() use ( $EM_Booking, $data, $id, $override_availability, $gateway_change ) {
+			if ( $id ) {
+				// Pro 3.9.9 reassigns the gateway and resets the status of a saved booking whenever $_REQUEST carries one, even the gateway it already has.
+				$_REQUEST = static::without_gateway( $_REQUEST );
+				$_POST = static::without_gateway( $_POST );
+			}
 			if ( !$EM_Booking->get_post( $override_availability ) || !$EM_Booking->validate( $override_availability ) ) {
 				return static::booking_invalid_error( $EM_Booking );
+			}
+			if ( $gateway_change && $EM_Booking->get_price() > 0 ) {
+				return static::booking_gateway_immutable_error();
 			}
 			// Extension point: an add-on (Pro) can assign an explicit booker here — a guest person or a different WP user — returning a WP_Error to abort (e.g. an invalid guest email). Core does nothing, leaving the booking attributed to the authenticated account.
 			$person_result = apply_filters( 'em_api_assign_booking_person', null, $EM_Booking, $data, $id );
@@ -814,6 +876,20 @@ class Service {
 		}
 		$send_email = isset( $data['send_email'] ) ? Utils::is_truthy( $data['send_email'] ) : false; // Seeding/admin status corrections default to silent — don't fire a status-change email unless the caller asks.
 		$EM_Booking->set_status( $requested, $send_email );
+	}
+
+	protected static function booking_gateway_immutable_error() {
+		return Utils::error( 'em_api_booking_gateway_immutable', __( "A booking's payment gateway is set when the booking is made and cannot be changed.", 'events-manager' ), 400 );
+	}
+
+	protected static function without_gateway( $request ) {
+		unset( $request['gateway'] );
+		foreach ( static::BOOKING_FIELD_GROUPS as $key ) {
+			if ( isset( $request[ $key ] ) && is_array( $request[ $key ] ) ) {
+				unset( $request[ $key ]['gateway'] );
+			}
+		}
+		return $request;
 	}
 
 	/**
@@ -1090,6 +1166,11 @@ class Service {
 		if ( $context !== 'edit' && !current_user_can( 'manage_bookings' ) && !current_user_can( 'manage_others_bookings' ) ) {
 			unset( $api['meta'] );
 		}
+		// The embedded event comes straight from EM_Event::to_api(), not prepare_event(), so strip the owner's private email unless the reader can manage this event's bookings.
+		if ( isset( $api['event'] ) && is_array( $api['event'] ) ) {
+			$event_can_manage = $EM_Booking->get_event() && $EM_Booking->get_event()->can_manage( 'manage_bookings', 'manage_others_bookings' );
+			$api['event'] = Utils::strip_private_owner_data( $api['event'], $event_can_manage );
+		}
 		if ( $context === 'edit' ) {
 			$api['permissions'] = array(
 				'edit' => $EM_Booking->can_manage( 'manage_bookings', 'manage_others_bookings' ),
@@ -1216,7 +1297,9 @@ class Service {
 		$status = Utils::sanitize_post_status( $data['post_status'] );
 		if ( !$status ) return;
 		$cap = $type === 'location' ? 'publish_locations' : 'publish_events';
-		if ( current_user_can( $cap ) || $status !== 'publish' ) {
+		//'private' is a live, published status in Events Manager (event_status 1), so it needs the publish capability just as 'publish' does; without this a contributor could force 'private' to push an event live and skip moderation. Non-live 'pending'/'draft' may be set by anyone who can edit.
+		$needs_publish_cap = ( $status === 'publish' || $status === 'private' );
+		if ( !$needs_publish_cap || current_user_can( $cap ) ) {
 			$EM_Object->force_status = $status;
 		}
 	}
@@ -1342,6 +1425,38 @@ class Service {
 		return $data;
 	}
 
+	/**
+	 * EM_Ticket::get_post() saves a missing ticket_status as disabled, so a new API ticket defaults to enabled and an update keeps the stored status.
+	 */
+	protected static function default_ticket_status( $data, $EM_Ticket = null ) {
+		if ( !isset( $data['ticket_status'] ) ) {
+			$status = $EM_Ticket ? $EM_Ticket->ticket_status : 1;
+			if ( $status !== null ) {
+				$data['ticket_status'] = $status;
+			}
+		}
+		return $data;
+	}
+
+	protected static function prepare_em_tickets( $data, $EM_Event ) {
+		if ( empty( $data['em_tickets'] ) || !is_array( $data['em_tickets'] ) ) {
+			return $data;
+		}
+		$current = $EM_Event->event_id ? $EM_Event->get_tickets()->tickets : array();
+		// A row keyed by one of the event's ticket IDs updates that ticket, unless the keys run 1..N, which is a positional list of new rows.
+		$positional = array_keys( $data['em_tickets'] ) === range( 1, count( $data['em_tickets'] ) );
+		foreach ( $data['em_tickets'] as $row => $ticket_data ) {
+			if ( is_array( $ticket_data ) ) {
+				if ( empty( $ticket_data['ticket_id'] ) && !$positional && !empty( $current[ $row ] ) ) {
+					$ticket_data['ticket_id'] = $row;
+				}
+				$EM_Ticket = !empty( $ticket_data['ticket_id'] ) && !empty( $current[ $ticket_data['ticket_id'] ] ) ? $current[ $ticket_data['ticket_id'] ] : null;
+				$data['em_tickets'][ $row ] = static::default_ticket_status( $ticket_data, $EM_Ticket );
+			}
+		}
+		return $data;
+	}
+
 	protected static function prepare_ticket_datetime( $value ) {
 		if ( empty( $value ) || $value === '0000-00-00 00:00:00' ) {
 			return null;
@@ -1350,17 +1465,18 @@ class Service {
 		return $timestamp ? gmdate( 'c', $timestamp ) : $value;
 	}
 
-	protected static function save_event_terms( $EM_Event, $data ) {
-		if ( empty( $EM_Event->post_id ) ) return;
+	protected static function save_event_terms( $EM_Event, $data, $post_id = 0 ) {
+		$post_id = $post_id ?: $EM_Event->post_id;
+		if ( empty( $post_id ) ) return;
 		// Prefer event_categories / event_tags to match the live event form ($_POST contract).
 		// Accept categories / tags as deprecated aliases.
 		$categories = $data['event_categories'] ?? $data['categories'] ?? null;
 		$tags       = $data['event_tags']       ?? $data['tags']       ?? null;
 		if ( $categories !== null && taxonomy_exists( EM_TAXONOMY_CATEGORY ) && current_user_can( 'edit_events' ) ) {
-			wp_set_object_terms( $EM_Event->post_id, array_map( 'absint', (array) $categories ), EM_TAXONOMY_CATEGORY );
+			wp_set_object_terms( $post_id, array_map( 'absint', (array) $categories ), EM_TAXONOMY_CATEGORY );
 		}
 		if ( $tags !== null && taxonomy_exists( EM_TAXONOMY_TAG ) && current_user_can( 'edit_events' ) ) {
-			wp_set_object_terms( $EM_Event->post_id, array_map( 'absint', (array) $tags ), EM_TAXONOMY_TAG );
+			wp_set_object_terms( $post_id, array_map( 'absint', (array) $tags ), EM_TAXONOMY_TAG );
 		}
 	}
 
@@ -1374,11 +1490,11 @@ class Service {
 	 * admin-only fields (booking_tax_rate, person_id, booking_status, manual_booking*,
 	 * payment_*) when the caller is not a booking manager.
 	 */
-	protected static function booking_request_data( $data, $EM_Booking ) {
+	protected static function booking_request_data( $data, $EM_Booking, $can_manage_target = false ) {
 		$request = $data;
 		$request['event_id'] = $data['event_id'] ?? $data['event'] ?? $EM_Booking->event_id ?? null;
 		// Flatten booking-form sub-objects so EM_Form / Pro forms read them from $_REQUEST.
-		foreach ( array( 'booking', 'booking_fields', 'fields', 'registration' ) as $key ) {
+		foreach ( static::BOOKING_FIELD_GROUPS as $key ) {
 			if ( !empty( $data[ $key ] ) && is_array( $data[ $key ] ) ) {
 				$request = array_merge( $request, $data[ $key ] );
 			}
@@ -1394,8 +1510,8 @@ class Service {
 				unset( $request[ $key ] );
 			}
 		}
-		// Gate admin-only fields when the caller is not a booking manager.
-		if ( !$EM_Booking->can_manage() ) {
+		// Gate admin-only fields when the caller cannot manage bookings on the target event. $EM_Booking->can_manage() can't be used here: on create the booking is unsaved, so it returns true for everyone.
+		if ( !$can_manage_target ) {
 			foreach ( array( 'booking_tax_rate', 'person_id', 'booking_status',
 				'manual_booking', 'manual_booking_confirm', 'manual_booking_override',
 				'payment_amount', 'payment_full' ) as $admin_field ) {
@@ -1528,6 +1644,15 @@ class Service {
 				return Utils::error( 'em_api_media_invalid_id', __( 'Attachment ID not found.', 'events-manager' ), 404 );
 			}
 			return $id;
+		}
+		// Every branch below creates a Media Library attachment. upload_media() guards these, but featured-image and term-image inputs on event, location and term saves resolve here too, so enforce the same authorization centrally: uploading needs upload_files, and attaching to a post (post_parent) needs edit rights on that post. Without this a contributor who has edit_events/edit_locations but not upload_files could sideload files and attach them to other users' posts.
+		if ( !empty( $data['_files_file'] ) || !empty( $data['source_url'] ) || !empty( $data['content_base64'] ) ) {
+			if ( !current_user_can( 'upload_files' ) ) {
+				return Utils::error( 'em_api_media_forbidden', __( 'You do not have permission to upload media.', 'events-manager' ), 403 );
+			}
+			if ( !empty( $data['post_id'] ) && !current_user_can( 'edit_post', absint( $data['post_id'] ) ) ) {
+				return Utils::error( 'em_api_media_parent_forbidden', __( 'You do not have permission to attach media to that post.', 'events-manager' ), 403 );
+			}
 		}
 		// Multipart upload from /media POST.
 		if ( !empty( $data['_files_file'] ) ) {
@@ -1703,7 +1828,8 @@ class Service {
 			return static::resolve_attachment_id( array( 'source_url' => $input, 'post_id' => $post_id ) );
 		}
 		if ( is_array( $input ) ) {
-			if ( $post_id && empty( $input['post_id'] ) ) $input['post_id'] = $post_id;
+			// A featured image attaches to the event or location being saved, so force that post rather than trusting a post_id in the caller's input, which would set the attachment's post_parent on, and so attach media to, someone else's post.
+			if ( $post_id ) $input['post_id'] = $post_id;
 			return static::resolve_attachment_id( $input );
 		}
 		return Utils::error( 'em_api_image_invalid', __( 'Image input must be an attachment ID, URL, or object with source_url / content_base64 / file.', 'events-manager' ), 400 );

@@ -56,14 +56,14 @@ class OAuth_API_Admin_Settings {
 		$callback_url = $api_client_class::get_oauth_callback_url();
 		$service_name = $api::get_service_name();
 		?>
-		<div class="em-oauth-connect-box em-oaut-connect em-oauth-connect-<?php echo esc_attr($api::get_authorization_scope()); ?>" id="em-opt-<?php echo esc_attr($api::get_option_name()); ?>-app">
-			<h3 class="em-oauth-connect-title"><?php echo esc_html($api::get_service_name()) ?></h3>
-			<div class="em-oauth-connect-inside">
+		<div class="postbox em-oauth-connect-box em-oaut-connect em-oauth-connect-<?php echo esc_attr($api::get_authorization_scope()); ?>" id="em-opt-<?php echo esc_attr($api::get_option_name()); ?>-app">
+			<div class="handlediv" title="<?php esc_attr_e('Click to toggle', 'events-manager'); ?>"><br /></div><h3 class="em-oauth-connect-title"><span><?php echo esc_html($api::get_service_name()) ?></span></h3>
+			<div class="inside em-oauth-connect-inside">
 				<?php static::em_settings_apps_header(); ?>
-				<h4><?php esc_html_e('Server API Credentials', 'events-manager-zoom'); ?></h4>
+				<h4><?php esc_html_e('Server API Credentials', 'events-manager'); ?></h4>
 				<p><?php printf( $desc, $service_name, '<a href="'. $api::get_service_url() .'">'. $api::get_service_url() .'</a>'); ?></p>
 				<p><?php printf( $desc_url, $service_name, "<code>$callback_url</code>") ?></p>
-				<p><?php printf( esc_html__('Once you have entered valid API information, you will see a button below to connect your site to %s.', 'events-manager-zoom'), $service_name); ?></p>
+				<p><?php printf( esc_html__('Once you have entered valid API information, you will see a button below to connect your site to %s.', 'events-manager'), $service_name); ?></p>
 				<table class='form-table'>
 					<?php
 					em_options_input_text(sprintf(__('%s App ID', 'events-manager'), $service_name), $api::get_option_dataset().'['.$api::get_option_name().'_app_id]', '');
@@ -136,10 +136,10 @@ class OAuth_API_Admin_Settings {
 				<?php if( $api::get_authorization_scope() == 'user'): ?>
 				<h4><?php echo $service_name; ?></h4>
 				<?php else: ?>
-				<h4><?php esc_html_e('Account Connection', 'events-manager-zoom'); ?></h4>
+				<h4><?php esc_html_e('Account Connection', 'events-manager'); ?></h4>
 				<?php endif; ?>
 				<?php if( $connected || $reconnect_required ): ?>
-					<p><?php echo esc_html(sprintf(_n('You are successfully connected to the following %s account:', 'You are successfully connected to the following %s accounts:', count($oauth_accounts), 'events-manager-zoom'), $service_name)); ?></p>
+					<p><?php echo esc_html(sprintf(_n('You are successfully connected to the following %s account:', 'You are successfully connected to the following %s accounts:', count($oauth_accounts), 'events-manager'), $service_name)); ?></p>
 					<ul class="em-oauth-service-accounts">
 						<?php foreach ( $oauth_accounts as $oauth_account ): ?>
 							<li class="em-oauth-service-account em-oauth-account-<?php echo empty($oauth_account['reconnect']) ? 'connected':'disconnected'; ?>">

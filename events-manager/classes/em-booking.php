@@ -657,14 +657,36 @@ class EM_Booking extends EM_Object{
 			//re-run compatiblity keys function
 			$this->compat_keys(); //depracating in 6.0
 		}
-		/*
-		if( !$this->booking_id && !empty($_REQUEST['booking_intent']) && preg_match('/^[a-zA-Z0-9]{32}/', $_REQUEST['booking_intent']) ){
-			$this->booking_uuid = sanitize_key($_REQUEST['booking_intent']);
+		// The form's intent value can reach many visitors through a page cache, so it never becomes the booking uuid (an access token for waitlist and PDF links) and is only kept, hashed, to spot the same form being submitted twice.
+		if( !$this->booking_id && !empty($_REQUEST['booking_intent']) && is_string($_REQUEST['booking_intent']) && preg_match('/^[a-zA-Z0-9]{32}$/', $_REQUEST['booking_intent']) ){
+			$this->booking_meta['intent'] = md5( $_REQUEST['booking_intent'] );
 		}
-		*/
 		return apply_filters('em_booking_get_post', empty($this->errors), $this);
 	}
 	
+	/**
+	 * Finds a booking already made from the same booking form by the same person moments ago, such as a second click on the submit button while the first request is still loading.
+	 * @return int the booking ID of the earlier submission, or 0 if there is none
+	 */
+	public function get_resubmitted_booking_id(){
+		global $wpdb;
+		if( !empty($this->booking_id) || empty($this->booking_meta['intent']) ) return 0;
+		$window = absint( apply_filters('em_booking_resubmit_window', 600, $this) );
+		if( !$window ) return 0;
+		$person = $this->get_person();
+		$sql = 'SELECT b.booking_id FROM '. EM_BOOKINGS_TABLE .' b INNER JOIN '. EM_BOOKINGS_META_TABLE ." m ON m.booking_id = b.booking_id AND m.meta_key = 'intent' AND m.meta_value = %s";
+		$args = array( $this->booking_meta['intent'] );
+		if( empty($person->ID) ){
+			// guests without accounts all share person 0, so compare the email they booked with
+			if( empty($person->user_email) ) return 0;
+			$sql .= ' INNER JOIN '. EM_BOOKINGS_META_TABLE ." e ON e.booking_id = b.booking_id AND e.meta_key = '_registration|user_email' AND e.meta_value = %s";
+			$args[] = $person->user_email;
+		}
+		$sql .= ' WHERE b.event_id = %d AND COALESCE(b.timeslot_id, 0) = %d AND b.person_id = %d AND b.booking_date >= %s LIMIT 1';
+		array_push( $args, absint($this->get_event_id()), absint($this->timeslot_id), absint($person->ID), gmdate('Y-m-d H:i:s', time() - $window) );
+		return absint( $wpdb->get_var( $wpdb->prepare($sql, $args) ) );
+	}
+
 	function validate( $override_availability = false ){
 		do_action( 'em_booking_validate_pre', $this, $override_availability );
 		if( EM_Bookings::$disable_restrictions ) $override_availability = true;
@@ -960,6 +982,7 @@ class EM_Booking extends EM_Object{
 		foreach($adjustments as $adjustment){
 			$adjustment_amount = 0;
 			if( !empty($adjustment['amount']) ){
+				if( !is_numeric($adjustment['amount']) ) $adjustment['amount'] = 0; // older bookings can hold text here, which round() and number_format() reject on PHP 8
 				if( !empty($adjustment['tax']) && $adjustment['tax'] == $pre_or_post ){
 					if( !empty($adjustment['type']) ){
 						$desc = !empty($adjustment['desc']) ? $adjustment['desc'] : '';
@@ -1945,7 +1968,11 @@ class EM_Booking extends EM_Object{
 		foreach($admin_emails as $key => $email){ if( !is_email($email) ) unset($admin_emails[$key]); } //remove bad emails
 		//add extra args
 		$args = array();
-		if( $this->get_option('dbem_bookings_replyto_owner_admins') && $this->get_event()->get_contact()->user_email ){
+		if( $this->get_option('dbem_bookings_replyto_booker_admins') && is_email( $this->get_person()->user_email ) ){
+			$args['reply-to'] = $this->get_person()->user_email;
+			// the name comes from the booking form, so it must not carry line breaks into the header
+			$args['reply-to-name'] = str_replace( array("\r", "\n"), ' ', $this->get_person()->get_name() );
+		}elseif( $this->get_option('dbem_bookings_replyto_owner_admins') && $this->get_event()->get_contact()->user_email ){
 			$args['reply-to'] = $this->get_event()->get_contact()->user_email;
 			$args['reply-to-name'] = $this->get_event()->get_contact()->display_name;
 		}

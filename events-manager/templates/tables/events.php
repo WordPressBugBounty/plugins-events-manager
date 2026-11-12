@@ -154,7 +154,7 @@
 									<?php echo $EM_Event->get_recurrence_description(); ?> <br />
 									<?php if ( $event->is_recurring() ) : ?>
 										<a href="<?php echo esc_url($EM_Event->get_edit_reschedule_url()); ?>"><?php echo esc_html( sprintf( __('Edit %s', 'events-manager'), __('Recurring Events') ) ); ?></a>
-									<?php elseif ( $event->is_repeating() ) : ?>
+									<?php elseif ( $event->is_repeating() && post_type_exists( $event->post_type ) ) : ?>
 										<a href="<?php echo esc_url($EM_Event->get_edit_reschedule_url()); ?>"><?php echo esc_html( sprintf( __('Edit %s', 'events-manager'), __('Repeating Events') ) ); ?></a>
 									<?php endif; ?>
 									<?php if( current_user_can('delete_events')) : ?>

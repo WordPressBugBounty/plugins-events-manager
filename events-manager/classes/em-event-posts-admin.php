@@ -286,10 +286,12 @@ class EM_Event_Posts_Admin{
 					$actions = array();
 					if ( $EM_Event->is_repeated() ) {
 						if ( $EM_Event->get_recurring_event()->can_manage( 'edit_recurring_events', 'edit_others_recurring_events' ) ) {
-							$actions[] = '<a href="' . admin_url() . 'post.php?action=edit&amp;post=' . $EM_Event->get_recurring_event()->post_id . '">' . sprintf( esc_html__( 'Edit %s', 'events-manager' ), esc_html__( 'Repeating Events', 'events-manager' ) ) . '</a>';
+							if ( post_type_exists( $EM_Event->get_recurring_event()->post_type ) ) { // not registered while repeating events are disabled, so the template can't be opened
+								$actions[] = '<a href="' . admin_url() . 'post.php?action=edit&amp;post=' . $EM_Event->get_recurring_event()->post_id . '">' . sprintf( esc_html__( 'Edit %s', 'events-manager' ), esc_html__( 'Repeating Events', 'events-manager' ) ) . '</a>';
+							}
 							$actions[] = '<a class="em-detach-link" href="' . esc_url( $EM_Event->get_detach_url() ) . '">' . esc_html__( 'Detach', 'events-manager' ) . '</a>';
 						}
-						if ( $EM_Event->get_recurring_event()->can_manage( 'delete_recurring_events', 'delete_others_recurring_events' ) ) {
+						if ( post_type_exists( $EM_Event->get_recurring_event()->post_type ) && $EM_Event->get_recurring_event()->can_manage( 'delete_recurring_events', 'delete_others_recurring_events' ) ) {
 							$actions[] = '<span class="trash"><a class="em-delete-recurrence-link" href="' . get_delete_post_link( $EM_Event->get_recurring_event()->post_id ) . '">' . esc_html__( 'Delete', 'events-manager' ) . '</a></span>';
 						}
 					}

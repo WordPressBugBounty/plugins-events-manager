@@ -113,6 +113,7 @@ class EM_Tickets extends EM_Object implements Iterator, Countable {
 			return $EM_Event;
 		}else{
 			$this->event = em_get_event($this->event_id);
+			return $this->event;
 		}
 	}
 
@@ -232,6 +233,8 @@ class EM_Tickets extends EM_Object implements Iterator, Countable {
 			    		unset($ticket_data['ticket_id']);
 			    	}
 					$ticket_data['event_id'] = $this->event_id;
+					// an unsaved event has no ID to look itself up by, so hand it over or the ticket can't tell it belongs to a repeating event and drops its recurrence availability rules
+					if( $this->event ) $EM_Ticket->event = $this->event;
 					// check if a ticket is to be deleted
 				    if ( $EM_Ticket->ticket_id && !empty($ticket_data['delete']) && wp_verify_nonce( $ticket_data['delete'], 'delete_ticket_'.$EM_Ticket->ticket_id ) ) {
 					    $this->deleted_tickets[ $EM_Ticket->ticket_id ] = $EM_Ticket;
@@ -247,6 +250,9 @@ class EM_Tickets extends EM_Object implements Iterator, Countable {
 				    }
 			    }
 			}
+		} elseif ( ! empty( $this->event_id ) && ! empty( $current_tickets ) ) {
+			// A request with no ticket rows, such as a partial update through the REST API or MCP, keeps the event's tickets instead of adding a free bookable one.
+			$this->tickets = $current_tickets;
 		}else{
 			//we create a blank standard ticket
 			$EM_Ticket = new EM_Ticket(array(

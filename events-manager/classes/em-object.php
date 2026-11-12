@@ -506,7 +506,7 @@ class EM_Object {
 					$conditions['scope'] .= " OR ($event_start_col < CAST('$start_date' AS $cast) AND $event_end_col >= CAST('$start_date' AS $cast))";
 				}
 			}elseif ($scope == "month" || $scope == "next-month" || $scope == 'this-month'){
-				if( $scope == 'next-month' ) $EM_DateTime->add('P1M');
+				if( $scope == 'next-month' ) $EM_DateTime->modify('first day of next month'); // adding P1M to the 31st overflows past the next month
 				$start_month = $scope == 'this-month' ? $EM_DateTime->getDateTime( $utc ) : $EM_DateTime->modify('first day of this month')->getDateTime( $utc );
 				$end_month = $EM_DateTime->modify('last day of this month')->getDateTime( $utc );
 				$conditions['scope'] = " ($event_start_col BETWEEN CAST('$start_month' AS $cast) AND CAST('$end_month' AS $cast))";
@@ -516,7 +516,7 @@ class EM_Object {
 			}elseif( preg_match('/([0-9]+)\-months/',$scope,$matches) ){ // next x months means this month (what's left of it), plus the following x months until the end of that month.
 				$months_to_add = $matches[1];
 				$start_month = $EM_DateTime->getDateTime( $utc );
-				$end_month = $EM_DateTime->add('P'.$months_to_add.'M')->format('Y-m-t');
+				$end_month = $EM_DateTime->modify('first day of +'.$months_to_add.' month')->format('Y-m-t');
 				$conditions['scope'] = " ($event_start_col BETWEEN CAST('$start_month' AS $cast) AND CAST('$end_month' AS $cast))";
 				if( !em_get_option('dbem_events_current_are_past', $args['event_archetype'] ) ){
 					$conditions['scope'] .= " OR ($event_start_col < CAST('$start_month' AS $cast) AND $event_end_col >= CAST('$start_month' AS $cast))";
@@ -676,27 +676,34 @@ class EM_Object {
 					    //figure out context - what table/field to search
 					    $post_context = EM_EVENTS_TABLE.".post_id";
 					    $ms_context = EM_EVENTS_TABLE.".event_id";
+					    // recurrences of a recurring event have no post or terms of their own, so they match through their parent's terms via the recurrence set
+					    $is_event_context = true;
 					    if( !empty($tax_data['context']) && static::$context == 'location' && in_array( static::$context, $tax_data['context']) ){
 					        //context can be either locations or events, since those are the only two CPTs we deal with
 						    $post_context = EM_LOCATIONS_TABLE.".post_id";
 						    $ms_context = EM_LOCATIONS_TABLE.".event_id";
+						    $is_event_context = false;
 					    }
 					    //build conditions
 						if( EM_MS_GLOBAL && !empty($tax_data['ms']) ){ //by default only applies to categories
 						    //we're directly looking for tax ids from within the em_meta table
 							if( count($term_ids) > 0 ){
-								$tax_conds[] = "$ms_context IN ( SELECT object_id FROM ".EM_META_TABLE." WHERE meta_value IN (".implode(',',$term_ids).") AND meta_key='{$tax_data['ms']}' )";
+								$tax_objects = "SELECT object_id FROM ".EM_META_TABLE." WHERE meta_value IN (".implode(',',$term_ids).") AND meta_key='{$tax_data['ms']}'";
+								$tax_conds[] = $is_event_context ? "( $ms_context IN ( $tax_objects ) OR ".EM_EVENTS_TABLE.".recurrence_set_id IN ( SELECT recurrence_set_id FROM ".EM_EVENT_RECURRENCES_TABLE." WHERE event_id IN ( $tax_objects ) ) )" : "$ms_context IN ( $tax_objects )";
 							}
 							if( count($term_not_ids) > 0 ){
-								$tax_conds[] = "$ms_context NOT IN ( SELECT object_id FROM ".EM_META_TABLE." WHERE meta_value IN (".implode(',',$term_not_ids).") AND meta_key='{$tax_data['ms']}' )";			
+								$tax_objects = "SELECT object_id FROM ".EM_META_TABLE." WHERE meta_value IN (".implode(',',$term_not_ids).") AND meta_key='{$tax_data['ms']}'";
+								$tax_conds[] = $is_event_context ? "( $ms_context NOT IN ( $tax_objects ) AND ( ".EM_EVENTS_TABLE.".recurrence_set_id IS NULL OR ".EM_EVENTS_TABLE.".recurrence_set_id NOT IN ( SELECT recurrence_set_id FROM ".EM_EVENT_RECURRENCES_TABLE." WHERE event_id IN ( $tax_objects ) ) ) )" : "$ms_context NOT IN ( $tax_objects )";
 							} 
 						}else{
 					    	//normal taxonomy filtering
 							if( count($term_tax_ids) > 0 ){
-								$tax_conds[] = "$post_context IN ( SELECT object_id FROM ".$wpdb->term_relationships." WHERE term_taxonomy_id IN (".implode(',',$term_tax_ids).") )";
+								$tax_objects = "SELECT object_id FROM ".$wpdb->term_relationships." WHERE term_taxonomy_id IN (".implode(',',$term_tax_ids).")";
+								$tax_conds[] = $is_event_context ? "( $post_context IN ( $tax_objects ) OR ( $post_context IS NULL AND ".EM_EVENTS_TABLE.".recurrence_set_id IN ( SELECT rs.recurrence_set_id FROM ".EM_EVENT_RECURRENCES_TABLE." rs INNER JOIN ".EM_EVENTS_TABLE." rp ON rp.event_id = rs.event_id WHERE rp.post_id IN ( $tax_objects ) ) ) )" : "$post_context IN ( $tax_objects )";
 							}
 							if( count($term_tax_not_ids) > 0 ){
-								$tax_conds[] = "$post_context NOT IN ( SELECT object_id FROM ".$wpdb->term_relationships." WHERE term_taxonomy_id IN (".implode(',',$term_tax_not_ids).") )";			
+								$tax_objects = "SELECT object_id FROM ".$wpdb->term_relationships." WHERE term_taxonomy_id IN (".implode(',',$term_tax_not_ids).")";
+								$tax_conds[] = $is_event_context ? "( $post_context NOT IN ( $tax_objects ) OR ( $post_context IS NULL AND ( ".EM_EVENTS_TABLE.".recurrence_set_id IS NULL OR ".EM_EVENTS_TABLE.".recurrence_set_id NOT IN ( SELECT rs.recurrence_set_id FROM ".EM_EVENT_RECURRENCES_TABLE." rs INNER JOIN ".EM_EVENTS_TABLE." rp ON rp.event_id = rs.event_id WHERE rp.post_id IN ( $tax_objects ) ) ) ) )" : "$post_context NOT IN ( $tax_objects )";
 							}
 						}
 					}elseif( empty($ignore_cancel_cond) ){
@@ -875,7 +882,7 @@ class EM_Object {
 			}
 		}elseif ($scope == "month" || $scope == "next-month" ){
 			$EM_DateTime = new EM_DateTime(); //create default time in blog timezone
-			if( $scope == 'next-month' ) $EM_DateTime->add('P1M');
+			if( $scope == 'next-month' ) $EM_DateTime->modify('first day of next month'); // adding P1M to the 31st overflows past the next month
 			$start_month = $EM_DateTime->modify('first day of this month')->getDate();
 			$end_month = $EM_DateTime->modify('last day of this month')->getDate();
 			if( em_get_option('dbem_events_current_are_past', $args['event_archetype'] ) && $wp_query->query_vars['post_type'] != 'event-recurring' ){
@@ -888,7 +895,7 @@ class EM_Object {
 			$EM_DateTime = new EM_DateTime(); //create default time in blog timezone
 			$months_to_add = $matches[1];
 			$start_month = $EM_DateTime->getDate();
-			$end_month = $EM_DateTime->add('P'.$months_to_add.'M')->format('Y-m-t');
+			$end_month = $EM_DateTime->modify('first day of +'.$months_to_add.' month')->format('Y-m-t');
 			if( em_get_option('dbem_events_current_are_past', $args['event_archetype'] ) && $wp_query->query_vars['post_type'] != 'event-recurring' ){
 				$query[] = array( 'key' => '_event_start_date', 'value' => array($start_month,$end_month), 'type' => 'DATE', 'compare' => 'BETWEEN');
 			}else{

@@ -437,6 +437,7 @@ class Recurrence_Sets extends \EM_Object implements \Iterator, \ArrayAccess, \Co
 	 */
 	public function get_post_bookings() {
 		$EM_Event = $this->get_event();
+		$this->booking_updates = [ 'tickets' => [ 'added' => [], 'modified' => [], 'deleted' => [], 'unchanged' => [] ] ];
 		// Create timestamps and set rsvp date/time rules for recurrences.
 		// We will save this for now on the primary recurrence for all recurrences, we can address overriding this on per-set basis
 		if ( $this->get_event()->can_manage('manage_bookings','manage_others_bookings') ) {
@@ -489,8 +490,12 @@ class Recurrence_Sets extends \EM_Object implements \Iterator, \ArrayAccess, \Co
 					}
 					$this->booking_updates['tickets']['deleted'] = $EM_Tickets->deleted_tickets;
 				} else {
-					foreach ( $EM_Event->get_tickets()->tickets as $EM_Ticket ) {
-						$this->booking_updates['tickets']['unchanged'][$EM_Ticket->ticket_id] = $EM_Ticket;
+					foreach ( $EM_Event->get_tickets()->tickets as $ticket_key => $EM_Ticket ) {
+						if ( $EM_Ticket->ticket_id ) {
+							$this->booking_updates['tickets']['unchanged'][$EM_Ticket->ticket_id] = $EM_Ticket;
+						} else {
+							$this->booking_updates['tickets']['added'][$ticket_key] = $EM_Ticket;
+						}
 					}
 				}
 			}

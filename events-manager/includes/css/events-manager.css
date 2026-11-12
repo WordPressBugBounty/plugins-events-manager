@@ -5811,9 +5811,9 @@
   border-color: #badbcc !important;
 }
 .em .em-notice.em-notice-warning {
-  color: #664d03;
-  background: #fff3cd;
-  border-color: #ffecb5;
+  color: #664d03 !important;
+  background: #fff3cd !important;
+  border-color: #ffecb5 !important;
 }
 .em .em-notice.em-notice-icon {
   display: grid !important;

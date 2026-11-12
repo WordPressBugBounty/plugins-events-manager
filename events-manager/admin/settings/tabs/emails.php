@@ -21,6 +21,7 @@
 			<tr class="em-header"><td colspan='2'><h4><?php _e('Event Admin/Owner Emails', 'events-manager'); ?></h4></td></tr>
 			<?php
 			em_options_radio_binary ( __( 'Add Reply-To event owner?', 'events-manager'), 'dbem_bookings_replyto_owner_admins', __( "If enabled replies to these automated emails will, by default, be sent to the email of the event owner.",'events-manager') );
+			em_options_radio_binary ( __( 'Add Reply-To booker?', 'events-manager'), 'dbem_bookings_replyto_booker_admins', __( "If enabled replies to these automated emails will be sent to the person who made the booking. This takes precedence over the event owner Reply-To.",'events-manager') );
 			?>
 			<tbody class="em-subsection">
 			<tr class="em-subheader"><td colspan='2'>
@@ -111,7 +112,7 @@
 		</p>
 		<table class='form-table'>
 			<?php
-			em_options_radio_binary ( __( 'Disable new registration email?', 'events-manager'), 'dbem_email_disable_registration', __( 'Check this option if you want to prevent the WordPress registration email from going out when a user anonymously books an event.', 'events-manager'), '', '.em-emails-registration-templates' );
+			em_options_radio_binary ( __( 'Disable new registration email?', 'events-manager'), 'dbem_email_disable_registration', __( 'Check this option if you want to prevent the WordPress registration email from going out when a user anonymously books an event.', 'events-manager'), '', '.em-emails-registration-templates', true );
 			?>
 			<tbody class="em-emails-registration-templates">
 				<?php

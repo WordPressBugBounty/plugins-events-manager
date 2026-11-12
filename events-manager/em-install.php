@@ -970,6 +970,7 @@ function em_add_options() {
 			'dbem_bookings_notify_admin' => 0,
 			'dbem_bookings_contact_email' => 1,
 			'dbem_bookings_replyto_owner_admins' => 0,
+			'dbem_bookings_replyto_booker_admins' => 0,
 			'dbem_bookings_replyto_owner' => 0,
 			'dbem_bookings_contact_email_pending_subject' => __("Booking Pending",'events-manager'),
 			'dbem_bookings_contact_email_pending_body' => str_replace("<br/>", "\n\r", $contact_person_emails['pending']),

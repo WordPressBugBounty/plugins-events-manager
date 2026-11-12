@@ -374,7 +374,7 @@ function em_get_location_form( $args = array() ){
 function em_locations_admin($args = array()){
 	$archetype = $args['event_archetype'] ?? null;
 	if( is_user_logged_in() && current_user_can('edit_locations') ){
-		if( !empty($_GET['action']) && $_GET['action']=='edit' ){
+		if( (!empty($_GET['action']) && $_GET['action']=='edit') || (!empty($_POST['action']) && $_POST['action']=='location_save') ){
 			if( empty($_REQUEST['redirect_to']) ){
 				$_REQUEST['redirect_to'] = em_add_get_params($_SERVER['REQUEST_URI'], array('action'=>null, 'location_id'=>null));
 			}

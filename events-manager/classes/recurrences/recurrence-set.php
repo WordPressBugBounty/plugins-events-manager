@@ -924,6 +924,7 @@ class Recurrence_Set extends EM_Object {
 	public function save_recurrences() {
 		global $wpdb;
 		$EM_Event = $this->get_event();
+		$this->save_status['events'] = [ 'added' => [], 'updated' => [], 'cancelled' => [], 'deleted' => [] ];
 		if ( $this->delete ) {
 			// just delete the events, this recurrence set is scheduled to be deleted entirely
 			$this->recurrences = [];

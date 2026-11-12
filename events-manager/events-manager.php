@@ -1,7 +1,7 @@
 <?php
 /*
 Plugin Name: Events Manager
-Version: 7.4.13
+Version: 7.4.14
 Plugin URI: https://wp-events-plugin.com
 Description: Event registration and booking management for WordPress. Recurring events, locations, webinars, google maps, rss, ical, booking registration and more!
 Author: Pixelite
@@ -30,7 +30,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 // Setting constants
 use EM\Archetypes;
 
-define('EM_VERSION', '7.4.13'); //self expanatory, although version currently may not correspond directly with published version number. until 6.0 we're stuck updating 5.999.x
+define('EM_VERSION', '7.4.14'); //self expanatory, although version currently may not correspond directly with published version number. until 6.0 we're stuck updating 5.999.x
 define('EM_PRO_MIN_VERSION', '3.9'); //self expanatory
 define('EM_PRO_MIN_VERSION_CRITICAL', '3.6.0.2'); //self expanatory
 define('EM_FILE', __FILE__); //an absolute path to this directory
@@ -401,37 +401,23 @@ function em_load_event(){
 			$EM_Event = em_get_event($_REQUEST['post'], 'post_id');
 		}elseif ( !empty($_REQUEST['event_slug']) && EM_MS_GLOBAL && is_main_site() && !get_site_option('dbem_ms_global_events_links')) {
 			// single event page for a subsite event being shown on the main blog
-			global $wpdb;
-			$matches = array();
-			if( preg_match('/\-([0-9]+)$/', $_REQUEST['event_slug'], $matches) ){
-				$event_id = $matches[1];
-			}else{
-				$query = $wpdb->prepare('SELECT event_id FROM '.EM_EVENTS_TABLE.' WHERE event_slug = %s AND blog_id != %d', $_REQUEST['event_slug'], get_current_blog_id());
-				$event_id = $wpdb->get_var($query);
-			}
-			$EM_Event = em_get_event($event_id);
+			$EM_Event = em_get_ms_global_event_by_slug( $_REQUEST['event_slug'] );
+			if( !$EM_Event ) em_load_event_not_found();
 		}
 		if( isset($_REQUEST['location_id']) && is_numeric($_REQUEST['location_id']) && !is_object($EM_Location) ){
 			$EM_Location = new EM_Location( absint($_REQUEST['location_id']) );
 		}elseif( isset($_REQUEST['post']) && get_post_type($_REQUEST['post']) == EM_POST_TYPE_LOCATION ){
 			$EM_Location = em_get_location($_REQUEST['post'], 'post_id');
 		}elseif ( !empty($_REQUEST['location_slug']) && EM_MS_GLOBAL && is_main_site() && !get_site_option('dbem_ms_global_locations_links')) {
-			// single event page for a subsite event being shown on the main blog
-			global $wpdb;
-			$matches = array();
-			if( preg_match('/\-([0-9]+)$/', $_REQUEST['location_slug'], $matches) ){
-				$location_id = $matches[1];
-			}else{
-				$query = $wpdb->prepare('SELECT location_id FROM '.EM_LOCATIONS_TABLE." WHERE location_slug = %s AND blog_id != %d", $_REQUEST['location_slug'], get_current_blog_id());
-				$location_id = $wpdb->get_var($query);
-			}
-			$EM_Location = em_get_location($location_id);
+			// single location page for a subsite location being shown on the main blog
+			$EM_Location = em_get_ms_global_location_by_slug( $_REQUEST['location_slug'] );
+			if( !$EM_Location ) em_load_event_not_found();
 		}
 		if( is_user_logged_in() || (!empty($_REQUEST['person_id']) && is_numeric($_REQUEST['person_id'])) ){
-			//make the request id take priority, this shouldn't make it into unwanted objects if they use theobj::get_person().
-			if( !empty($_REQUEST['person_id']) ){
+			// Only honour a request person_id for someone who can manage other people's bookings. Otherwise a visitor could set the global $EM_Person, which a new booking adopts in get_person(), to any user id and have their booking and submitted account details attributed to that user.
+			if( !empty($_REQUEST['person_id']) && is_numeric($_REQUEST['person_id']) && current_user_can('manage_others_bookings') ){
 				$EM_Person = new EM_Person( absint($_REQUEST['person_id']) );
-			}else{
+			}elseif( is_user_logged_in() ){
 				$EM_Person = new EM_Person( get_current_user_id() );
 			}
 		}
@@ -457,6 +443,49 @@ function em_load_event(){
 }
 add_action('template_redirect', 'em_load_event', 1);
 if( is_admin() ){ add_action('init', 'em_load_event', 2); }
+
+/**
+ * Finds the subsite event a main-blog event slug points to in MS Global mode, either by the event id it ends with or by its slug.
+ * @param string $slug
+ * @return EM_Event|null The event, or null if it doesn't exist or the visitor can't view it.
+ */
+function em_get_ms_global_event_by_slug( $slug ){
+	global $wpdb;
+	if( preg_match('/\-([0-9]+(?::[0-9]+)?)$/', $slug, $matches) ){
+		$event_id = $matches[1];
+	}else{
+		$event_id = $wpdb->get_var( $wpdb->prepare('SELECT event_id FROM '.EM_EVENTS_TABLE.' WHERE event_slug = %s AND blog_id != %d', $slug, get_current_blog_id()) );
+	}
+	$EM_Event = $event_id ? em_get_event($event_id) : null;
+	return ( $EM_Event && $EM_Event->get_event_id() && $EM_Event->is_viewable() ) ? $EM_Event : null;
+}
+
+/**
+ * Finds the subsite location a main-blog location slug points to in MS Global mode, either by the location id it ends with or by its slug.
+ * @param string $slug
+ * @return EM_Location|null The location, or null if it doesn't exist or the visitor can't view it.
+ */
+function em_get_ms_global_location_by_slug( $slug ){
+	global $wpdb;
+	if( preg_match('/\-([0-9]+)$/', $slug, $matches) ){
+		$location_id = $matches[1];
+	}else{
+		$location_id = $wpdb->get_var( $wpdb->prepare('SELECT location_id FROM '.EM_LOCATIONS_TABLE.' WHERE location_slug = %s AND blog_id != %d', $slug, get_current_blog_id()) );
+	}
+	$EM_Location = $location_id ? em_get_location($location_id) : null;
+	return ( $EM_Location && $EM_Location->location_id && $EM_Location->is_viewable() ) ? $EM_Location : null;
+}
+
+/**
+ * Turns the current front-end request into a 404, for a subsite event or location slug on the main blog that names nothing viewable, which would otherwise show the events or locations page with an empty item.
+ */
+function em_load_event_not_found(){
+	global $wp_query;
+	if( is_admin() || !$wp_query ) return;
+	$wp_query->set_404();
+	status_header(404);
+	nocache_headers();
+}
 
 /**
  * Works much like <a href="http://codex.wordpress.org/Function_Reference/locate_template" target="_blank">locate_template</a>, except it takes a string instead of an array of templates, we only need to load one.
@@ -978,6 +1007,16 @@ function em_check_pro_compatability(){
 	}
 }
 add_action('plugins_loaded','em_check_pro_compatability', 1);
+
+/**
+ * Connect 1.0.1 shipped with a development host as its updates URL, so it can never fetch the update that fixes it; core reaches those sites through wordpress.org instead.
+ */
+function em_connect_updates_url_fix(){
+	if( class_exists('EM\Connect\License', false) && \EM\Connect\License::$updates_url === 'https://eventsmanagerpro.lan/api/%s/' ){
+		\EM\Connect\License::$updates_url = 'https://eventsmanagerpro.com/api/%s/';
+	}
+}
+add_action('events_manager_plugin_loaded', 'em_connect_updates_url_fix', 10);
 
 function events_manager_plugin_loaded(){
 	do_action('events_manager_plugin_loaded');

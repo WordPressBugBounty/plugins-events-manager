@@ -202,7 +202,8 @@ class EM_Bookings_Table extends EM\List_Table {
 			'booking_date'=>__('Booking Date','events-manager'),
 			'booking_price'=>__('Total','events-manager'),
 			'booking_id'=>__('Booking ID','events-manager'),
-			'booking_comment'=>__('Booking Comment','events-manager')
+			'booking_comment'=>__('Booking Comment','events-manager'),
+			'booking_notes'=>__('Booking Notes','events-manager'),
 		), $this);
 		$this->cols_attendees_template = apply_filters('em_bookings_table_cols_attendees_template', array(
 			'ticket_booking_id' => array(
@@ -548,6 +549,7 @@ class EM_Bookings_Table extends EM\List_Table {
 		}elseif( $EM_Ticket !== false ){
 			//searching bookings with a specific ticket
 			$args = array( 'ticket_id' => $EM_Ticket->ticket_id );
+			$args['owner'] = !current_user_can('manage_others_bookings') ? get_current_user_id() : false;
 		}elseif( $EM_Event !== false ){
 			//bookings for an event
 			if ( $EM_Event->is_recurring() ) {
@@ -1080,6 +1082,18 @@ class EM_Bookings_Table extends EM\List_Table {
 			}
 		} elseif( $col == 'booking_comment' ){
 			$val = $EM_Booking->booking_comment;
+		} elseif( $col == 'booking_notes' ){
+			$notes = array();
+			foreach( $EM_Booking->get_notes() as $note ){
+				$note_date = !empty($note['timestamp']) ? wp_date( em_get_option('dbem_date_format') . ' ' . em_get_option('dbem_time_format'), $note['timestamp'] ) . ': ' : '';
+				$notes[] = $note_date . wp_strip_all_tags( $note['note'] ?? '' );
+			}
+			if( $this->format == 'html' || empty($this->format) ){
+				$val = implode( '<br>', array_map( 'esc_html', $notes ) );
+				static::$cols_allowed_html[$col] = true;
+			} else {
+				$val = implode( "\n", $notes );
+			}
 		}
 		// escape and return
 		return $this->default_column_sanitize_data( $val, $col, $item, !empty($allow_html) );

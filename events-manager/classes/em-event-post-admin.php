@@ -71,7 +71,9 @@ class EM_Event_Post_Admin{
 			} elseif ( $EM_Event->is_repeated() ) {
 				$warning = "<p><strong>".__('WARNING: This is a recurrence in a set of repeating events.', 'events-manager')."</strong></p>";
 				$warning .= "<p>". sprintf(__('If you update this event data and save, it could get overwritten if you edit the repeating event template. To make it an independent, <a href="%s">detach it</a>.', 'events-manager'), $EM_Event->get_detach_url())."</p>";
-				$warning .= "<p>".sprintf(__('To manage the whole set, <a href="%s">edit the repeating event template</a>.', 'events-manager'),admin_url('post.php?action=edit&amp;post='.$EM_Event->get_recurring_event()->post_id))."</p>";
+				if ( post_type_exists( $EM_Event->get_recurring_event()->post_type ) ) {
+					$warning .= "<p>".sprintf(__('To manage the whole set, <a href="%s">edit the repeating event template</a>.', 'events-manager'),admin_url('post.php?action=edit&amp;post='.$EM_Event->get_recurring_event()->post_id))."</p>";
+				}
 				?><div class="notice notice-warning is-dismissible"><?php echo $warning; ?></div><?php
 			}
 			if( !empty($EM_Event->group_id) && function_exists('groups_get_group') ){
@@ -203,11 +205,6 @@ class EM_Event_Post_Admin{
 					//If we're saving via quick-edit in MS Global mode, then the categories need to be pushed to the ms global index
 					if( EM_MS_GLOBAL && em_get_option('dbem_categories_enabled') && is_main_site() ){
 		    			$EM_Event->get_categories()->save_index(); //just save to index, WP should have saved the taxonomy data
-					}
-					//deal with recurrences
-					if( $EM_Event->is_recurring( true ) && $EM_Event->is_published() ){
-						//recurrences are (re)saved only if event is published
-						$EM_Event->get_recurrence_sets()->save_recurrences();
 					}
 					apply_filters('em_event_save', true, $EM_Event);
 					//flag a cache refresh if we get here

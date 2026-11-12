@@ -18,6 +18,57 @@ class Privacy extends Consent {
 		if( is_admin() ) {
 			include('privacy-consent-admin.php');
 		}
+		add_filter('em_bookings_table_cols_template', [ static::class, 'em_bookings_table_cols_template' ], 10, 2);
+		add_filter('em_bookings_table_rows_col_' . static::$prefix, [ static::class, 'em_bookings_table_rows_col' ], 10, 3);
+		add_action('em_person_display_summary_bottom', [ static::class, 'em_person_display_summary_bottom' ]);
+		add_filter('em_person_get_summary', [ static::class, 'em_person_get_summary' ], 10, 2);
+	}
+
+	/**
+	 * When consent was given for a booking, falling back to the booker's account for bookings made before it was stored on the booking.
+	 * @param \EM_Booking $EM_Booking
+	 * @return string|null
+	 */
+	public static function get_booking_consent( $EM_Booking ) {
+		$consent = $EM_Booking->booking_meta['registration'][ static::$options['meta_key'] ] ?? null;
+		return $consent ?: $EM_Booking->get_user_meta( static::$options['meta_key'] );
+	}
+
+	/**
+	 * Formats a stored consent value as a date, or No when consent wasn't given.
+	 * @param string|null $consent
+	 * @return string
+	 */
+	public static function format_consent( $consent ) {
+		if( !$consent ) return __('No', 'events-manager');
+		if( !preg_match('/^\d{4}-\d{2}-\d{2}/', $consent) ) return __('Yes', 'events-manager');
+		return \EM_DateTime::create( $consent, 'UTC' )->setTimezone()->formatDefault();
+	}
+
+	public static function em_bookings_table_cols_template( $template, $EM_Bookings_Table ) {
+		if( !em_get_option('dbem_data_' . static::$prefix . '_bookings') ) return $template;
+		$template[ static::$prefix ] = esc_html__('Privacy Consent', 'events-manager');
+		return $template;
+	}
+
+	public static function em_bookings_table_rows_col( $val, $EM_Object, $EM_Bookings_Table ) {
+		$EM_Booking = $EM_Bookings_Table->get_item_objects( $EM_Object )['EM_Booking'] ?? null;
+		return $EM_Booking ? static::format_consent( static::get_booking_consent( $EM_Booking ) ) : $val;
+	}
+
+	public static function em_person_display_summary_bottom( $EM_Person ) {
+		if( !em_get_option('dbem_data_' . static::$prefix . '_bookings') ) return;
+		?>
+		<tr>
+			<th><?php esc_html_e('Privacy Consent','events-manager'); ?> : </th>
+			<td><?php echo esc_html( static::format_consent( $EM_Person->{ static::$options['meta_key'] } ) ); ?></td>
+		</tr>
+		<?php
+	}
+
+	public static function em_person_get_summary( $summary, $EM_Person ) {
+		$summary['privacy_consent_given'] = array( 'name' => __('Privacy Consent', 'events-manager'), 'value' => $EM_Person->{ static::$options['meta_key'] } );
+		return $summary;
 	}
 	
 	public static function get_error_booking() {

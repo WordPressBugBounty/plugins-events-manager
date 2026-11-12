@@ -193,32 +193,6 @@ paths:
           $ref: "#/components/responses/NotFound"
         "500":
           $ref: "#/components/responses/ServerError"
-  /events-manager/v1/events/validate:
-    post:
-      operationId: validateEvent
-      summary: Validate event
-      description: |
-        Validates event input without saving it. This is intended as a safe preflight endpoint for
-        UI flows and AI agents before creating or updating an event.
-      tags: [Events]
-      security:
-        - cookieAuth: []
-        - basicAuth: []
-      requestBody:
-        $ref: "#/components/requestBodies/EventInput"
-      responses:
-        "200":
-          $ref: "#/components/responses/EventValidationResponse"
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-        "500":
-          $ref: "#/components/responses/ServerError"
   /events-manager/v1/events/{event_id}/availability:
     get:
       operationId: getEventAvailability
@@ -752,7 +726,9 @@ paths:
       summary: Update booking
       description: |
         Partially updates ticket selections, comments, guest details, and other supported booking
-        fields. Booking management permission is required.
+        fields. Booking management permission is required. The payment `gateway` cannot be changed
+        after the booking is made: sending a different one returns a 400 error, and resending the
+        current one is ignored.
       tags: [Bookings]
       security:
         - cookieAuth: []
@@ -1902,17 +1878,6 @@ components:
           examples:
             event:
               $ref: "#/components/examples/EventExample"
-    EventValidationResponse:
-      description: Event validation result.
-      content:
-        application/json:
-          schema:
-            $ref: "#/components/schemas/EventValidation"
-          examples:
-            valid:
-              value:
-                valid: true
-                event: *event_value
     EventAvailabilityResponse:
       description: Event availability response.
       content:
@@ -2548,9 +2513,11 @@ components:
         em_tickets:
           type: object
           description: |
-            Tickets bound to this event. Object keyed by ticket ID (existing) or 1-based
-            sequential index (new). Key `0` is reserved by `EM_Tickets::get_post()` (admin-form
-            template row); the API auto-shifts 0-indexed payloads. **Requires `event_rsvp: 1`**
+            Tickets bound to this event. A row with `ticket_id`, or keyed by one of this event's
+            ticket IDs, updates that ticket; any other row adds a new ticket. Keys numbered
+            1, 2, 3... in order are positional, so a row there needs `ticket_id` to update a
+            ticket. Key `0` is reserved by `EM_Tickets::get_post()` (admin-form template row);
+            the API auto-shifts 0-indexed payloads. **Requires `event_rsvp: 1`**
             on the event to take effect — sending tickets without bookings enabled is silently
             ignored (matches the admin-form behaviour).
           additionalProperties:
@@ -2720,14 +2687,6 @@ components:
           type: integer
         available:
           type: boolean
-    EventValidation:
-      type: object
-      required: [valid, event]
-      properties:
-        valid:
-          type: boolean
-        event:
-          $ref: "#/components/schemas/Event"
     LocationCollection:
       type: object
       required: [items, pagination]
@@ -3035,7 +2994,7 @@ components:
           description: Free-text note attached to the booking.
         gateway:
           type: string
-          description: Payment gateway slug (e.g. `offline`, `stripe_checkout`, `paypal_advanced`). See the gateway introspection endpoint for the active list.
+          description: Payment gateway slug (e.g. `offline`, `stripe_checkout`, `paypal_advanced`). See the gateway introspection endpoint for the active list. Create-only. The gateway is set when the booking is made and cannot be changed afterwards. On update, a different gateway is rejected with a 400 error, and resending the booking's current gateway is accepted but ignored, the same as omitting the field. A free booking made without a gateway ignores it on update, unless the update makes the booking paid, which is rejected.
         coupon_code:
           type: string
           description: '`::pro::` Promotional discount code to apply to this booking.'
@@ -3205,7 +3164,7 @@ components:
           description: Long-form ticket description (e.g. what's included). Accepts HTML.
         ticket_status:
           type: integer
-          description: '`1` = bookable, `0` = disabled. **Defaults to `0` if omitted** — set explicitly to `1` to make new tickets bookable.'
+          description: '`1` = bookable, `0` = disabled. If omitted, a new ticket is bookable and an update keeps the current status.'
         ticket_price:
           type: number
           description: Ticket price in the site currency. `0` = free.

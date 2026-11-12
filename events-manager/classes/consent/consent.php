@@ -12,6 +12,12 @@ class Consent {
 	public static $prefix = 'consent';
 	
 	public static $required = true;
+
+	/**
+	 * Whether each event or location being submitted was shown the checkbox, keyed by prefix and object hash.
+	 * @var array
+	 */
+	protected static $offered = array();
 	
 	public static function init() {
 		// Consent validation is only ever meant to fire for public-facing
@@ -49,7 +55,7 @@ class Consent {
 			add_action('em_event_save', [ static::class, 'cpt_save' ], 10, 2);
 		}
 		//LOCATIONS
-		if( em_get_option('dbem_data_' . static::$prefix . '_locations') == 1 || ( em_get_option('dbem_data_' . static::$prefix . '_events') == 2 && !is_user_logged_in() ) ){
+		if( em_get_option('dbem_data_' . static::$prefix . '_locations') == 1 || ( em_get_option('dbem_data_' . static::$prefix . '_locations') == 2 && !is_user_logged_in() ) ){
 			add_action('em_front_location_form_footer', [ static::class, 'location_checkbox' ], 9, 1);
 			add_action('em_location_get_post_meta', [ static::class, 'cpt_get_post' ], 10, 2);
 			add_action('em_location_validate', [ static::class, 'cpt_validate' ], 10, 2);
@@ -231,6 +237,7 @@ class Consent {
 
 	public static function cpt_get_post($result, $EM_Object ){
 		if( static::is_excluded_request() ) return $result;
+		static::$offered[ static::$prefix . spl_object_hash( $EM_Object ) ] = static::checkbox_offered( $EM_Object );
 		if( !empty($_REQUEST[ static::$options['param'] ]) ){
 			if( get_class($EM_Object) == 'EM_Event' ){
 				$EM_Object->event_attributes['_' . static::$options['meta_key']] = 1;
@@ -273,15 +280,30 @@ class Consent {
 	public static function cpt_save( $result, $EM_Object ){
 		if( static::is_excluded_request() ) return $result;
 		$attributes = get_class($EM_Object) == 'EM_Event' ? 'event_attributes':'location_attributes';
-		if( $result && !empty($EM_Object->{$attributes}['_' . static::$prefix])){
-			if( !em_get_option('dbem_events_anonymous_submissions') || $EM_Object->post_author != em_get_option('dbem_events_anonymous_user') ){
+		$anonymous = em_get_option('dbem_events_anonymous_submissions') && $EM_Object->post_author == em_get_option('dbem_events_anonymous_user');
+		if( !$result || $anonymous || empty($EM_Object->post_author) ) return $result;
+		if( !empty($EM_Object->{$attributes}['_' . static::$options['meta_key']]) ){
+			// the first consent date is kept, as with bookings, so later submissions don't reset it
+			if( !get_user_meta( $EM_Object->post_author, static::$options['meta_key'], true ) ){
 				update_user_meta( $EM_Object->post_author, static::$options['meta_key'], current_time( 'mysql', true ) );
 			}
-		} elseif ( $result && !static::$required ) {
-			// if not required and we're here, then we can consider the user has revoked consent
+		} elseif ( !static::$required && !empty(static::$offered[ static::$prefix . spl_object_hash( $EM_Object ) ]) && $EM_Object->post_author == get_current_user_id() ) {
+			// the checkbox is hidden when editing or when consent is remembered, so only the owner leaving a box they were shown unticked revokes their consent
 			delete_user_meta( $EM_Object->post_author, static::$options['meta_key'] );
+			update_user_meta( $EM_Object->post_author, static::$options['meta_key'] . '_revoked', current_time( 'mysql', true ) );
 		}
 		return $result;
+	}
+
+	/**
+	 * Whether checkbox() shows the consent checkbox for this event or location.
+	 * @param EM_Event|EM_Location $EM_Object
+	 * @return bool
+	 */
+	protected static function checkbox_offered( $EM_Object ){
+		if( !empty($EM_Object->post_id) ) return false;
+		if( is_user_logged_in() && em_get_option( static::$options['remember'] ) == 1 && get_user_meta( get_current_user_id(), static::$options['meta_key'], true ) ) return false;
+		return true;
 	}
 }
 if( is_admin() ) {
