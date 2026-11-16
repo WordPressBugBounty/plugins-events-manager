@@ -1,4 +1,11 @@
 form .event-form-bookings {
+	.ticket-access-icons {
+		margin-left: 4px;
+		white-space: nowrap;
+		&[data-access="in_person"] .em-icon-globe, &[data-access="online"] .em-icon-location {
+			display: none;
+		}
+	}
 	&:has( input.event_rsvp:not(:checked) ) {
 		#event-rsvp-options, .event-rsvp-options {
 			display: none;

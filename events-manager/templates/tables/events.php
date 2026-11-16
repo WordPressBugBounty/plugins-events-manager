@@ -11,41 +11,38 @@
 	/* @var bool $show_add_new */
 	/* @var int $limit */
 	/* @var int $page */
-	$url = add_query_arg(array('scope' => null, 'status' => null, 'em_search' => null, 'pno' => null, 'admin_mode' => null)); //template for cleaning the link for each view below
+	$url = add_query_arg(array('scope' => null, 'status' => null, 'em_search' => null, 'pno' => null)); //template for cleaning the link for each view below
 	?>
 	<div class="<?php em_template_classes('events-admin', 'events-admin-list'); ?>">
 		<form id="posts-filter" action="" method="get" class="input">
-			<?php
-			echo $EM_Notices;
-			//add new button will only appear if called from em_event_admin template tag, or if the $show_add_new var is set
-			if(!empty($show_add_new) && current_user_can('edit_events')) echo '<a class="em-button button add-new-h2" href="'.esc_url( em_add_get_params($_SERVER['REQUEST_URI'],array('action'=>'edit','scope'=>null,'status'=>null,'event_id'=>null, 'success'=>null)) ).'">'.__('Add New','events-manager').'</a>';
-			?>
-			<div class="subsubsub">
-				<?php $url = add_query_arg(array('scope'=>null,'status'=>null,'em_search'=>null,'pno'=>null, 'admin_mode'=>null)); //template for cleaning the link for each view below ?>
-				<a href='<?php echo esc_url( add_query_arg('view', 'future', $url) ); ?>' <?php echo ( !isset($_GET['view']) ) ? 'class="current"':''; ?>><?php _e ( 'Upcoming', 'events-manager'); ?> <span class="count">(<?php echo $future_count; ?>)</span></a> &nbsp;|&nbsp;
+			<?php echo $EM_Notices; ?>
+			<div class="em-tabs">
+				<a href='<?php echo esc_url( add_query_arg('view', 'future', $url) ); ?>' class="em-tab <?php if( !isset($_GET['view']) ) echo 'current'; ?>"><?php _e ( 'Upcoming', 'events-manager'); ?> <span class="count">(<?php echo $future_count; ?>)</span></a>
 				<?php if( $pending_count > 0 ): ?>
-				<a href='<?php echo esc_url( add_query_arg('view', 'pending', $url) ); ?>' <?php echo ( isset($_GET['view']) && $_GET['view'] == 'pending' ) ? 'class="current"':''; ?>><?php _e ( 'Pending', 'events-manager'); ?> <span class="count">(<?php echo $pending_count; ?>)</span></a> &nbsp;|&nbsp;
+				<a href='<?php echo esc_url( add_query_arg('view', 'pending', $url) ); ?>' class="em-tab <?php if( isset($_GET['view']) && $_GET['view'] == 'pending' ) echo 'current'; ?>"><?php _e ( 'Pending', 'events-manager'); ?> <span class="count">(<?php echo $pending_count; ?>)</span></a>
 				<?php endif; ?>
 				<?php if( $draft_count > 0 ): ?>
-				<a href='<?php echo esc_url( add_query_arg('view', 'draft', $url) ); ?>' <?php echo ( isset($_GET['view']) && $_GET['view'] == 'draft' ) ? 'class="current"':''; ?>><?php _e ( 'Draft', 'events-manager'); ?> <span class="count">(<?php echo $draft_count; ?>)</span></a> &nbsp;|
+				<a href='<?php echo esc_url( add_query_arg('view', 'draft', $url) ); ?>' class="em-tab <?php if( isset($_GET['view']) && $_GET['view'] == 'draft' ) echo 'current'; ?>"><?php _e ( 'Draft', 'events-manager'); ?> <span class="count">(<?php echo $draft_count; ?>)</span></a>
 				<?php endif; ?>
-				<a href='<?php echo esc_url( add_query_arg('view', 'past', $url) ); ?>' <?php echo ( isset($_GET['view']) && $_GET['view'] == 'past' ) ? 'class="current"':''; ?>><?php _e ( 'Past Events', 'events-manager'); ?> <span class="count">(<?php echo $past_count; ?>)</span></a>
-				
-				<?php if( current_user_can('edit_others_events') ): ?>
-					<div class="admin-events-filter">
-						<a href='<?php echo esc_url( add_query_arg('admin_mode', 1, $url) ); ?>' <?php echo ( !empty($_GET['admin_mode']) ) ? 'class="current"':''; ?>><?php esc_html_e ( 'All Events', 'events-manager'); ?></a> &nbsp;|&nbsp;
-						<a href='<?php echo esc_url( add_query_arg('admin_mode', null, $url) ); ?>' <?php echo ( empty($_GET['admin_mode']) ) ? 'class="current"':''; ?>><?php esc_html_e ( 'My Events', 'events-manager'); ?></a>
-					</div>
+				<a href='<?php echo esc_url( add_query_arg('view', 'past', $url) ); ?>' class="em-tab <?php if( isset($_GET['view']) && $_GET['view'] == 'past' ) echo 'current'; ?>"><?php _e ( 'Past Events', 'events-manager'); ?> <span class="count">(<?php echo $past_count; ?>)</span></a>
+				<?php if( !empty($show_add_new) && current_user_can('edit_events') ): ?>
+				<a class="em-button button add-new-h2" href="<?php echo esc_url( em_add_get_params($_SERVER['REQUEST_URI'], array('action'=>'edit','scope'=>null,'status'=>null,'event_id'=>null, 'success'=>null)) ); ?>"><?php _e('Add New','events-manager'); ?></a>
 				<?php endif; ?>
 			</div>
-			<p class="search-box">
+			<div class="search-box em-input-row inline-inputs">
 				<label class="screen-reader-text" for="post-search-input"><?php _e('Search Events','events-manager'); ?>:</label>
 				<input type="text" id="post-search-input" name="em_search" value="<?php echo (!empty($_REQUEST['em_search'])) ? esc_attr($_REQUEST['em_search']):''; ?>" />
 				<?php if( !empty($_REQUEST['view']) ): ?>
 				<input type="hidden" name="view" value="<?php echo esc_attr($_REQUEST['view']); ?>" />
 				<?php endif; ?>
 				<input type="submit" value="<?php _e('Search Events','events-manager'); ?>" class="button" />
-			</p>
+				<?php if( current_user_can('edit_others_events') ): ?>
+				<select name="admin_mode" onchange="this.form.submit()" aria-label="<?php esc_attr_e('Events', 'events-manager'); ?>">
+					<option value="0"><?php esc_html_e('My Events', 'events-manager'); ?></option>
+					<option value="1" <?php selected( !empty($_GET['admin_mode']) ); ?>><?php esc_html_e('All Events', 'events-manager'); ?></option>
+				</select>
+				<?php endif; ?>
+			</div>
 			<div class="tablenav">
 				<?php
 				if ( $events_count >= $limit ) {
@@ -131,6 +128,9 @@
 									<?php
 									if( $EM_Event->has_location() && ( empty($EM_Event->location_id) || $EM_Event->get_location()->is_viewable() ) ){
 										echo "<b>" . esc_html($EM_Event->get_location()->location_name) . "</b><br/>" . esc_html($EM_Event->get_location()->location_address) . " - " . esc_html($EM_Event->get_location()->location_town);
+										if( $EM_Event->is_hybrid() ){
+											echo "<br/>" . $EM_Event->get_event_location()->get_admin_column();
+										}
 									}elseif( $EM_Event->has_event_location() ) {
 										echo $EM_Event->get_event_location()->get_admin_column();
 									}else{

@@ -93,6 +93,9 @@ $reschedule_warnings = !empty($EM_Event->event_id) && $EM_Event->is_recurring( t
 									</td>
 									<td class="ticket-name">
 										<span class="ticket_name"><?php if($EM_Ticket->members) echo '* ';?><?php echo wp_kses_post($EM_Ticket->name); ?></span>
+										<?php if ( EM_Event::is_hybrid_available() ) : ?>
+										<span class="ticket-access-icons em-hybrid-only" data-access="<?php echo esc_attr( $EM_Ticket->get_access_setting() ); ?>" <?php if ( !$EM_Event->is_hybrid() ) echo 'style="display:none;"'; ?>><span class="em-icon em-icon-location s-15" title="<?php echo esc_attr( EM_Event::get_access_label('in_person') ); ?>"></span><span class="em-icon em-icon-globe s-15" title="<?php echo esc_attr( EM_Event::get_access_label('online') ); ?>"></span></span>
+										<?php endif; ?>
 										<div class="ticket_description"><?php if( !empty($EM_Ticket->description) ) echo wp_kses_post($EM_Ticket->description); ?></div>
 										<div class="ticket-actions">
 											<a href="#" class="ticket-actions-edit"><?php esc_html_e('Edit','events-manager'); ?></a>
@@ -176,6 +179,18 @@ $reschedule_warnings = !empty($EM_Event->event_id) && $EM_Event->is_recurring( t
 			<input type="text" name="event_spaces" value="<?php if( $EM_Event->event_spaces > 0 ){ echo $EM_Event->event_spaces; } ?>" /><br />
 			<em><?php esc_html_e('Individual tickets with remaining spaces will not be available if total booking spaces reach this limit. Leave blank for no limit.','events-manager'); ?></em>
 		</p>
+		<?php if( EM_Event::is_hybrid_available() ): ?>
+		<p class="em-hybrid-only" <?php if( !$EM_Event->is_hybrid() ) echo 'style="display:none;"'; ?>>
+			<label><?php esc_html_e('Physical Spaces','events-manager'); ?></label>
+			<input type="text" name="event_spaces_in_person" value="<?php if( $EM_Event->event_spaces_in_person > 0 ){ echo absint($EM_Event->event_spaces_in_person); } ?>" /><br />
+			<em><?php esc_html_e('Venue capacity, shared by all tickets that include physical access. Leave blank for no limit.','events-manager'); ?></em>
+		</p>
+		<p class="em-hybrid-only" <?php if( !$EM_Event->is_hybrid() ) echo 'style="display:none;"'; ?>>
+			<label><?php esc_html_e('Virtual Spaces','events-manager'); ?></label>
+			<input type="text" name="event_spaces_online" value="<?php if( $EM_Event->event_spaces_online > 0 ){ echo absint($EM_Event->event_spaces_online); } ?>" /><br />
+			<em><?php esc_html_e('Virtual capacity, shared by all tickets that include virtual access. Leave blank for no limit, or the limit of your virtual platform if it has one.','events-manager'); ?></em>
+		</p>
+		<?php endif; ?>
 		<p>
 			<label><?php esc_html_e('Maximum Spaces Per Booking','events-manager'); ?></label>
 			<input type="text" name="event_rsvp_spaces" value="<?php if( $EM_Event->event_rsvp_spaces > 0 ){ echo $EM_Event->event_rsvp_spaces; } ?>" /><br />

@@ -367,7 +367,19 @@ class EM_Ticket_Booking extends EM_Object{
 		}
 		return apply_filters('em_ticket_booking_get_ticket', $this->ticket, $this);
 	}
-	
+
+	/**
+	 * @param string $mode in_person or online
+	 * @return bool
+	 */
+	public function grants_access( $mode ){
+		$EM_Ticket = $this->get_ticket();
+		if( $this->booking instanceof EM_Booking && $EM_Ticket->event_id == $this->booking->event_id ){
+			$EM_Ticket->event = $this->booking->get_event();
+		}
+		return apply_filters('em_ticket_booking_grants_access', $EM_Ticket->grants_access( $mode ), $mode, $this);
+	}
+
 	/**
 	 * I wonder what this does....
 	 * @return boolean
@@ -427,6 +439,9 @@ class EM_Ticket_Booking extends EM_Object{
 			}
 			*/
 			$replace = $full_result;
+			if( $result === '#_TICKETACCESS' ){
+				$replace = esc_html( EM_Event::get_access_label( (string) $this->get_ticket()->get_access() ) );
+			}
 			$replaces[$full_result] = apply_filters('em_ticket_booking_output_placeholder', $replace, $this, $full_result, $target, $placeholder_atts);
 		}
 		krsort($replaces);

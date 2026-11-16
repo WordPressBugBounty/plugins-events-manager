@@ -411,6 +411,8 @@ var em_booking_form_init = function( booking_form ){
 	 */
 	booking_form.addEventListener("em_booking_summary_updated", function( e ){
 		let booking_intent = e.detail.response.querySelector('input.em-booking-intent');
+		em_booking_form_update_intent_token( booking_form, e.detail.response.querySelector('input.em-booking-intent-token') );
+		em_booking_form_update_intent_errors( booking_form, e.detail.response.querySelector('.em-booking-intent-errors') );
 		em_booking_form_update_booking_intent( booking_form, booking_intent );
 	});
 
@@ -511,6 +513,7 @@ var em_booking_form_hide_success = function( booking_form, opts = {} ){
 	let options = Object.assign({
 		hideLogin : true,
 	}, opts);
+	em_booking_form_release_intent( booking_form );
 	let booking_summary_sections = booking_form.querySelectorAll('.em-booking-form-summary-title, .em-booking-form-summary-title');
 	if ( booking_summary_sections.length > 0 ) {
 		booking_form.querySelectorAll('section:not(.em-booking-form-section-summary)').forEach( section => section.classList.add('hidden') );
@@ -643,6 +646,7 @@ var em_booking_form_update_booking_intent = function( booking_form, booking_inte
 		intent = Object.assign(intent, booking_intent.dataset);
 		intent.id = booking_intent.id; // the actual element id
 	}
+	em_booking_form_intent_countdown( booking_form, booking_intent );
 	// trigger booking_intent update for others to hook in
 	booking_form.dispatchEvent( new CustomEvent('em_booking_intent_updated', {
 		detail : {
@@ -654,8 +658,115 @@ var em_booking_form_update_booking_intent = function( booking_form, booking_inte
 	}) );
 }
 
+/**
+ * Swaps the token that proves this form owns the booking intent it holds, or removes it when the form holds no intent.
+ */
+var em_booking_form_update_intent_token = function( booking_form, token = null ){
+	booking_form.querySelectorAll('input.em-booking-intent-token').forEach( input => input.remove() );
+	if ( token ) {
+		booking_form.append( token );
+	}
+}
+
+/**
+ * The box above the summary showing why picked spaces could not be held and how long held spaces stay held.
+ */
+var em_booking_form_intent_feedback = function( booking_form ){
+	let feedback = booking_form.querySelector('.em-booking-intent-feedback');
+	if ( !feedback ) {
+		feedback = document.createElement('div');
+		feedback.classList.add('em-booking-intent-feedback');
+		let anchor = booking_form.querySelector('.em-booking-form-section-summary');
+		let button = booking_form.querySelector('input.em-form-submit');
+		if ( anchor ) {
+			anchor.before( feedback );
+		} else if ( button && button.parentElement ) {
+			button.parentElement.before( feedback );
+		} else {
+			booking_form.append( feedback );
+		}
+	}
+	return feedback;
+}
+
+var em_booking_form_update_intent_errors = function( booking_form, errors = null ){
+	let feedback = em_booking_form_intent_feedback( booking_form );
+	feedback.querySelectorAll('.em-booking-intent-errors').forEach( el => el.remove() );
+	if ( errors ) {
+		if ( errors.classList.contains('em-booking-intent-notice') ) {
+			errors.classList.add('em-notice', 'em-notice-warning');
+		} else {
+			errors.classList.add('em-booking-message', 'em-booking-message-error');
+		}
+		feedback.prepend( errors );
+	}
+}
+
+/**
+ * Counts down how long a held booking intent keeps its spaces, telling the visitor once the hold has ended.
+ */
+var em_booking_form_intent_countdown = function( booking_form, booking_intent = null ){
+	if ( booking_form.em_intent_timer ) {
+		clearInterval( booking_form.em_intent_timer );
+		booking_form.em_intent_timer = null;
+	}
+	let feedback = em_booking_form_intent_feedback( booking_form );
+	feedback.querySelectorAll('.em-booking-intent-hold').forEach( el => el.remove() );
+	if ( !booking_intent || booking_intent.dataset.held !== '1' || !( booking_intent.dataset.remaining > 0 ) || !EM.bookings || !EM.bookings.intent ) {
+		return;
+	}
+	let hold = document.createElement('div');
+	hold.classList.add('em-booking-intent-hold', 'em-notice', 'em-notice-warning');
+	hold.setAttribute('role', 'timer');
+	feedback.append( hold );
+	let ends = Date.now() + booking_intent.dataset.remaining * 1000;
+	let pad = n => String( n ).padStart( 2, '0' );
+	let tick = function(){
+		let remaining = Math.max( 0, Math.ceil( ( ends - Date.now() ) / 1000 ) );
+		if ( remaining > 0 ) {
+			let hours = Math.floor( remaining / 3600 );
+			let minutes = Math.floor( ( remaining % 3600 ) / 60 );
+			let time = hours > 0 ? hours + ':' + pad( minutes ) + ':' + pad( remaining % 60 ) : minutes + ':' + pad( remaining % 60 );
+			hold.textContent = EM.bookings.intent.held.replace( '%s', time );
+			return;
+		}
+		clearInterval( booking_form.em_intent_timer );
+		booking_form.em_intent_timer = null;
+		hold.textContent = EM.bookings.intent.ended;
+		hold.classList.add('em-booking-intent-hold-ended');
+		booking_form.dispatchEvent( new CustomEvent('em_booking_intent_expired', {
+			detail : { booking_intent : booking_intent },
+			bubbles : true,
+		}) );
+	};
+	booking_form.em_intent_timer = setInterval( tick, 1000 );
+	tick();
+}
+
+/**
+ * Stops showing a hold the server has turned into a booking: the countdown stops, the hold message and token go, and the intent is no longer marked as held, so a later summary refresh holds the spaces afresh.
+ */
+var em_booking_form_release_intent = function( booking_form ){
+	if ( booking_form.em_intent_timer ) {
+		clearInterval( booking_form.em_intent_timer );
+		booking_form.em_intent_timer = null;
+	}
+	booking_form.querySelectorAll('.em-booking-intent-feedback').forEach( el => el.remove() );
+	booking_form.querySelectorAll('input.em-booking-intent-token').forEach( el => el.remove() );
+	booking_form.querySelectorAll('input.em-booking-intent').forEach( intent => {
+		delete intent.dataset.held;
+		delete intent.dataset.remaining;
+		delete intent.dataset.expires;
+	});
+}
+
 var em_booking_summary_ajax_promise;
 var em_booking_summary_ajax = async function ( booking_form ){
+	// each refresh can create or change the visitor's booking intent on the server, so refreshes run one at a time in order, and a change made during one is sent once it finishes with the form as it is then
+	if ( booking_form.em_summary_running ) {
+		booking_form.em_summary_queued = true;
+		return booking_form.em_summary_running;
+	}
 	let summary_section = booking_form.querySelector('.em-booking-form-section-summary');
 	let summary;
 	if( summary_section ) {
@@ -664,9 +775,6 @@ var em_booking_summary_ajax = async function ( booking_form ){
 	let booking_data = new FormData(booking_form);
 	booking_data.set('action', 'booking_form_summary');
 
-	if( em_booking_summary_ajax_promise ){
-		em_booking_summary_ajax_promise.abort();
-	}
 	if( summary ){
 		booking_form.dispatchEvent( new CustomEvent('em_booking_summary_updating', {
 			detail : {
@@ -728,8 +836,12 @@ var em_booking_summary_ajax = async function ( booking_form ){
 			bubbles: true,
 		}) );
 	}).catch( function( error ){
-		// remove all booking inent data - invalid state
-		booking_form.querySelectorAll('input.em-booking-intent').forEach( intent => intent.remove() );
+		// remove all booking inent data - invalid state, except a held intent, which the next refresh still needs to find
+		booking_form.querySelectorAll('input.em-booking-intent').forEach( intent => {
+			if ( intent.dataset.held !== '1' ) {
+				intent.remove();
+			}
+		});
 		booking_form.dispatchEvent( new CustomEvent('em_booking_summary_ajax_error', {
 			detail : {
 				error : error,
@@ -740,6 +852,7 @@ var em_booking_summary_ajax = async function ( booking_form ){
 		}) );
 	}).finally( function(){
 		em_booking_summary_ajax_promise = false;
+		booking_form.em_summary_running = null;
 		if( summary ) {
 			summary.querySelectorAll('.em-loading').forEach( spinner => spinner.remove() );
 		}
@@ -750,7 +863,12 @@ var em_booking_summary_ajax = async function ( booking_form ){
 			cancellable : true,
 			bubbles: true,
 		}) );
+		if ( booking_form.em_summary_queued ) {
+			booking_form.em_summary_queued = false;
+			em_booking_summary_ajax( booking_form );
+		}
 	});
+	booking_form.em_summary_running = em_booking_summary_ajax_promise;
 	return em_booking_summary_ajax_promise;
 };
 
@@ -764,6 +882,7 @@ var em_booking_form_submit = async function( booking_form, opts = {} ){
 		return false;
 	}
 	em_booking_form_doing_ajax = true;
+	booking_form.em_intent_converted = false;
 
 	if ( options.doStart ) {
 		em_booking_form_submit_start( booking_form, options );
@@ -798,6 +917,11 @@ var em_booking_form_submit = async function( booking_form, opts = {} ){
 		// backwards compatibility response
 		if ( !('success' in response) && 'result' in response ){
 			response.success = response.result;
+		}
+		// the booking the server made has taken over the hold this form was showing, whatever its payment does next
+		if ( response.success ) {
+			em_booking_form_release_intent( booking_form );
+			booking_form.em_intent_converted = true;
 		}
 		// do success logic if set/requested
 		if ( options.doSuccess ) {
@@ -882,6 +1006,11 @@ var em_booking_form_submit_success = function( booking_form, response, opts = {}
 			window.location.href = response.redirect;
 		}
 	}else{
+		// a booking this form made failed its payment, which gives its spaces back, so a retry starts from a fresh hold
+		if ( booking_form.em_intent_converted ) {
+			booking_form.em_intent_converted = false;
+			em_booking_summary_ajax( booking_form );
+		}
 		// output error message
 		if( options.showErrorMessages === true ){
 			if( response.errors != null ){

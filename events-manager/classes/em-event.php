@@ -192,6 +192,26 @@ class EM_Event extends EM_Object{
 	 * @var string
 	 */
 	public $event_location_type;
+	/**
+	 * Venue capacity of a hybrid event, stored as postmeta. Empty means no limit beyond the event and ticket spaces.
+	 * @var int|null
+	 */
+	public $event_spaces_in_person;
+	/**
+	 * Online capacity of a hybrid event, stored as postmeta. Empty means no limit beyond the event and ticket spaces.
+	 * @var int|null
+	 */
+	public $event_spaces_online;
+	/**
+	 * Minutes before the start that a virtual location's link is held back until, stored as postmeta. Null leaves it to the Hidden Links defaults in settings, 0 never holds it back.
+	 * @var int|null
+	 */
+	public $event_virtual_hide_minutes;
+	/**
+	 * What is shown in place of the link while it is held back, stored as postmeta. Empty uses the default in settings.
+	 * @var string|null
+	 */
+	public $event_virtual_hide_text;
 	public $event_status;
 	protected $event_active_status = 1;
 	protected $previous_active_status = 1;
@@ -894,7 +914,7 @@ class EM_Event extends EM_Object{
 			}elseif( is_string($field_name) && !in_array($field_name, $this->post_fields) ){
 				if( array_key_exists($field_name, $this->fields) && $this->post_id ){
 					$this->$field_name = $event_meta_val[0];
-				}elseif( in_array($field_name, array('event_owner_name','event_owner_anonymous','event_owner_email')) ){
+				}elseif( in_array($field_name, array('event_owner_name','event_owner_anonymous','event_owner_email','event_spaces_in_person','event_spaces_online','event_virtual_hide_minutes','event_virtual_hide_text')) ){
 					$this->$field_name = $event_meta_val[0];
 				}elseif( in_array($field_name, $other_event_attributes) ){
 					$this->event_attributes[$field_name] = ( is_array($event_meta_val) ) ? $event_meta_val[0]:$event_meta_val;
@@ -1102,9 +1122,52 @@ class EM_Event extends EM_Object{
 			// determine location type, with backward compatibility considerations for those overriding the location forms
 			$location_type = isset($_POST['location_type']) ? sanitize_key($_POST['location_type']) : 'location';
 			if( !empty($_POST['no_location']) ) $location_type = 0; //backwards compat
+			$hybrid_requested = !empty($_POST['location_hybrid']);
+			$hybrid_type_requested = !empty($_POST['location_hybrid_type']) ? sanitize_key($_POST['location_hybrid_type']) : null;
+			if( isset($_POST['location_mode']) ){
+				// the editor posts a mode and an online type, the same choices the API makes with location_type and the hybrid fields
+				$location_mode = sanitize_key($_POST['location_mode']);
+				$online_type = !empty($_POST['location_online_type']) ? sanitize_key($_POST['location_online_type']) : 0;
+				if( $location_mode === 'online' ){
+					$location_type = $online_type;
+				}elseif( in_array($location_mode, array('in_person', 'hybrid'), true) ){
+					$location_type = 'location';
+				}elseif( $location_mode && !empty( Event_Locations::get_types()[$location_mode] ) ){
+					$location_type = $location_mode; // a type that is not virtual, such as URL, is a mode of its own
+				}else{
+					$location_type = 0;
+				}
+				$hybrid_requested = $location_mode === 'hybrid';
+				$hybrid_type_requested = $hybrid_requested && $online_type ? $online_type : null;
+			}
 			if( $location_type == 'location' && empty($_POST['location_id']) && $this->get_option('dbem_use_select_for_locations')) $location_type = 0; //backward compat
+			// a location form without the hybrid fields (e.g. a theme override) predates hybrid events, so it keeps both halves of an existing hybrid event rather than dropping one
+			$hybrid_form = isset($_POST['location_mode']) || isset($_POST['location_hybrid']);
+			$keep_hybrid = !$hybrid_form && $this->event_id && $this->is_hybrid();
+			$previous_event_location_type = $this->event_location_type;
+			// a hybrid or online request that cannot be carried out is refused and the saved locations kept, as saving it as something else would drop one of them without saying so
+			$location_error = '';
+			if( $hybrid_requested ){
+				if( !$hybrid_type_requested && !isset($_POST['location_mode']) && $previous_event_location_type ){
+					$hybrid_type_requested = $previous_event_location_type; // an API update that keeps the event's online location
+				}
+				if( $location_type !== 'location' ){
+					$location_error = __('A hybrid event needs a physical venue.', 'events-manager');
+				}elseif( !$hybrid_type_requested || !Event_Locations::is_enabled($hybrid_type_requested) ){
+					$location_error = __('Please choose a virtual platform for this event.', 'events-manager');
+				}else{
+					$hybrid_type_class = Event_Locations::get_types()[$hybrid_type_requested];
+					if( !$hybrid_type_class::supports_ticket_access() ){
+						$location_error = sprintf( __('%s cannot be used for a hybrid event, because it gives every booking virtual access.', 'events-manager'), $hybrid_type_class::get_label() );
+					}
+				}
+			}elseif( isset($_POST['location_mode']) && $location_mode === 'online' && ( !$online_type || empty( Event_Locations::get_types()[$online_type] ) || !Event_Locations::get_types()[$online_type]::is_virtual() ) ){
+				$location_error = __('Please choose a virtual platform for this event.', 'events-manager');
+			}
 			// assign location data
-			if( $location_type === 0 || $location_type === '0' ){
+			if( $location_error ){
+				$this->add_error( $location_error );
+			}elseif( $location_type === 0 || $location_type === '0' ){
 				// no location
 				$this->location_id = 0;
 				$this->event_location_type = null;
@@ -1120,9 +1183,25 @@ class EM_Event extends EM_Object{
 					$this->get_location()->get_post(false);
 					$this->get_location()->post_content = ''; //reset post content, as it'll grab the event description otherwise
 				}
+				if( $hybrid_form ){
+					$hybrid_type = $hybrid_requested ? $hybrid_type_requested : null;
+				}else{
+					$hybrid_type = $keep_hybrid ? $previous_event_location_type : null;
+				}
+				if( $hybrid_type && Event_Locations::is_enabled($hybrid_type) ){
+					if( $this->event_id && $previous_event_location_type && $previous_event_location_type != $hybrid_type && !empty($this->event_location) ){
+						$this->event_location_deleted = $this->event_location;
+					}
+					$this->event_location_type = $hybrid_type;
+					if( $hybrid_form ){
+						$this->get_event_location()->get_post();
+					}
+				}
 			}else{
 				// we're dealing with an event location such as a url or webinar
-				$this->location_id = null; // no location ID
+				if( !$keep_hybrid || $location_type != $previous_event_location_type ){
+					$this->location_id = null; // no location ID
+				}
 				if( $this->event_id && $this->has_event_location() && $location_type != $this->event_location_type ){
 					// if we're changing location types, then we'll delete all the previous data upon saving
 					$this->event_location_deleted = $this->event_location;
@@ -1137,6 +1216,14 @@ class EM_Event extends EM_Object{
 			$this->event_location_type = null;
 		}
 		
+		// a blank time leaves the event to the Hidden Links defaults, and a request without these fields keeps what is saved
+		if( isset($_POST['event_virtual_hide_minutes']) ){
+			$this->event_virtual_hide_minutes = $_POST['event_virtual_hide_minutes'] === '' ? null : absint($_POST['event_virtual_hide_minutes']);
+		}
+		if( isset($_POST['event_virtual_hide_text']) ){
+			$this->event_virtual_hide_text = sanitize_text_field( wp_unslash($_POST['event_virtual_hide_text']) );
+		}
+
 		// Bookings - part 2
 		if( !$preview_autosave && $can_manage_bookings && $this->event_rsvp ){
 			//get tickets only if event is new, non-recurring, or recurring but specifically triggered to reschedule by user
@@ -1172,6 +1259,11 @@ class EM_Event extends EM_Object{
 			$this->rsvp_end = null;
 			$this->event_spaces = ( isset($_POST['event_spaces']) ) ? absint($_POST['event_spaces']):0;
 			$this->event_rsvp_spaces = ( isset($_POST['event_rsvp_spaces']) ) ? absint($_POST['event_rsvp_spaces']):0;
+			foreach( array('event_spaces_in_person', 'event_spaces_online') as $key ){
+				if( isset($_POST[$key]) ){
+					$this->$key = absint($_POST[$key]) ?: null;
+				}
+			}
 			// if recurring we save booking data to recurrences too
 			if ( $this->is_recurring( true ) ) {
 				//recurring events may have a cut-off date x days before or after the recurrence start dates, recurrence cut-off dates are calculated in recurrence sets according to these settings
@@ -1321,6 +1413,9 @@ class EM_Event extends EM_Object{
 				}
 			}elseif( $this->has_event_location() ){
 				// event location, validation applies errors directly to $this
+				$this->get_event_location()->validate();
+			}
+			if( $this->is_hybrid() ){
 				$this->get_event_location()->validate();
 			}
 		}
@@ -1541,6 +1636,20 @@ class EM_Event extends EM_Object{
 					update_post_meta( $this->post_id, '_'.$key, $this->event_attributes[$key]);
 				}else{
 					delete_post_meta( $this->post_id, '_'.$key);
+				}
+			}
+			foreach( array('event_spaces_in_person', 'event_spaces_online') as $key ){
+				if( $this->is_hybrid() && !empty($this->$key) ){
+					update_post_meta( $this->post_id, '_'.$key, absint($this->$key) );
+				}else{
+					delete_post_meta( $this->post_id, '_'.$key );
+				}
+			}
+			foreach( array('event_virtual_hide_minutes', 'event_virtual_hide_text') as $key ){
+				if( $this->has_virtual_location() && $this->$key !== null && $this->$key !== '' ){
+					update_post_meta( $this->post_id, '_'.$key, $this->$key );
+				}else{
+					delete_post_meta( $this->post_id, '_'.$key );
 				}
 			}
 			//update timestamps, dates and times
@@ -2426,7 +2535,144 @@ class EM_Event extends EM_Object{
 		}
 		return !empty($this->event_location_type) && Event_Locations::is_enabled($this->event_location_type);
 	}
-	
+
+	/**
+	 * Whether the event has a virtual location attendees join over the internet, as opposed to a plain link such as a URL.
+	 * @return bool
+	 */
+	public function has_virtual_location(){
+		if( !$this->has_event_location() ) return false;
+		$Event_Location_Class = Event_Locations::get_types()[$this->event_location_type];
+		return $Event_Location_Class::is_virtual();
+	}
+
+	/**
+	 * Whether this site can create hybrid events, which needs physical and virtual locations, with at least one enabled virtual type that supports ticket access.
+	 * @return bool
+	 */
+	public static function is_hybrid_available(){
+		$available = em_get_option('dbem_locations_enabled') && EM_Locations::is_enabled() && Event_Locations::is_virtual_enabled();
+		if( $available ){
+			$available = false;
+			foreach( Event_Locations::get_virtual_types() as $Event_Location_Class ){
+				if( $Event_Location_Class::is_enabled() && $Event_Location_Class::supports_ticket_access() ){
+					$available = true;
+					break;
+				}
+			}
+		}
+		return apply_filters('em_event_is_hybrid_available', $available);
+	}
+
+	/**
+	 * Whether this event has both a physical venue and a virtual location, so attendees can attend physically or virtually.
+	 * @return bool
+	 */
+	public function is_hybrid(){
+		return count( $this->get_access_modes() ) > 1;
+	}
+
+	/**
+	 * The ways attendees can attend this event, in_person for a physical venue and online for a virtual location.
+	 * @return string[]
+	 */
+	public function get_access_modes(){
+		$modes = array();
+		if( $this->has_location() ) $modes[] = 'in_person';
+		if( $this->has_virtual_location() ) $modes[] = 'online';
+		return apply_filters('em_event_get_access_modes', $modes, $this);
+	}
+
+	/**
+	 * The capacity for one way of attending: the organizer's cap on a hybrid event, lowered to the online provider's own cap when it has one.
+	 * @param string $mode in_person or online
+	 * @return int|null null when there is no cap for this mode
+	 */
+	public function get_access_spaces_limit( $mode ){
+		$limit = null;
+		if( $this->is_hybrid() ){
+			$key = $mode === 'online' ? 'event_spaces_online' : 'event_spaces_in_person';
+			$limit = !empty($this->$key) ? absint($this->$key) : null;
+		}
+		if( $mode === 'online' && $this->has_virtual_location() ){
+			$provider_limit = $this->get_event_location()->get_capacity_limit();
+			if( is_numeric($provider_limit) && $provider_limit > 0 ){
+				$limit = $limit === null ? (int) $provider_limit : min( $limit, (int) $provider_limit );
+			}
+		}
+		return apply_filters('em_event_get_access_spaces_limit', $limit, $mode, $this);
+	}
+
+	/**
+	 * @param string $access in_person, online, both or hybrid
+	 * @return string
+	 */
+	public static function get_access_label( $access ){
+		$labels = array(
+			'in_person' => __('Physical', 'events-manager'),
+			'online' => __('Virtual', 'events-manager'),
+			'both' => __('Hybrid (Physical/Virtual)', 'events-manager'),
+			'hybrid' => __('Hybrid', 'events-manager'),
+		);
+		$label = !empty($labels[$access]) ? $labels[$access] : '';
+		return apply_filters('em_event_get_access_label', $label, $access);
+	}
+
+	/**
+	 * @param string $mode in_person, online or hybrid, as chosen in the Location Type select
+	 * @return string
+	 */
+	public static function get_location_mode_label( $mode ){
+		$labels = array(
+			'in_person' => __('Physical Venue', 'events-manager'),
+			'online' => __('Virtual Venue', 'events-manager'),
+			'hybrid' => __('Hybrid Venue (Physical/Virtual)', 'events-manager'),
+		);
+		$label = !empty($labels[$mode]) ? $labels[$mode] : '';
+		return apply_filters('em_event_get_location_mode_label', $label, $mode);
+	}
+
+	/**
+	 * How attendees can attend this event, as schema.org eventAttendanceMode and location values for JSON-LD output.
+	 * @return array Keys eventAttendanceMode and location, or empty when the event has no location to describe.
+	 */
+	public function get_schema_attendance(){
+		$locations = array();
+		if( $this->has_location() && $this->location_id && $this->get_location()->is_publicly_viewable() ){
+			$EM_Location = $this->get_location();
+			$locations[] = array_filter( array(
+				'@type' => 'Place',
+				'name' => $EM_Location->location_name,
+				'address' => array_filter( array(
+					'@type' => 'PostalAddress',
+					'streetAddress' => $EM_Location->location_address,
+					'addressLocality' => $EM_Location->location_town,
+					'addressRegion' => $EM_Location->location_state,
+					'postalCode' => $EM_Location->location_postcode,
+					'addressCountry' => $EM_Location->location_country,
+				) ),
+			) );
+		}
+		if( $this->has_virtual_location() ){
+			$url = $this->get_event_location()->get_public_url();
+			$locations[] = array(
+				'@type' => 'VirtualLocation',
+				'url' => $url ? $url : $this->get_permalink(),
+			);
+		}
+		$schema = array();
+		if( $locations ){
+			$modes = $this->get_access_modes();
+			if( count($modes) > 1 ){
+				$schema['eventAttendanceMode'] = 'https://schema.org/MixedEventAttendanceMode';
+			}else{
+				$schema['eventAttendanceMode'] = $modes === array('online') ? 'https://schema.org/OnlineEventAttendanceMode' : 'https://schema.org/OfflineEventAttendanceMode';
+			}
+			$schema['location'] = count($locations) > 1 ? $locations : current($locations);
+		}
+		return apply_filters('em_event_get_schema_attendance', $schema, $this);
+	}
+
 	/**
 	 * Returns the location object this event belongs to.
 	 * @return EM_Person
@@ -2741,6 +2987,10 @@ class EM_Event extends EM_Object{
 					}elseif ($condition == 'no_location_venue'){
 						//does this event NOT have a valid physical location?
 						$show_condition = !$this->has_location();
+					}elseif ($condition == 'is_hybrid'){
+						$show_condition = $this->is_hybrid();
+					}elseif ($condition == 'not_hybrid'){
+						$show_condition = !$this->is_hybrid();
 					}elseif ($condition == 'has_event_location'){
 						//does this event have a valid event location?
 						$show_condition = $this->has_event_location();
@@ -2850,7 +3100,7 @@ class EM_Event extends EM_Object{
 						if( is_user_logged_in() ){
 							//we only need a user id, booking id and booking status so we do a direct SQL lookup and once for the loop
 							if( !isset($user_bookings) || !is_array($user_bookings) ){
-								$sql = $wpdb->prepare('SELECT booking_status FROM '.EM_BOOKINGS_TABLE.' WHERE person_id=%d AND event_id=%d', array(get_current_user_id(), $this->event_id));
+								$sql = $wpdb->prepare('SELECT booking_status FROM '.EM_BOOKINGS_TABLE.' WHERE person_id=%d AND event_id=%d AND booking_status != '. EM_Booking_Intents::STATUS, array(get_current_user_id(), $this->event_id));
 								if ( $this->timeslot_id ) {
 									$sql .= ' AND timeslot_id=' . absint( $this->timeslot_id );
 								}
@@ -3497,6 +3747,10 @@ class EM_Event extends EM_Object{
 						}
 					}
 					break;
+				case '#_EVENTACCESS':
+					$access_modes = $this->get_access_modes();
+					$replace = count($access_modes) > 1 ? self::get_access_label('hybrid') : ( $access_modes ? self::get_access_label( current($access_modes) ) : '' );
+					break;
 				default:
 					$replace = $full_result;
 					break;
@@ -4119,6 +4373,14 @@ class EM_Event extends EM_Object{
 			$event['location_type'] = $this->event_location_type;
 			$event['location'] = $this->get_event_location()->to_api();
 		}
+		if( $this->is_hybrid() ){
+			// location stays the venue so existing consumers read it as before, and the online location gets its own key
+			$event['event_location_type'] = $this->event_location_type;
+			$event['event_location'] = $this->get_event_location()->to_api();
+			$event['bookings']['spaces_in_person'] = $this->event_spaces_in_person ? absint($this->event_spaces_in_person) : null;
+			$event['bookings']['spaces_online'] = $this->event_spaces_online ? absint($this->event_spaces_online) : null;
+		}
+		$event['access_modes'] = $this->get_access_modes();
 		if ( $this->timeslot_id ) {
 			$event['timeslot_id'] = $this->timeslot_id;
 		}

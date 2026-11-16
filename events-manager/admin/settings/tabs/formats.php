@@ -414,6 +414,13 @@
 				em_options_input_text ( __( 'All towns/cities text', 'events-manager'), 'dbem_search_form_towns_label', __('Appears as the first default search option.','events-manager') );
 				?>
 			</tbody>
+			<tbody class="em-search-form-advanced em-subsection">
+				<tr class="em-subheader"><td colspan="2"><h5><?php esc_html_e( 'Virtual Events', 'events-manager'); ?></h5></td></tr>
+				<?php
+				em_options_radio_binary ( __( 'Show virtual events filter?', 'events-manager'), 'dbem_search_form_online', __('Adds a checkbox below the location options that limits results to events attendees can join virtually, including hybrid events.','events-manager'), '', '#dbem_search_form_online_label_row' );
+				em_options_input_text ( __( 'Label', 'events-manager'), 'dbem_search_form_online_label', __('Appears as the label for this search option.','events-manager') );
+				?>
+			</tbody>
 			<?php echo $save_button; ?>
 		</table>
 	</div> <!-- . inside -->
@@ -900,7 +907,7 @@
 				?>
 				<tr class="em-header"><td colspan="2">
 					<h4><?php _e('Single Location/Event Map Format','events-manager'); ?></h4>
-					<p><?php echo sprintf(_e('If you use the <code>#_LOCATIONMAP</code> <a href="%s">placeholder</a> when displaying individual event and location information, the settings below will be used.','events-manager'), '<code>[locations_map]</code>','https://wp-events-plugin.com/documentation/placeholders/'); ?></p>
+					<p><?php echo sprintf(__('If you use the <code>#_LOCATIONMAP</code> <a href="%s">placeholder</a> when displaying individual event and location information, the settings below will be used.','events-manager'), 'https://wp-events-plugin.com/documentation/placeholders/'); ?></p>
 				</td></tr>
 				<?php
 				em_options_textarea ( __( 'Location balloon format', 'events-manager'), 'dbem_location_baloon_format', __( 'The format of the text appearing in the balloon describing the location.', 'events-manager').$events_placeholder_tip, true );

@@ -160,7 +160,7 @@ class EM_Tickets extends EM_Object implements Iterator, Countable {
 			}
 			//check that tickets don't have bookings
 			if(count($ticket_ids) > 0){
-				$bookings = $wpdb->get_var("SELECT COUNT(*) FROM ". EM_TICKETS_BOOKINGS_TABLE." WHERE ticket_id IN (".implode(',',$ticket_ids).")");
+				$bookings = $wpdb->get_var("SELECT COUNT(*) FROM ". EM_TICKETS_BOOKINGS_TABLE." WHERE ticket_id IN (".implode(',',$ticket_ids).") AND booking_id NOT IN (SELECT booking_id FROM ". EM_BOOKINGS_TABLE ." WHERE booking_status=". EM_Booking_Intents::STATUS .")");
 				if( $bookings > 0 ){
 					$result = false;
 					$this->add_error(__('You cannot delete tickets if there are any bookings associated with them. Please delete these bookings first.','events-manager'));
@@ -171,7 +171,7 @@ class EM_Tickets extends EM_Object implements Iterator, Countable {
 		}elseif( !empty($this->event_id) ){
 			//if tickets aren't preloaded into object and this belongs to an event, delete via the event ID without loading any tickets
 			$event_id = absint($this->event_id);
-			$bookings = $wpdb->get_var("SELECT COUNT(*) FROM ". EM_TICKETS_BOOKINGS_TABLE." WHERE ticket_id IN (SELECT ticket_id FROM ".EM_TICKETS_TABLE." WHERE event_id='$event_id')");
+			$bookings = $wpdb->get_var("SELECT COUNT(*) FROM ". EM_TICKETS_BOOKINGS_TABLE." WHERE ticket_id IN (SELECT ticket_id FROM ".EM_TICKETS_TABLE." WHERE event_id='$event_id') AND booking_id NOT IN (SELECT booking_id FROM ". EM_BOOKINGS_TABLE ." WHERE booking_status=". EM_Booking_Intents::STATUS .")");
 			$ticket_ids = $wpdb->get_col("SELECT ticket_id FROM ". EM_TICKETS_TABLE." WHERE event_id='$event_id'");
 			if( $bookings > 0 ){
 				$result = false;

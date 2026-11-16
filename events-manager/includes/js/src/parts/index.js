@@ -201,6 +201,68 @@ jQuery(document).ready( function($){
 			$('.em-location-type-delete-active-alert').hide();
 		}
 	}).trigger('change');
+	let em_location_mode = function( reset_place ){
+		let mode_select = $('.em-location-types .em-location-mode-select');
+		let mode = mode_select.val();
+		let mode_option = mode_select.find('option:selected');
+		let online_select = $('.em-location-online-type');
+		// a platform that gives every booking virtual access cannot be the virtual half of a hybrid event
+		online_select.find('option').each( function(){
+			$(this).prop( 'disabled', mode === 'hybrid' && $(this).data('ticket-access') != 1 );
+		});
+		if( online_select.find('option:selected').prop('disabled') ){
+			online_select.val( online_select.find('option:not(:disabled)').first().val() );
+		}
+		let online_option = online_select.find('option:selected');
+		let place = mode === 'in_person' || mode === 'hybrid';
+		let online = ( mode === 'online' || mode === 'hybrid' ) && online_select.length > 0;
+		$('.em-location-type').hide();
+		if( place ){
+			$('.em-location-type.em-location-type-place').show();
+		}else if( reset_place ){
+			jQuery('#em-location-reset a').trigger('click');
+		}
+		if( online ){
+			$('.em-location-online-types').show();
+			$('.em-event-location-data .em-location-type.' + online_option.data('display-class')).show();
+			$('.em-location-link-hiding').show();
+		}else if( mode_option.data('display-class') ){
+			// a type that is not virtual, such as URL, is chosen as a mode of its own
+			$('.em-event-location-data .em-location-type.' + mode_option.data('display-class')).show();
+		}
+		$('.em-hybrid-only').toggle( mode === 'hybrid' );
+		// without bookings a virtual link is always public, so the option to hide it only shows while the event takes bookings
+		let rsvp = $('[name="event_rsvp"]');
+		let takes_bookings = rsvp.length > 0 && ( rsvp.attr('type') !== 'checkbox' || rsvp.is(':checked') );
+		$('.em-bookings-only').toggle( takes_bookings );
+		let private_link = online_select.val() !== 'custom_link' || $('#event_location_custom_link_private').is(':checked');
+		$('.em-location-join-email-notice').toggle( online && takes_bookings && online_option.data('joinable') == 1 && ( private_link || mode === 'hybrid' ) );
+		let active = mode_select.data('active-type');
+		let current = online ? online_select.val() : ( mode_option.data('display-class') ? mode : '' );
+		$('.em-location-type-delete-active-alert').toggle( !!active && current !== active );
+	};
+	// the hidden text only matters once the link is held back, by the event's own minutes or the default shown as the placeholder
+	let em_location_hide_text = function(){
+		let input = $('#event-virtual-hide-minutes');
+		let minutes = input.val() !== '' ? input.val() : input.attr('placeholder');
+		$('.em-location-hide-text').toggle( parseInt( minutes, 10 ) > 0 );
+	};
+	$(document).on('input change', '#event-virtual-hide-minutes', em_location_hide_text);
+	if( $('#event-virtual-hide-minutes').length > 0 ){
+		em_location_hide_text();
+	}
+	$('.em-location-types .em-location-mode-select').on('change', function(){
+		em_location_mode( true );
+	});
+	$('.em-location-online-type, #event_location_custom_link_private').on('change', function(){
+		em_location_mode( false );
+	});
+	$(document).on('change', '[name="event_rsvp"]', function(){
+		if( $('.em-location-types .em-location-mode-select').length > 0 ) em_location_mode( false );
+	});
+	if( $('.em-location-types .em-location-mode-select').length > 0 ){
+		em_location_mode( true );
+	}
 
 	//Finally, add autocomplete here
 	if( jQuery( 'div.em-location-data [name="location_name"]' ).length > 0 ){

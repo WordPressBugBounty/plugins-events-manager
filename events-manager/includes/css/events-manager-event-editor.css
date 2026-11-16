@@ -180,6 +180,13 @@
   cursor: pointer;
   pointer-events: all !important;
 }
+.em form .event-form-bookings .ticket-access-icons {
+  margin-left: 4px;
+  white-space: nowrap;
+}
+.em form .event-form-bookings .ticket-access-icons[data-access=in_person] .em-icon-globe, .em form .event-form-bookings .ticket-access-icons[data-access=online] .em-icon-location {
+  display: none;
+}
 .em form .event-form-bookings:has(input.event_rsvp:not(:checked)) #event-rsvp-options, .em form .event-form-bookings:has(input.event_rsvp:not(:checked)) .event-rsvp-options {
   display: none;
   visibility: hidden;

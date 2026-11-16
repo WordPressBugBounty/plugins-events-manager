@@ -707,6 +707,30 @@ $orderby_sql";
 				}
 			}
 		}
+		// how attendees can attend, where a hybrid event matches both in_person and online
+		if( !empty($args['access']) && em_get_option('dbem_locations_enabled') ){
+			$access_modes = is_array($args['access']) ? $args['access'] : explode(',', $args['access']);
+			$enabled_types = array();
+			foreach( Event_Locations::get_virtual_types() as $event_location_type => $Event_Location_Class ){
+				if( $Event_Location_Class::is_enabled() ) $enabled_types[] = esc_sql($event_location_type);
+			}
+			$has_venue = '('.EM_EVENTS_TABLE.'.location_id IS NOT NULL AND '.EM_EVENTS_TABLE.'.location_id != 0)';
+			$has_online = $enabled_types ? '('.EM_EVENTS_TABLE.".event_location_type IN ('". implode("','", $enabled_types) ."'))" : '(1=0)';
+			$access_conditions = array();
+			foreach( $access_modes as $access_mode ){
+				$access_mode = trim($access_mode);
+				if( $access_mode === 'in_person' ){
+					$access_conditions['in_person'] = $has_venue;
+				}elseif( $access_mode === 'online' ){
+					$access_conditions['online'] = $has_online;
+				}elseif( $access_mode === 'hybrid' ){
+					$access_conditions['hybrid'] = "($has_venue AND $has_online)";
+				}
+			}
+			if( !empty($access_conditions) ){
+				$conditions['access'] = '('. implode(' OR ', $access_conditions) .')';
+			}
+		}
 		if( isset($args['has_event_location']) && $args['has_event_location'] !== false ){
 			if( $args['has_event_location'] ){
 				$conditions['has_event_location'] = "event_location_type IS NOT NULL";
@@ -867,6 +891,7 @@ $orderby_sql";
 			'location_status' => false, //search events with locations of a specific publish status
 			'event_location_type' => false,
 			'has_event_location' => false,
+			'access' => false, //in_person, online or hybrid, comma-separated for more than one
 			'cancelled' => em_get_option('dbem_events_include_status_cancelled') ? null : false, // include cancelled events
 			'active' => null,
 			'active_status' => null,

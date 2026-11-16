@@ -69,7 +69,8 @@ jQuery(document).ready( function($){
 		});
 		let calendar_trigger_ajax = function( calendar, year, month ){
 			let link = calendar.find('.em-calnav-next');
-			let url = new URL(link.attr('href'), window.location.origin);
+			// the next link has no href in the last month with events, and an empty href would send the request to the site root
+			let url = new URL(link.attr('href') || window.location.href, window.location.origin);
 			url.searchParams.set('mo', month);
 			url.searchParams.set('yr', year);
 			link.attr('href', url.toString()).trigger('click');

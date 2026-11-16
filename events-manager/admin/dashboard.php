@@ -246,6 +246,8 @@ class Dashboard {
 		}
 		if( !empty($args['status']) && \EM_Object::array_is_numeric($args['status']) ){
 			$conditions['status'] = $wpdb->prepare( ' booking_status IN ('. implode(',', array_fill(0,count($args['status']), '%d')) .')', $args['status'] );
+		} else {
+			$conditions['status'] = ' booking_status != ' . \EM_Booking_Intents::STATUS . ' ';
 		}
 		// determine unit of measurement
 		$selectors = array();

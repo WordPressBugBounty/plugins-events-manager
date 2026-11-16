@@ -533,6 +533,15 @@ class EM_Ticket extends EM_Object {
 			// multi-event tickets may refer ticket_ids or a temporary uuid if not defined already
 			$this->multi_event_ticket = ( !empty($post['multi_event_ticket']) ) ? ( wp_is_uuid($post['multi_event_ticket']) ? $post['multi_event_ticket'] : absint($post['multi_event_ticket']) ) : null;
 		}
+		if ( isset( $post['ticket_access'] ) ) {
+			$access = sanitize_key( $post['ticket_access'] );
+			// a recurrence ticket stores "both" explicitly so it can override a parent ticket's narrower access
+			if ( in_array( $access, array( 'in_person', 'online' ), true ) || ( $access === 'both' && $this->ticket_parent ) ) {
+				$this->ticket_meta['access'] = $access;
+			} else {
+				unset( $this->ticket_meta['access'] );
+			}
+		}
 		$this->compat_keys();
 		do_action('em_ticket_get_post', $this, $post);
 	}
@@ -766,8 +775,19 @@ class EM_Ticket extends EM_Object {
 		$event_available_spaces = $this->get_event()->get_bookings()->get_available_spaces();
 		$ticket_available_spaces = $this->get_spaces() - $this->get_booked_spaces();
 	    $ticket_available_spaces = $ticket_available_spaces - $this->get_reserved_spaces();
+		$ticket_available_spaces = $ticket_available_spaces - $this->get_intent_spaces();
 		$return = ($ticket_available_spaces <= $event_available_spaces) ? $ticket_available_spaces:$event_available_spaces;
-		return apply_filters( 'em_ticket_get_available_spaces', $return, $this, array('event_spaces' => $event_available_spaces, 'ticket_spaces' => $ticket_available_spaces) );
+		$access_available_spaces = array();
+		foreach ( array( 'in_person', 'online' ) as $mode ) {
+			if ( $this->grants_access( $mode ) ) {
+				$mode_available_spaces = $this->get_event()->get_bookings()->get_access_available_spaces( $mode );
+				if ( $mode_available_spaces !== null ) {
+					$access_available_spaces[ $mode ] = $mode_available_spaces;
+					$return = min( $return, $mode_available_spaces );
+				}
+			}
+		}
+		return apply_filters( 'em_ticket_get_available_spaces', $return, $this, array('event_spaces' => $event_available_spaces, 'ticket_spaces' => $ticket_available_spaces, 'access_spaces' => $access_available_spaces) );
 	}
 
 	/**
@@ -808,13 +828,30 @@ class EM_Ticket extends EM_Object {
 	 * @return int
 	 */
 	function get_booked_spaces( $force_refresh = false ){
-		if( !array_key_exists($this->event_id, $this->pending_spaces) || $force_refresh ){
+		if( !array_key_exists($this->event_id, $this->booked_spaces) || $force_refresh ){
 			$status = !$this->get_event()->get_option('dbem_bookings_approval') ? '0,1' : 1;
 			$booked_spaces = $this->get_status_spaces( $status, $force_refresh );
 			$booked_spaces = $booked_spaces > 0 ? $booked_spaces : 0;
 			$this->booked_spaces[$this->event_id] = apply_filters('em_ticket_get_booked_spaces', $booked_spaces, $this, $force_refresh);
 		}
 		return $this->booked_spaces[$this->event_id];
+	}
+
+	/**
+	 * Gets the number of this ticket's spaces held by other visitors' booking intents that have not run out, see EM_Booking_Intents.
+	 * @return int
+	 */
+	public function get_intent_spaces() {
+		global $wpdb;
+		if ( !EM_Booking_Intents::counting() ) {
+			return 0;
+		}
+		$sub_sql = $wpdb->prepare( 'SELECT booking_id FROM '.EM_BOOKINGS_TABLE.' WHERE event_id=%d AND ', $this->event_id ) . EM_Booking_Intents::live_sql();
+		if ( $this->get_event()->is_timeslot() ) {
+			$sub_sql .= " AND timeslot_id=" . absint($this->get_event()->timeslot_id);
+		}
+		$sql = 'SELECT SUM(ticket_booking_spaces) FROM '.EM_TICKETS_BOOKINGS_TABLE. " WHERE booking_id IN ($sub_sql) AND ticket_id=" . absint( $this->ticket_id );
+		return apply_filters( 'em_ticket_get_intent_spaces', max( 0, (int) $wpdb->get_var( $sql ) ), $this );
 	}
 
 	public function get_status_spaces( $status, $force_refresh = false ) {
@@ -846,7 +883,7 @@ class EM_Ticket extends EM_Object {
 	function get_bookings_count( $status = false, $force_refresh = false ){
 		global $wpdb;
 		if( !array_key_exists($this->event_id, $this->bookings_count) || $force_refresh ){
-			$sub_sql = 'SELECT booking_id FROM '.EM_BOOKINGS_TABLE.' WHERE event_id=%d';
+			$sub_sql = 'SELECT booking_id FROM '.EM_BOOKINGS_TABLE.' WHERE event_id=%d AND booking_status != '. EM_Booking_Intents::STATUS;
 			if ( $this->get_event()->is_timeslot() ) {
 				$sub_sql .= " AND timeslot_id=" . absint($this->get_event()->timeslot_id);
 			}
@@ -943,8 +980,9 @@ class EM_Ticket extends EM_Object {
 					}
 					// DELETE all tickets without current bookings in them
 					if ( $deletable_child_ticket_ids ) {
+						$deletable_child_ticket_ids = array_map( 'absint', $deletable_child_ticket_ids );
 						// do these ticket IDs have children? If so, we need to delete those tickets via this function recursively and repeat this whole process, otherwise we can just do a mass deletion
-						$deletable_parent_ticket_ids = $wpdb->get_col( $wpdb->prepare( 'SELECT DISTINCT ticket_parent FROM '. EM_TICKETS_TABLE . ' WHERE ticket_parent IN ( ' . implode( ',', $deletable_child_ticket_ids ) . ')' ) );
+						$deletable_parent_ticket_ids = $wpdb->get_col( 'SELECT DISTINCT ticket_parent FROM '. EM_TICKETS_TABLE . ' WHERE ticket_parent IN ( ' . implode( ',', $deletable_child_ticket_ids ) . ')' );
 						if ( $deletable_parent_ticket_ids ) {
 							// again, copy original ticket data to all tickets that have children so those children can detach and copy parent data correctly
 							$sql = static::detach_parent_sql( $this->ticket_id, $deletable_parent_ticket_ids);
@@ -1200,7 +1238,7 @@ class EM_Ticket extends EM_Object {
 		$value = $this->ticket_meta;
 		foreach ( $keys as $k ) {
 			if ( !is_array( $value ) || !array_key_exists( $k, $value ) ) {
-				return $this->ticket_parent ? $this->get_parent()->has_meta( ...$keys ) : null;
+				return $this->ticket_parent ? $this->get_parent()->get_meta( ...$keys ) : null;
             }
 			$value = $value[ $k ];
 		}
@@ -1240,6 +1278,38 @@ class EM_Ticket extends EM_Object {
 			$value = $value[ $k ];
 		}
 		return false;
+	}
+
+	/**
+	 * The access this ticket was given on a hybrid event, before the event's own modes are considered.
+	 * @return string in_person, online or both
+	 */
+	public function get_access_setting() {
+		$access = $this->get_meta( 'access' );
+		return in_array( $access, array( 'in_person', 'online', 'both' ), true ) ? $access : 'both';
+	}
+
+	/**
+	 * The access this ticket gives. On an event that is not hybrid this is the event's only mode, so a stored setting has no effect there.
+	 * @return string|null in_person, online, both, or null when the event has no location
+	 */
+	public function get_access() {
+		$modes = $this->get_event()->get_access_modes();
+		if ( count( $modes ) > 1 ) {
+			$access = $this->get_access_setting();
+		} else {
+			$access = $modes ? current( $modes ) : null;
+		}
+		return apply_filters( 'em_ticket_access', $access, $this );
+	}
+
+	/**
+	 * @param string $mode in_person or online
+	 * @return bool
+	 */
+	public function grants_access( $mode ) {
+		$access = $this->get_access();
+		return $access === 'both' || ( $access !== null && $access === $mode );
 	}
 
 	/**

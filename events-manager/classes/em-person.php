@@ -63,6 +63,8 @@ class EM_Person extends WP_User{
 			$status_condition = " AND booking_status=$status";
 		}elseif( EM_Object::array_is_numeric($status) ){
 			$status_condition = " AND booking_status IN (".implode(',', $status).")";
+		}else{
+			$status_condition = " AND booking_status != ". EM_Booking_Intents::STATUS;
 		}
 		$EM_Booking = em_get_booking(); //empty booking for fields
 		// Whitelist the ORDER BY column and direction

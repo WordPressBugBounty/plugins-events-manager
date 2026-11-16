@@ -134,8 +134,9 @@ class EM_Event_Post_Admin{
 		$is_post_type = Archetypes::is_event($post_type);
 		$doing_add_meta_ajax = defined('DOING_AJAX') && DOING_AJAX && !empty($_REQUEST['action']) && $_REQUEST['action'] == 'add-meta' && check_ajax_referer( 'add-meta', '_ajax_nonce-add-meta', false ); //we don't need to save anything here, we don't use this action
 		$saving_status = !in_array(get_post_status($post_id), array('trash','auto-draft')) && !defined('DOING_AUTOSAVE') && !$doing_add_meta_ajax;
-		$EM_EVENT_SAVE_POST = true; //first filter for save_post in EM for events
 		if(!defined('UNTRASHING_'.$post_id) && $is_post_type && $saving_status ){
+			// raised only here because it is lowered only at the end of this block, and left raised it makes every later EM_Event::save() in the request skip its recurrences
+			$EM_EVENT_SAVE_POST = true; //first filter for save_post in EM for events
 			Archetypes::set_current( $post_type );
 			//Reset server timezone to UTC in case other plugins are doing something naughty
 			$server_timezone = date_default_timezone_get();

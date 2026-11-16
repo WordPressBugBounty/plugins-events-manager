@@ -35,6 +35,11 @@ class Event_Location {
 	 * @see EM_Event_Location::load_admin_template()
 	 */
 	public static $admin_template;
+	/**
+	 * True when everything this type gives a booking online goes through can_access() or get_online_ticket_bookings(), such as attendee registration, join links and recordings, so it can be the online half of a hybrid event. Types written before hybrid events leave it false, as they treat every booking as an online attendee.
+	 * @var bool
+	 */
+	public static $supports_ticket_access = false;
 	
 	public static function init(){
 		Event_Locations::register( static::$type, get_called_class() );
@@ -123,7 +128,7 @@ class Event_Location {
 	}
 	
 	public function save(){
-		if( is_numeric($this->event->post_id) && $this->event->post_id > 0 && static::$type !== null ){
+		if( $this->owns_post() && static::$type !== null ){
 			$this->reset_data();
 			foreach( $this->properties as $prop ){
 				$meta_key = $prop == static::$type ? '_event_location_'.$prop : '_event_location_'.static::$type.'_'.$prop;
@@ -145,13 +150,22 @@ class Event_Location {
 	}
 	
 	/**
+	 * Whether the event's post holds this location's meta. Postless recurrences report their recurring event's post ID, so writing or deleting meta for one would change the whole series.
+	 * @return bool
+	 */
+	protected function owns_post(){
+		return $this->event && is_numeric($this->event->post_id) && $this->event->post_id > 0 && !$this->event->is_recurrence();
+	}
+
+	/**
 	 * Deletes stored information about this location type in the database
 	 * @return int|false
 	 */
 	final function reset_data(){
-		if( is_numeric($this->event->post_id) && $this->event->post_id > 0 ){
+		if( $this->owns_post() ){
 			global $wpdb;
-			$result = $wpdb->query( $wpdb->prepare('DELETE FROM '.$wpdb->postmeta." WHERE post_id=%d AND meta_key LIKE %s AND meta_key != '_event_location_type'", $this->event->post_id, "_event_location_{$this->type}_%") );
+			$base_key = '_event_location_' . $this->type;
+			$result = $wpdb->query( $wpdb->prepare('DELETE FROM '.$wpdb->postmeta." WHERE post_id=%d AND ( meta_key = %s OR meta_key LIKE %s ) AND meta_key != '_event_location_type'", $this->event->post_id, $base_key, $wpdb->esc_like( $base_key . '_' ) . '%') );
 			wp_cache_delete( $this->event->post_id, 'post_meta' ); //refresh cache to prevent looking at old data
 			return $result;
 		}
@@ -167,8 +181,21 @@ class Event_Location {
 	 * @return bool
 	 */
 	public static function is_enabled(){
-		$location_types = em_get_option('dbem_location_types', array());
-		return !empty($location_types[static::$type]);
+		return Event_Locations::is_enabled( static::$type );
+	}
+
+	/**
+	 * Type keys of virtual types written before the Virtual base class, such as the free Zoom plugin's.
+	 */
+	const LEGACY_VIRTUAL_TYPES = array('zoom_meeting', 'zoom_webinar', 'zoom_room');
+
+	/**
+	 * Whether attendees join this type over the internet, which groups it under Virtual in settings and the editor. Types written before the Virtual base class, such as the free Zoom plugin's, are recognized by their type key.
+	 * @return bool
+	 */
+	public static function is_virtual(){
+		$virtual = in_array( static::$type, self::LEGACY_VIRTUAL_TYPES, true );
+		return apply_filters('em_event_location_is_virtual', $virtual, get_called_class());
 	}
 	
 	/**
@@ -205,13 +232,194 @@ class Event_Location {
 	public function get_ical_location(){
 		return false;
 	}
-	
+
+	/**
+	 * Ticket bookings in $EM_Booking whose ticket grants online access, for providers that register or invite each attendee.
+	 * @param \EM_Booking $EM_Booking
+	 * @return \EM_Ticket_Booking[] Keyed by "ticket_id-ticket_booking_id".
+	 */
+	public function get_online_ticket_bookings( $EM_Booking ){
+		$ticket_bookings = array();
+		foreach( $EM_Booking->get_tickets_bookings()->tickets_bookings as $EM_Ticket_Bookings ){
+			foreach( $EM_Ticket_Bookings as $EM_Ticket_Booking ){
+				if( !method_exists($EM_Ticket_Booking, 'grants_access') || $EM_Ticket_Booking->grants_access('online') ){
+					$ticket_bookings[ $EM_Ticket_Bookings->ticket_id . '-' . $EM_Ticket_Booking->ticket_booking_id ] = $EM_Ticket_Booking;
+				}
+			}
+		}
+		return apply_filters('em_event_location_online_ticket_bookings', $ticket_bookings, $EM_Booking, $this);
+	}
+
+	/**
+	 * Whether $EM_Booking may join this event location, checked before printing join links, sending reminders or signing embed tokens.
+	 * @param \EM_Booking $EM_Booking
+	 * @return bool
+	 */
+	public function can_access( $EM_Booking ){
+		$can_access = false;
+		if( $EM_Booking instanceof \EM_Booking && $EM_Booking->booking_id ){
+			$statuses = apply_filters('em_event_location_access_statuses', array(1), $this, $EM_Booking);
+			$can_access = in_array( (int) $EM_Booking->booking_status, array_map('intval', (array) $statuses), true );
+			if( $can_access && method_exists($EM_Booking, 'grants_access') ){
+				$can_access = (bool) $EM_Booking->grants_access('online');
+			}
+		}
+		return apply_filters('em_event_location_can_access', $can_access, $EM_Booking, $this);
+	}
+
+	/**
+	 * The first booking a user holds for this event that can_access() lets in, so pages can show that user their own join link or recording.
+	 * @param int|null $user_id Defaults to the current user.
+	 * @return \EM_Booking|null
+	 */
+	public function get_accessible_booking( $user_id = null ){
+		$user_id = $user_id === null ? get_current_user_id() : absint($user_id);
+		$EM_Booking = null;
+		if( $user_id && $this->event && !empty($this->event->event_id) ){
+			global $wpdb;
+			$sql = $wpdb->prepare('SELECT booking_id FROM '.EM_BOOKINGS_TABLE.' WHERE event_id = %d AND person_id = %d AND booking_status NOT IN (2,3)', $this->event->event_id, $user_id);
+			if( !empty($this->event->timeslot_id) ){
+				$sql .= $wpdb->prepare(' AND timeslot_id = %d', $this->event->timeslot_id);
+			}
+			foreach( $wpdb->get_col( $sql . ' ORDER BY booking_id' ) as $booking_id ){
+				$booking = em_get_booking( $booking_id );
+				if( $this->can_access( $booking ) ){
+					$EM_Booking = $booking;
+					break;
+				}
+			}
+		}
+		return apply_filters('em_event_location_accessible_booking', $EM_Booking, $user_id, $this);
+	}
+
+	/**
+	 * A URL for this event location that is safe to publish in public feeds such as iCal and schema.org, or an empty string.
+	 * @return string
+	 */
+	public function get_public_url(){
+		return apply_filters('em_event_location_public_url', '', $this);
+	}
+
+	/**
+	 * The provider's own hard attendee cap, such as a webinar seat licence, or null when it has none.
+	 * @return int|null
+	 */
+	public function get_capacity_limit(){
+		return apply_filters('em_event_location_capacity_limit', null, $this);
+	}
+
+	/**
+	 * A join link for $EM_Booking that is safe to email, which checks access again when followed.
+	 * @param \EM_Booking $EM_Booking
+	 * @return string
+	 */
+	public function get_join_url( $EM_Booking = null ){
+		$url = '';
+		if( $EM_Booking && static::supports_join() && $this->can_access($EM_Booking) ){
+			$url = Join_Gate::get_url( $this->event, $EM_Booking );
+		}
+		return apply_filters('em_event_location_join_url', $url, $EM_Booking, $this);
+	}
+
+	/**
+	 * Where the join gate sends $EM_Booking once it has been authorized, such as the meeting URL or an attendee's own registrant link.
+	 * @param \EM_Booking $EM_Booking
+	 * @return string
+	 */
+	public function resolve_join_url( $EM_Booking ){
+		return apply_filters('em_event_location_resolve_join_url', '', $EM_Booking, $this);
+	}
+
+	/**
+	 * Outputs an embedded join page for an authorized $EM_Booking instead of redirecting, returning false when this location has no embed.
+	 * @param \EM_Booking $EM_Booking
+	 * @return bool
+	 */
+	public function output_join_page( $EM_Booking ){
+		return false;
+	}
+
+	/**
+	 * Whether this type can send a booking on to its online location through the join gate, which needs resolve_join_url() or output_join_page().
+	 * @return bool
+	 */
+	public static function supports_join(){
+		$supports = false;
+		foreach( array('resolve_join_url', 'output_join_page') as $method ){
+			$reflection = new \ReflectionMethod( get_called_class(), $method );
+			if( $reflection->getDeclaringClass()->getName() !== __CLASS__ ){
+				$supports = true;
+			}
+		}
+		return apply_filters('em_event_location_supports_join', $supports, get_called_class());
+	}
+
+	/**
+	 * Whether this type can be the virtual half of a hybrid event, see $supports_ticket_access.
+	 * @return bool
+	 */
+	public static function supports_ticket_access(){
+		return apply_filters('em_event_location_supports_ticket_access', !empty(static::$supports_ticket_access), get_called_class());
+	}
+
+	/**
+	 * When the join gate lets bookings through, as UTC timestamps.
+	 * @return array Keys 'opens' and 'closes'.
+	 */
+	public function get_join_window(){
+		$window = array(
+			'opens' => $this->get_join_opens(),
+			'closes' => $this->event->end()->getTimestamp() + 2 * HOUR_IN_SECONDS,
+		);
+		return apply_filters('em_event_location_join_window', $window, $this);
+	}
+
+	/**
+	 * @return int UTC timestamp
+	 */
+	protected function get_join_opens(){
+		return $this->event->start()->getTimestamp() - 15 * MINUTE_IN_SECONDS;
+	}
+
+	/**
+	 * The stored data anyone who can see the event may be given, as opposed to what only those who can edit it should get. Types name their public fields by overriding this; without that, only a URL that is safe to publish is public.
+	 * @return array
+	 */
+	public function get_public_data(){
+		$data = array();
+		$url = $this->get_public_url();
+		if( $url !== '' ) $data['url'] = $url;
+		return apply_filters('em_event_location_public_data', $data, $this);
+	}
+
+	/**
+	 * Whether the current user gets this location's stored data in API output, rather than only its public data.
+	 * @return bool
+	 */
+	public function can_read_private_data(){
+		$can_read = false;
+		if( $this->event ){
+			// can_manage() records an error on the event when it refuses, which a read should not leave behind
+			$errors = $this->event->errors;
+			$can_read = $this->event->can_manage('edit_events', 'edit_others_events');
+			$this->event->errors = $errors;
+		}
+		return apply_filters('em_event_location_can_read_private_data', $can_read, $this);
+	}
+
 	public function to_api(){
-		return array_merge( $this->data, array(
+		$data = $this->can_read_private_data() ? $this->data : $this->get_public_data();
+		return array_merge( $data, array(
 			'type' => static::$type,
 		));
 	}
 }
 
+include('em-event-location-join-gate.php');
+include('virtual/virtual.php');
+include('virtual/custom-link.php');
+include('em-event-location-online-venue.php');
+include('online-venues/online-session.php');
+include('online-venues/online-venues.php');
 //include default Event Locations
 include('em-event-location-url.php');

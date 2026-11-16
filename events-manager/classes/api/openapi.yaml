@@ -2268,6 +2268,17 @@ components:
             - type: boolean
         location_type:
           type: string
+        event_location_type:
+          type: string
+          description: Hybrid events only. The event location type of the online half; `location` stays the physical venue.
+        event_location:
+          $ref: "#/components/schemas/EventLocation"
+        access_modes:
+          type: array
+          description: How attendees can attend, `in_person` for a physical venue and `online` for an event location. Both values mean a hybrid event.
+          items:
+            type: string
+            enum: [in_person, online]
         categories:
           type: array
           description: >-
@@ -2473,7 +2484,21 @@ components:
           description: Inline location create — WGS-84 longitude.
         location_type:
           type: string
-          description: Location type. Default `location` (physical, uses `location_id` or inline fields). `::pro::` values include `url` and `online`.
+          description: Location type. Default `location` (physical, uses `location_id` or inline fields). Other values are the registered event location types, such as `url`, plus any added by add-ons (e.g. `zoom_meeting`). `0` means no location.
+        location_hybrid:
+          type: integer
+          description: Hybrid event switch, used with `location_type` `location`. `1` adds the event location type in `location_hybrid_type` alongside the physical location, `0` removes it. Omit to leave an existing hybrid event as it is.
+        location_hybrid_type:
+          type: string
+          description: Event location type for the online half of a hybrid event, e.g. `url`, sent with that type's own fields such as `event_location_url`. Needed with `location_hybrid` `1` unless the event already has an online location, which is then kept. A type that is not enabled, or that gives every booking online access whatever its tickets, is refused.
+        event_spaces_in_person:
+          type: integer
+          minimum: 0
+          description: Hybrid events only. Venue capacity shared by tickets with in-person access. `0` = no cap.
+        event_spaces_online:
+          type: integer
+          minimum: 0
+          description: Hybrid events only. Online capacity shared by tickets with online access. `0` = no cap beyond the online provider's own limit.
         location_url:
           type: string
           description: '`::pro::` URL for url-type locations.'
@@ -2483,6 +2508,9 @@ components:
         event_location_url_text:
           type: string
           description: '`::pro::` Display text for `event_location_url`.'
+        event_location_url_private:
+          type: integer
+          description: '`1` keeps `event_location_url` off public output, feeds and API reads by non-managers, and gives it only to bookings with online access through their join link. `0` makes it public again. Omit to keep the current setting.'
 
         event_categories:
           type: array
@@ -2874,7 +2902,7 @@ components:
           type: string
     EventLocation:
       type: object
-      description: Event-specific location object such as URL/webinar. Shape is supplied by event-location classes.
+      description: Event-specific location object such as URL/webinar. Shape is supplied by event-location classes. Users who can edit the event get the type's stored data; everyone else gets `type` and only the fields the type declares public.
       additionalProperties: true
     LocationValidation:
       type: object
@@ -3207,6 +3235,10 @@ components:
         ticket_order:
           type: integer
           description: Display sort index (lowest first).
+        ticket_access:
+          type: string
+          enum: [both, in_person, online]
+          description: Hybrid events only. Whether this ticket gives in-person access, online access, or both. Defaults to `both`; ignored on events with a single location.
         delete:
           type: string
           description: WP nonce required by `EM_Tickets::get_post()` to delete this ticket row when sent inside `em_tickets`.

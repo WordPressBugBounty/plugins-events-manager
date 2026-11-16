@@ -187,6 +187,12 @@ function em_docs_init($force_init = false){
 							'#_EVENTPRICEMAXALL' => array( 'desc' => 'Shows the highest ticket price for this event, whether available or not.' ),
 						)
 					),
+					'Hybrid Events' => array(
+						'desc' => 'A hybrid event has a physical location and an online location, and each ticket gives in-person access, online access or both. Wrap content in <code>{is_hybrid}</code>...<code>{/is_hybrid}</code> or <code>{not_hybrid}</code>...<code>{/not_hybrid}</code> to show it only on hybrid or other events.',
+						'placeholders' => array(
+							'#_EVENTACCESS' => array( 'desc' => 'How people can attend: In person, Online, or Hybrid.' ),
+						)
+					),
 					'Contact Details' => array(
 						'desc' => 'The values here are taken from the chosen contact for the specific event, or the default contact in the settings page.',
 						'placeholders' => array(
@@ -222,7 +228,8 @@ function em_docs_init($force_init = false){
 							'#_EVENTLOCATION{_self}' => array( 'desc' => 'Regular HTML link' ),
 							'#_EVENTLOCATION{_parent}' => array( 'desc' => 'HTML link with target=”_parent”' ),
 							'#_EVENTLOCATION{_top}' => array( 'desc' => 'HTML link with target=”_top”' )
-						)
+						),
+						'desc' => 'When <em>Only show this link to attendees with online access</em> is ticked, these show the link text without the link, or the viewer\'s own join link when they are logged in with a booking that includes online access. Use <code>#_BOOKINGJOINLINK</code> in booking emails.',
 					),
 				),
 				'categories' => array(
@@ -381,6 +388,16 @@ function em_docs_init($force_init = false){
 							'#_BOOKINGATTENDEES' => array('desc' => sprintf('(<a href="%s">pro only</a>) Generates a list of attendee information displaying the filled in form data for each attendee (requires individual attendee forms enabled for the event). This list is split by ticket type, then by individual attendee.','https://wp-events-plugin.com/features/')), //coupons too!
 							'#_BOOKINGADMINURL' => array( 'desc' => 'URL for admins to view and manage the booking. This should only be used on admin-specific email templates.' ),
 							'#_BOOKINGADMINLINK' => array( 'desc' => 'HTML link for admins to view and manage the booking. This should only be used on admin-specific email templates.' ),
+						)
+					),
+					'Online and In-Person Access' => array(
+						'desc' => 'For events with an online location, and hybrid events where tickets give in-person access, online access or both. Wrap content in <code>{booking_in_person}</code>, <code>{booking_online}</code>, <code>{not_booking_in_person}</code> or <code>{not_booking_online}</code> (each closed with its <code>{/...}</code> tag) to show it only to bookings with or without that access.',
+						'placeholders' => array(
+							'#_BOOKINGACCESS' => array( 'desc' => 'What the booked tickets give access to: In person, Online, or In person and online.' ),
+							'#_BOOKINGLOCATION' => array( 'desc' => 'Where this booking attends: the venue name and address for in-person access, and the join link for online access once the booking is approved.' ),
+							'#_BOOKINGJOINURL' => array( 'desc' => 'This booking\'s own join URL, blank unless the booking is approved and includes online access. The link checks access again when followed and only opens shortly before the event starts.' ),
+							'#_BOOKINGJOINLINK' => array( 'desc' => 'A "Join online" link to <code>#_BOOKINGJOINURL</code>, with the same conditions. Use <code>#_BOOKINGJOINLINK{Watch the stream}</code> to change the link text. Add this to your confirmed booking email so online attendees receive their link.' ),
+							'#_TICKETACCESS' => array( 'desc' => 'In formats that list booked tickets or attendees, what that ticket gives access to.' ),
 						)
 					),
 					'Pricing Information' => array(

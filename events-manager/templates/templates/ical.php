@@ -155,6 +155,13 @@ if( $location ){
 		$output .= "\r\n" . $apple_structured_location;
 	}
 }
+// a hybrid event keeps its venue as LOCATION, so the online location goes in a CONFERENCE property, and only when its link is safe to publish
+if( $EM_Event->is_hybrid() ){
+	$conference_url = $EM_Event->get_event_location()->get_public_url();
+	if( $conference_url ){
+		$output .= "\r\n" . wordwrap('CONFERENCE;VALUE=URI;FEATURE=VIDEO:'. esc_url_raw($conference_url), 74, "\n ", true);
+	}
+}
 // add organizer if specifically requested via $args in locate_template
 if( !empty($include_organizer) ){
 	/*

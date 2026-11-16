@@ -2190,6 +2190,8 @@ document.addEventListener('em_event_editor_loaded', function(e){
 					tbody.find( 'span.ticket_start' ).text( el.val() );
 				} else if ( el.attr( 'name' ) == 'ticket_end_pub' ) {
 					tbody.find( 'span.ticket_end' ).text( el.val() );
+				} else if ( el.attr( 'name' ) == 'em_tickets[' + rowNo + '][ticket_access]' ) {
+					tbody.find( '.ticket-access-icons' ).attr( 'data-access', el.val() || el.attr( 'data-inherited' ) || 'both' );
 				} else if ( el.attr( 'name' ) == 'em_tickets[' + rowNo + '][ticket_type]' ) {
 					if ( el.find( ':selected' ).val() == 'members' ) {
 						tbody.find( 'span.ticket_name' ).prepend( '* ' );

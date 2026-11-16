@@ -707,6 +707,11 @@
 }
 
 /* My Bookings Page */
+&.em-my-bookings button.input.em-tooltip-ddm {
+	margin: 0 !important;
+	padding-left: 15px !important;
+	text-align: left !important;
+}
 .em-my-bookings-actions-content {
 	a.em-bookings-rsvp-confirm {
 		color : #198754 !important;

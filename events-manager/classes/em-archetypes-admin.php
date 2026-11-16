@@ -425,6 +425,8 @@ class Archetypes_Admin {
 			    'dbem_search_form_towns' => true,
 			    'dbem_search_form_town_label' => true,
 			    'dbem_search_form_towns_label' => true,
+			    'dbem_search_form_online' => true,
+			    'dbem_search_form_online_label' => true,
 				// Emails
 				'dbem_bookings_notify_admin' => true,
 				'dbem_bookings_contact_email' => true,

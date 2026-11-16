@@ -144,6 +144,38 @@ function em_admin_paginate($total, $limit, $page=1, $vars=false, $base = false, 
 	return apply_filters('em_admin_paginate',$return,$total,$limit,$page,$vars);
 }
 
+/**
+ * Outputs list-table style pagination, i.e. "17 items ‹ 1 of 2 ›".
+ * @param string $link URL containing %PAGE% where the page number goes
+ * @param int $total
+ * @param int $limit
+ * @param int $page
+ * @return string
+ */
+function em_list_paginate( $link, $total, $limit, $page = 1 ) {
+	$pages = (int) ceil( $total / $limit );
+	$buttons = array();
+	$nav = array(
+		array( 1, '&laquo;', 'first-page', __( 'First page', 'events-manager' ) ),
+		array( $page - 1, '&lsaquo;', 'prev-page', __( 'Previous page', 'events-manager' ) ),
+		array( $page + 1, '&rsaquo;', 'next-page', __( 'Next page', 'events-manager' ) ),
+		array( $pages, '&raquo;', 'last-page', __( 'Last page', 'events-manager' ) ),
+	);
+	foreach ( $nav as list( $target, $label, $class, $title ) ) {
+		if ( $target < 1 || $target > $pages || $target == $page ) {
+			$buttons[] = '<span class="button disabled" aria-hidden="true">' . $label . '</span>';
+		} else {
+			$buttons[] = '<a class="' . $class . ' button" href="' . esc_url( str_replace( '%PAGE%', $target, $link ) ) . '" aria-label="' . esc_attr( $title ) . '">' . $label . '</a>';
+		}
+	}
+	$paging = sprintf( __( '%1$s of %2$s', 'events-manager' ), number_format_i18n( $page ), '<span class="total-pages">' . number_format_i18n( $pages ) . '</span>' );
+	$return = '<div class="tablenav-pages' . ( $pages > 1 ? '' : ' one-page' ) . '">';
+	$return .= '<span class="displaying-num">' . sprintf( _n( '%s item', '%s items', $total, 'events-manager' ), number_format_i18n( $total ) ) . '</span> ';
+	$return .= '<span class="pagination-links">' . $buttons[0] . ' ' . $buttons[1] . ' <span class="paging-input">' . $paging . '</span> ' . $buttons[2] . ' ' . $buttons[3] . '</span>';
+	$return .= '</div>';
+	return apply_filters( 'em_list_paginate', $return, $link, $total, $limit, $page );
+}
+
 function em_admin_url( $cpt = null ) {
 	if ( $cpt ) {
 		$cpt = Archetypes::get_post_type( $cpt );
@@ -738,9 +770,13 @@ function em_get_search_form_defaults($base_args = array(), $context = 'events') 
 	$search_args['town'] = ''; //default state
 	$search_args['search_towns'] = em_get_option('dbem_search_form_towns');
 	$search_args['town_label'] = em_get_option('dbem_search_form_town_label'); //field label
+	$search_args['access'] = '';
+	$search_args['search_online'] = em_get_option('dbem_search_form_online') && em_get_option('dbem_locations_enabled') && EM_Event_Locations\Event_Locations::is_virtual_enabled();
+	$search_args['online_label'] = em_get_option('dbem_search_form_online_label') ?: __('Virtual events only', 'events-manager');
+	$search_args['online_tooltip'] = esc_html__('Includes hybrid events, which can also be attended physically.', 'events-manager');
 	//sections to show
 	$search_args['show_main'] = em_get_option('dbem_search_form_main');
-	$search_args['show_advanced'] = em_get_option('dbem_search_form_advanced') && ( $search_args['search_categories'] || $search_args['search_tags'] || $search_args['search_countries'] || $search_args['search_regions'] || $search_args['search_states'] || $search_args['search_towns']);
+	$search_args['show_advanced'] = em_get_option('dbem_search_form_advanced') && ( $search_args['search_categories'] || $search_args['search_tags'] || $search_args['search_countries'] || $search_args['search_regions'] || $search_args['search_states'] || $search_args['search_towns'] || $search_args['search_online']);
 	$search_args['advanced_mode'] = em_get_option('dbem_search_form_advanced_mode') === 'inline' ? 'inline':'modal';
 	$search_args['advanced_hidden'] = $search_args['show_advanced'] && em_get_option('dbem_search_form_advanced_hidden');
 	$search_args['advanced_trigger'] = !( $search_args['advanced_hidden'] && em_get_option('dbem_search_form_advanced_trigger') && $search_args['advanced_mode'] === 'inline' ) && $search_args['show_advanced'];
@@ -757,6 +793,7 @@ function em_get_search_form_defaults($base_args = array(), $context = 'events') 
 		$search_args['search_scope_main'] = false;
 		$search_args['search_scope'] = false;
 		$search_args['search_tags'] = false;
+		$search_args['search_online'] = false;
 	}else{
 		// default is events
 		$search_args['views'] = em_get_option('dbem_search_form_views');

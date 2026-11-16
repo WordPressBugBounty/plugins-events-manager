@@ -116,6 +116,16 @@ class EM_Booking extends EM_Object{
 	 */
 	protected $date;
 	/**
+	 * When a booking intent (status 10) stops holding its spaces, as a UTC DATETIME mysql value, see EM_Booking_Intents. Not saved by save(), which leaves the column alone.
+	 * @var string|null
+	 */
+	public $booking_expires = null;
+	/**
+	 * Set when this booking takes over a booking intent's row, so saving it replaces the intent's ticket bookings rather than adding to them.
+	 * @var bool
+	 */
+	public $intent_adopted = false;
+	/**
 	 * @var EM_Person
 	 */
 	protected $person;
@@ -200,6 +210,7 @@ class EM_Booking extends EM_Object{
 			$this->booking_status = absint($this->booking_status);
 			$this->previous_status = $this->booking_status;
 			$this->booking_date = !empty($booking['booking_date']) ? $booking['booking_date']:false;
+			$this->booking_expires = !empty($booking['booking_expires']) ? $booking['booking_expires'] : null;
 		    if( empty($this->booking_uuid) ) {
 			    if( !empty($this->booking_id) ){
 				    $this->booking_uuid = md5($this->ticket_booking_id); // fallback, create a consistent but unique MD5 hash in case it's not saved for some reason.
@@ -223,6 +234,7 @@ class EM_Booking extends EM_Object{
 			6 => __('Waitlist','events-manager'),
 			7 => __('Waitlist Approved','events-manager'),
 			8 => __('Waitlist Expired','events-manager'),
+			10 => __('Booking Intent','events-manager'),
 		);
 		$this->compat_keys(); //deprecating in 6.0
 		//do some legacy checking here for bookings made prior to 5.4, due to how taxes are calculated
@@ -291,7 +303,7 @@ class EM_Booking extends EM_Object{
 	 * @return string[]
 	 */
 	public function __sleep(){
-		$array = array('booking_id','booking_uuid','event_id','timeslot_id','person_id','booking_price','booking_spaces','booking_comment','booking_status','booking_tax_rate','booking_taxes','booking_meta','notes','booking_date','person','feedback_message','errors','mails_sent','custom','previous_status','status_array','manage_override','tickets_bookings');
+		$array = array('booking_id','booking_uuid','event_id','timeslot_id','person_id','booking_price','booking_spaces','booking_comment','booking_status','booking_tax_rate','booking_taxes','booking_meta','notes','booking_date','person','feedback_message','errors','mails_sent','custom','previous_status','status_array','manage_override','tickets_bookings','booking_expires','intent_adopted');
 		if( !empty($this->bookings) ) $array[] = 'bookings'; // EM Pro backwards compatibility
 		return apply_filters('em_booking_sleep', $array, $this);
 	}
@@ -375,7 +387,10 @@ class EM_Booking extends EM_Object{
 	function save($mail = true){
 		global $wpdb;
 		$table = EM_BOOKINGS_TABLE;
-		do_action('em_booking_save_pre',$this); // last chance to circumvent
+		$intent = $this->is_intent();
+		// an intent turned into a booking is saved over its own row, but everything listening sees a new booking with a fresh booking date
+		$converting = !$intent && !empty($this->booking_id) && $this->previous_status === EM_Booking_Intents::STATUS;
+		do_action( $intent ? 'em_booking_intent_save_pre' : 'em_booking_save_pre', $this ); // last chance to circumvent
 		if( empty($this->errors) && $this->can_manage() ){
 			//update prices, spaces, person_id
 			$this->get_spaces(true);
@@ -388,7 +403,13 @@ class EM_Booking extends EM_Object{
 			if($this->booking_id != ''){
 				$update = true;
 				$where = array( 'booking_id' => $this->booking_id );  
-				$result = $wpdb->update($table, $data, $where, $this->get_types($data));
+				$data_types = $this->get_types($data);
+				if( $converting ){
+					$data['booking_date'] = $this->booking_date = gmdate('Y-m-d H:i:s');
+					$data_types[] = '%s';
+					$this->date = null;
+				}
+				$result = $wpdb->update($table, $data, $where, $data_types);
 				$result = ($result !== false);
 				$this->feedback_message = __('Changes saved','events-manager');
 			}else{
@@ -433,9 +454,18 @@ class EM_Booking extends EM_Object{
 					$wpdb->query('INSERT INTO '. EM_BOOKINGS_META_TABLE .' (booking_id, meta_key, meta_value) VALUES '. implode(',', $meta_insert));
 				}
 				// Step 2b - Save Ticket Bookings
+				if( $update && $this->intent_adopted ){
+					// the intent's ticket bookings are replaced by this booking's, which were built from the form without IDs
+					$wpdb->query( $wpdb->prepare('DELETE FROM '. EM_TICKETS_BOOKINGS_META_TABLE .' WHERE ticket_booking_id IN (SELECT ticket_booking_id FROM '. EM_TICKETS_BOOKINGS_TABLE .' WHERE booking_id=%d)', $this->booking_id) );
+					$wpdb->delete( EM_TICKETS_BOOKINGS_TABLE, array('booking_id' => $this->booking_id), array('%d') );
+					$this->intent_adopted = false;
+				}
+				if( $converting ){
+					EM_Booking_Intents::clear_expires( $this );
+				}
 				$tickets_bookings_result = $this->get_tickets_bookings()->save();
 				if( !$tickets_bookings_result ){
-					if( !$update ){
+					if( !$update || $converting ){
 						//delete the booking and tickets, instead of a transaction
 						$this->delete();
 					}
@@ -448,6 +478,23 @@ class EM_Booking extends EM_Object{
 			// Step 3. Run filter for return value before sending emails
 			$this->flush_event_cache();
 			$this->compat_keys();
+			if( $intent ){
+				/**
+				 * Filters the result of saving a booking intent, which fires instead of em_booking_save.
+				 * @param bool $result
+				 * @param EM_Booking $this
+				 * @param bool $update
+				 */
+				$return = apply_filters('em_booking_intent_save', ( count($this->errors) == 0 ), $this, $update);
+				if( $return && empty($update) ){
+					do_action('em_booking_intent_added', $this);
+				}
+				return $return;
+			}
+			if( $converting ){
+				$update = false;
+				$this->previous_status = false;
+			}
 			$return = apply_filters('em_booking_save', ( count($this->errors) == 0 ), $this, $update);
 			//Final Step: email if necessary after all the saving has been done
 			if ( $return  && $mail ) {
@@ -469,7 +516,23 @@ class EM_Booking extends EM_Object{
 				$this->add_error(sprintf(__('You cannot manage this %s.', 'events-manager'),__('Booking','events-manager')));
 			}
 		}
-		return apply_filters('em_booking_save', false, $this, false);
+		return apply_filters( $intent ? 'em_booking_intent_save' : 'em_booking_save', false, $this, false);
+	}
+
+	/**
+	 * Whether this is a booking intent: a booking the visitor is still putting together, holding its spaces until it is submitted, see EM_Booking_Intents.
+	 * @return bool
+	 */
+	public function is_intent(){
+		return (int) $this->booking_status === EM_Booking_Intents::STATUS;
+	}
+
+	/**
+	 * Whether this booking has not been lodged yet: it is unsaved, still an intent, or an intent being turned into this booking.
+	 * @return bool
+	 */
+	public function is_new(){
+		return empty($this->booking_id) || $this->is_intent() || $this->previous_status === EM_Booking_Intents::STATUS;
 	}
 	
 	/**
@@ -721,6 +784,7 @@ class EM_Booking extends EM_Object{
 				$result = false;
 				$this->add_error( $this->get_option('dbem_booking_feedback_full'));
 			}
+			$this->has_access_spaces( false, !empty($this->booking_id) && $this->is_reserved() );
 		}
 		//can we book this amount of spaces at once?
 		if( $this->get_event()->event_rsvp_spaces > 0 && $this->get_spaces() > $this->get_event()->event_rsvp_spaces ){
@@ -1106,7 +1170,105 @@ class EM_Booking extends EM_Object{
 		}
 		return apply_filters('em_booking_get_tickets_bookings', $this->tickets_bookings, $this);
 	}
-	
+
+	/**
+	 * Whether any ticket in this booking gives the given access to the event.
+	 * @param string $mode in_person or online
+	 * @return bool
+	 */
+	public function grants_access( $mode ){
+		$grants_access = false;
+		foreach( $this->get_tickets_bookings()->tickets_bookings as $EM_Ticket_Bookings ){
+			if( $EM_Ticket_Bookings->get_spaces() > 0 && $this->get_booked_ticket( $EM_Ticket_Bookings )->grants_access( $mode ) ){
+				$grants_access = true;
+				break;
+			}
+		}
+		return apply_filters('em_booking_grants_access', $grants_access, $mode, $this);
+	}
+
+	/**
+	 * A booked ticket given this booking's event, since a ticket without one loads the event through em_get_event() and re-caches it right after a booking write has flushed it.
+	 * @param EM_Ticket_Bookings $EM_Ticket_Bookings
+	 * @return EM_Ticket
+	 */
+	protected function get_booked_ticket( $EM_Ticket_Bookings ){
+		$EM_Ticket = $EM_Ticket_Bookings->get_ticket();
+		if( $EM_Ticket->event_id == $this->event_id ){
+			$EM_Ticket->event = $this->get_event();
+		}
+		return $EM_Ticket;
+	}
+
+	/**
+	 * @return string|null in_person, online, both, or null when the booking grants neither
+	 */
+	public function get_access(){
+		$in_person = $this->grants_access('in_person');
+		$online = $this->grants_access('online');
+		if( $in_person && $online ){
+			return 'both';
+		}
+		return $in_person ? 'in_person' : ( $online ? 'online' : null );
+	}
+
+	/**
+	 * Spaces in this booking that use the given access, so a ticket giving both counts towards both.
+	 * @param string $mode in_person or online
+	 * @return int
+	 */
+	public function get_access_spaces( $mode ){
+		$spaces = 0;
+		foreach( $this->get_tickets_bookings()->tickets_bookings as $EM_Ticket_Bookings ){
+			if( $this->get_booked_ticket( $EM_Ticket_Bookings )->grants_access( $mode ) ){
+				$spaces += $EM_Ticket_Bookings->get_spaces();
+			}
+		}
+		return $spaces;
+	}
+
+	/**
+	 * Checks this booking against the event's in-person and online capacity, adding an error and returning false if either is exceeded.
+	 * @param bool $force_refresh
+	 * @param bool $own_spaces_counted Whether this booking's saved spaces are already part of the event's counts, as when an existing booking is edited.
+	 * @return bool
+	 */
+	public function has_access_spaces( $force_refresh = false, $own_spaces_counted = false ){
+		$has_spaces = true;
+		foreach( array('in_person', 'online') as $mode ){
+			$available_spaces = $this->get_event()->get_bookings()->get_access_available_spaces( $mode, $force_refresh );
+			if( $available_spaces === null ) continue;
+			$spaces = $this->get_access_spaces( $mode );
+			if( $own_spaces_counted && $this->booking_id ){
+				$available_spaces += $this->get_saved_access_spaces( $mode );
+			}
+			if( $spaces > $available_spaces ){
+				$has_spaces = false;
+				$this->add_error( $mode === 'online' ? __('There are not enough virtual spaces left for this booking.', 'events-manager') : __('There are not enough physical spaces left for this booking.', 'events-manager') );
+			}
+		}
+		return apply_filters('em_booking_has_access_spaces', $has_spaces, $this, $force_refresh);
+	}
+
+	/**
+	 * Spaces of the given access this booking holds in the database, before any unsaved edit.
+	 * @param string $mode in_person or online
+	 * @return int
+	 */
+	public function get_saved_access_spaces( $mode ){
+		global $wpdb;
+		$spaces = 0;
+		$rows = $wpdb->get_results( $wpdb->prepare('SELECT ticket_id, SUM(ticket_booking_spaces) AS spaces FROM '. EM_TICKETS_BOOKINGS_TABLE .' WHERE booking_id=%d GROUP BY ticket_id', $this->booking_id) );
+		$EM_Tickets = $this->get_event()->get_bookings()->get_tickets();
+		foreach( $rows as $row ){
+			$EM_Ticket = !empty($EM_Tickets->tickets[$row->ticket_id]) ? $EM_Tickets->tickets[$row->ticket_id] : new EM_Ticket( absint($row->ticket_id) );
+			if( $EM_Ticket->grants_access( $mode ) ){
+				$spaces += (int) $row->spaces;
+			}
+		}
+		return $spaces;
+	}
+
 	/**
 	 * @return EM_Person
 	 */
@@ -1273,6 +1435,7 @@ class EM_Booking extends EM_Object{
 	function delete(){
 		global $wpdb;
 		$result = false;
+		$intent = $this->is_intent();
 		if( $this->can_manage('manage_bookings','manage_others_bookings') ){
 			$this->tickets_bookings = null; // reload tickets
 			$this->get_tickets_bookings(); // get this before bookings deleted from DB
@@ -1288,10 +1451,13 @@ class EM_Booking extends EM_Object{
 				$wpdb->delete( EM_BOOKINGS_META_TABLE, array('booking_id'=> $this->booking_id), array('%d'));
 				$this->deleted = true;
 				$this->flush_event_cache();
-				do_action('em_booking_deleted', $this);
+				do_action( $intent ? 'em_booking_intent_deleted' : 'em_booking_deleted', $this );
 			}else{
 				$this->add_error(sprintf(__('%s could not be deleted', 'events-manager'), __('Booking','events-manager')));
 			}
+		}
+		if( $intent ){
+			return apply_filters('em_booking_intent_delete', ( $result !== false ), $this);
 		}
 		do_action('em_bookings_deleted', $result, array($this->booking_id), array($this->get_event_uid()));
 		return apply_filters('em_booking_delete',( $result !== false ), $this);
@@ -1377,13 +1543,18 @@ class EM_Booking extends EM_Object{
 	 */
 	function set_status($status, $email = true, $ignore_spaces = false ){
 		global $wpdb;
+		// an intent only becomes a booking by being submitted, and nothing becomes an intent again
+		if( $this->is_intent() || (int) $status === EM_Booking_Intents::STATUS ){
+			$this->add_error( __('A booking intent cannot have its status changed.', 'events-manager') );
+			return apply_filters('em_booking_set_status', false, $this);
+		}
 		$action_string = strtolower($this->status_array[$status]);
 		//if we're approving we can't approve a booking if spaces are full, so check before it's approved.
 		// Hold a per-event lock across the full-check and the status write so two concurrent approvals can't both pass a stale space count and overbook.
 		$status_lock_event_id = ( !$ignore_spaces && $status == 1 ) ? $this->get_event_id() : 0;
 		$status_locked = $status_lock_event_id ? EM_Bookings::acquire_lock( $status_lock_event_id ) : false;
 		if(!$ignore_spaces && $status == 1){
-			if( !$this->is_reserved() && $this->get_event()->get_bookings()->get_available_spaces(true) < $this->get_spaces() && !$this->get_option('dbem_bookings_approval_overbooking') ){
+			if( !$this->is_reserved() && ( $this->get_event()->get_bookings()->get_available_spaces(true) < $this->get_spaces() || !$this->has_access_spaces(true) ) && !$this->get_option('dbem_bookings_approval_overbooking') ){
 				if( $status_locked ) EM_Bookings::release_lock( $status_lock_event_id );
 				$this->feedback_message = sprintf(__('Not approved, spaces full.','events-manager'), $action_string);
 				$this->add_error($this->feedback_message);
@@ -1725,6 +1896,14 @@ class EM_Booking extends EM_Object{
 						$show_condition = $this->booking_rsvp_status === 2;
 					} elseif ( preg_match('/^is_rsvp_reply_([0-9]+)$/', $condition, $matches ) ) { //check if there's no rsvp
 						$show_condition = $this->booking_rsvp_status == $matches[1];
+					} elseif ( $condition == 'booking_in_person' ) {
+						$show_condition = $this->grants_access('in_person');
+					} elseif ( $condition == 'booking_online' ) {
+						$show_condition = $this->grants_access('online');
+					} elseif ( $condition == 'not_booking_in_person' ) {
+						$show_condition = !$this->grants_access('in_person');
+					} elseif ( $condition == 'not_booking_online' ) {
+						$show_condition = !$this->grants_access('online');
 					}
 					if( $show_condition ){
 						//calculate lengths to delete placeholders
@@ -1836,6 +2015,22 @@ class EM_Booking extends EM_Object{
 				case '#_BOOKING_RSVP_STATUS':
 					$replace = $this->get_rsvp_status( true );
 					break;
+				case '#_BOOKINGACCESS':
+					$replace = EM_Event::get_access_label( (string) $this->get_access() );
+					break;
+				case '#_BOOKINGJOINURL':
+					$replace = $this->get_join_url();
+					break;
+				case '#_BOOKINGJOINLINK':
+					$join_url = $this->get_join_url();
+					if( $join_url ){
+						$join_text = !empty($placeholder_atts[1]) ? $placeholder_atts[1] : __('Join online', 'events-manager');
+						$replace = '<a href="'. esc_url($join_url) .'">'. esc_html($join_text) .'</a>';
+					}
+					break;
+				case '#_BOOKINGLOCATION':
+					$replace = $this->output_location( $target );
+					break;
 				default:
 					$replace = $this->output_placeholder( $full_result, $placeholder_atts, $format, $target );
 					break;
@@ -1865,6 +2060,52 @@ class EM_Booking extends EM_Object{
 		// $placeholder = $placeholder_atts[0]; // this is the placeholder, no atts
 		return $full_result;
 	}
+
+	/**
+	 * A join link to the event's online location for this booking, or an empty string when the booking has no online access or is not confirmed.
+	 * @return string
+	 */
+	public function get_join_url(){
+		$url = '';
+		$EM_Event = $this->get_event();
+		if( $EM_Event->has_virtual_location() ){
+			$url = $EM_Event->get_event_location()->get_join_url( $this );
+		}
+		return apply_filters('em_booking_get_join_url', $url, $this);
+	}
+
+	/**
+	 * Where this booking attends: the venue for in-person access and a join link for online access, so each attendee sees only what their tickets give them.
+	 * @param string $target
+	 * @return string Venue parts are event placeholders, replaced when the booking output runs the event output.
+	 */
+	/**
+	 * Placeholders that print a booking's join link, so templates can be checked for one.
+	 * @return string[]
+	 */
+	public static function get_join_placeholders(){
+		return apply_filters('em_booking_join_placeholders', array('#_BOOKINGJOINLINK', '#_BOOKINGJOINURL', '#_BOOKINGLOCATION'));
+	}
+
+	public function output_location( $target = 'html' ){
+		$parts = array();
+		$plain = $target === 'raw' || ( $target === 'email' && !em_get_option('dbem_smtp_html') );
+		if( $this->grants_access('in_person') ){
+			$parts[] = '#_LOCATIONNAME - #_LOCATIONFULLLINE';
+		}
+		if( $this->grants_access('online') ){
+			$join_url = $this->get_join_url();
+			if( $join_url && !$plain ){
+				$parts[] = '<a href="'. esc_url($join_url) .'">'. esc_html__('Join online', 'events-manager') .'</a>';
+			}elseif( $join_url ){
+				$parts[] = $join_url;
+			}else{
+				$parts[] = esc_html( EM_Event::get_access_label('online') );
+			}
+		}
+		$separator = $target === 'raw' ? ' / ' : ( $plain ? "\n" : '<br/>' );
+		return apply_filters('em_booking_output_location', implode( $separator, $parts ), $this, $target);
+	}
 	
 	public function output_intent_html(){
 		$input = '<input type="hidden" name="booking_intent" value="' . esc_attr($this->booking_uuid) .'" class="em-booking-intent" id="em-booking-intent-'. esc_attr( $this->get_event_uid() ) .'"';
@@ -1872,6 +2113,9 @@ class EM_Booking extends EM_Object{
 			$input .= ' data-'.$key.'="'. esc_attr($value) .'"';
 		}
 		$input .= '>';
+		if( $this->booking_id && $this->is_intent() ){
+			$input .= EM_Booking_Intents::output_token_html( $this );
+		}
 		return apply_filters('em_booking_output_intent_html', $input, $this);
 	}
 	
@@ -1885,6 +2129,22 @@ class EM_Booking extends EM_Object{
 			'amount_base' => $this->get_price_base(),
 			'taxes' => $this->get_price_taxes(),
 			'currency' => $this->get_currency(),
+		) + $this->get_intent_hold_data();
+	}
+
+	/**
+	 * How long a persisted booking intent still holds its spaces, for the booking form's countdown.
+	 * @return array
+	 */
+	protected function get_intent_hold_data(){
+		if( !$this->booking_id || !$this->is_intent() || empty($this->booking_expires) ){
+			return array();
+		}
+		$expires = EM_Booking_Intents::expires_timestamp( $this );
+		return array(
+			'held' => 1,
+			'expires' => $expires,
+			'remaining' => max( 0, $expires - time() ),
 		);
 	}
 	

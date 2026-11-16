@@ -222,6 +222,9 @@ class OAuth_API_Client {
 			$errors = json_decode($response['body']);
 			if( is_array($errors) ){
 				$error = current($errors);
+			}elseif( !empty($errors->error) && is_object($errors->error) && !empty($errors->error->message) ){
+				$error = $errors->error;
+				if( empty($error->code) ) $error->code = $response['response']['code'];
 			}elseif( !empty($errors->code) ){
 				$error = $errors;
 			}else{
@@ -375,20 +378,62 @@ class OAuth_API_Client {
 	 */
 	public function refresh(){
 		if ( $this->token->refresh_token ) {
+			global $wpdb;
+			$lock = 'em_oauth_refresh_' . md5( $this->option_name . '|' . $this->user_id . '|' . $this->token->id );
+			$locked = (int) $wpdb->get_var( $wpdb->prepare( 'SELECT GET_LOCK(%s, %d)', $lock, 15 ) ) === 1;
 			try{
+				if( $locked && $this->reload_stored_token() ){
+					return;
+				}
+				$refresh_token = $this->token->refresh_token;
 				$access_token = $this->refresh_access_token();
+				// providers such as Google only send a refresh token when it changes
+				if( empty($access_token['refresh_token']) ) $access_token['refresh_token'] = $refresh_token;
 				$this->token->refresh($access_token, true);
 				$this->save_access_token();
 				$this->authorized = $this->user_id .'|'. $this->token->id;
 			}catch( EM_Exception $ex ){
+				if( !$locked && $this->reload_stored_token() ){
+					return;
+				}
 				throw new EM_Exception( array(
 					$this->option_name.'-error' => sprintf(esc_html__( 'There was an error connecting to %s: %s', 'events-manager' ), $this->service_name, "<code>{$ex->getMessage()}</code>"),
 					$this->option_name.'-token-expired' => $this->reauthorize_error_string()
 				));
+			}finally{
+				if( $locked ){
+					$wpdb->query( $wpdb->prepare( 'SELECT RELEASE_LOCK(%s)', $lock ) );
+				}
 			}
 		}else{
 			throw new EM_Exception( $this->reauthorize_error_string() );
 		}
+	}
+
+	/**
+	 * Re-reads the stored token past the object cache and loads it if another request has already refreshed it.
+	 * @return bool
+	 */
+	protected function reload_stored_token(){
+		if( $this->authorization_scope == 'user' ){
+			wp_cache_delete( $this->user_id, 'user_meta' );
+		}else{
+			wp_cache_delete( $this->option_dataset, 'options' );
+			wp_cache_delete( 'alloptions', 'options' );
+		}
+		$previous_token = $this->token;
+		try{
+			$token = $this->get_access_token( $previous_token->id );
+		}catch( EM_Exception $ex ){
+			$this->token = $previous_token;
+			return false;
+		}
+		if( $token->is_expired() || $token->access_token === $previous_token->access_token ){
+			$this->token = $previous_token;
+			return false;
+		}
+		$this->authorized = $this->user_id .'|'. $this->token->id;
+		return true;
 	}
 
 	/**

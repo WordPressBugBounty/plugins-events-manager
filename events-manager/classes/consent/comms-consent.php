@@ -143,7 +143,7 @@ class Comms extends Consent {
 		$already_consented = $EM_Person->{ static::$options['meta_key'] };
 		$already_revoked = $EM_Person->{ static::$options['meta_key'] . '_revoked' };
 		// if user can modify others bookings, do it for all bookings, we do it direct to DB to avoid processing
-		$sql_select = $wpdb->prepare( 'SELECT booking_id FROM '. EM_BOOKINGS_TABLE . " WHERE person_id = 0 AND booking_id IN ( SELECT booking_id FROM ". EM_BOOKINGS_META_TABLE ." WHERE meta_key='_registration|user_email' AND meta_value=%s )", $EM_Person->user_email );
+		$sql_select = $wpdb->prepare( 'SELECT booking_id FROM '. EM_BOOKINGS_TABLE . " WHERE person_id = 0 AND booking_status != " . \EM_Booking_Intents::STATUS . " AND booking_id IN ( SELECT booking_id FROM ". EM_BOOKINGS_META_TABLE ." WHERE meta_key='_registration|user_email' AND meta_value=%s )", $EM_Person->user_email );
 		if ( $event_owner_id ) {
 			// limit bookings to only events belonging to this user
 			$sql_select .= $wpdb->prepare( " AND event_id IN ( SELECT event_id FROM ". EM_EVENTS_TABLE . " WHERE event_owner=%d )", $event_owner_id );

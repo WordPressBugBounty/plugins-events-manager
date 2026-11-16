@@ -471,17 +471,24 @@ class EM_Calendar extends EM_Object {
 				}
 			}
 		}
-		//Get an array of arguments that don't include default valued args
-		if ( $month_next ) {
-			$next_url = esc_url_raw(add_query_arg( array('mo'=>$month_next, 'yr'=>$year_next, 'id' => null)) );
+		$calendar_array['links'] = array( 'previous_url'=>'', 'next_url'=> '', 'today_url' => '');
+		// with empty months shown there is always another month either side, so stop at the first and last months with events, otherwise a crawler that ignores nofollow can follow the links forever
+		if ( !empty( $args['empty_months'] ) ) {
+			$nav_months = static::get_nav_months( $args, (int) $month, (int) $year, $today );
+			list( $month_last, $year_last ) = $nav_months['previous'] ?: array( false, false );
+			list( $month_next, $year_next ) = $nav_months['next'] ?: array( false, false );
 		}
-		$calendar_array['links'] = array( 'previous_url'=>'', 'next_url'=> $next_url ?? '', 'today_url' => '');
+		// ajaxCalendar and em_ajax arrive in the URL of a fetched calendar fragment, and carrying them on would make every fragment link to three more fragments
+		$nav_args = array( 'id' => null, 'ajaxCalendar' => null, 'em_ajax' => null );
+		if ( $month_next ) {
+			$calendar_array['links']['next_url'] = esc_url_raw(add_query_arg( array_merge( $nav_args, array('mo'=>$month_next, 'yr'=>$year_next) ) ));
+		}
 		// add today and previous links if scope permits
 		if( $today->format('Y-n') != $year.'-'.absint($month) ) {
-			$calendar_array['links']['today_url'] = esc_url_raw(add_query_arg( array('mo'=>$today->format('m'), 'yr'=>$today->format('Y'), 'id' => null) ));
+			$calendar_array['links']['today_url'] = esc_url_raw(add_query_arg( array_merge( $nav_args, array('mo'=>$today->format('m'), 'yr'=>$today->format('Y')) ) ));
 		}
 		if( $month_last && ( $args['scope'] !== 'future' || $today->format('Y-n') !== $year.'-'.absint($month) ) ){ // don't show if future scope and this month
-			$calendar_array['links']['previous_url'] = esc_url_raw(add_query_arg( array('mo'=>$month_last, 'yr'=>$year_last, 'id' => null)) );
+			$calendar_array['links']['previous_url'] = esc_url_raw(add_query_arg( array_merge( $nav_args, array('mo'=>$month_last, 'yr'=>$year_last) ) ));
 		}
 		$calendar_array['month'] = $month;
 		$calendar_array['year'] = $year;
@@ -649,6 +656,68 @@ class EM_Calendar extends EM_Object {
 	 */
 	public static function get_format_signature( $format ){
 		return wp_hash( 'em_calendar_format|' . $format );
+	}
+
+	/**
+	 * Works out where the previous and next links lead when empty months are shown. Navigation stops at the first and last months with events, though the current month stays reachable from either side, and a month outside that range links straight back into it.
+	 * @param array $args
+	 * @param int $month
+	 * @param int $year
+	 * @param EM_DateTime $today
+	 * @return array previous and next, each an array of month and year, or false for no link
+	 */
+	public static function get_nav_months( $args, $month, $year, $today ){
+		$to_month = function( $index ){
+			$year = (int) floor( $index / 12 );
+			return array( $index - $year * 12 + 1, $year );
+		};
+		$event_month = function( $EM_DateTime ){
+			return (int) $EM_DateTime->format('Y') * 12 + (int) $EM_DateTime->format('n') - 1;
+		};
+		$this_month = $year * 12 + $month - 1;
+		$today_month = $event_month( $today );
+		$months = array( 'previous' => $to_month( $this_month - 1 ), 'next' => $to_month( $this_month + 1 ) );
+		if ( !apply_filters( 'em_calendar_nav_stops_at_events', true, $args ) ) return $months;
+		$month_start = new EM_DateTime( sprintf( '%04d-%02d-01', $year, $month ) );
+		$query_args = array_merge( $args, array( 'limit' => 1, 'offset' => 0, 'pagination' => false, 'month' => false, 'year' => false ) );
+		// the previous link is hidden on the current month of a future scope anyway, and earlier months can't be shown in one
+		if ( $this_month <= $today_month && $args['scope'] !== 'future' ) {
+			add_filter( 'pre_option_dbem_events_current_are_past', '__return_true' );
+			$has_earlier = (bool) EM_Events::get( array_merge( $query_args, array( 'array' => true, 'scope' => array( false, $month_start->copy()->sub('P1D')->getDate() ) ) ) );
+			remove_filter( 'pre_option_dbem_events_current_are_past', '__return_true' );
+			if ( !$has_earlier ) {
+				$months['previous'] = false;
+				// URLs held from before navigation stopped can be years out, so jump to the first event or the current month rather than walk every empty month
+				if ( $this_month < $today_month ) {
+					$EM_Events = EM_Events::get( array_merge( $query_args, array( 'array' => false, 'scope' => array( $month_start->getDate(), false ), 'orderby' => 'event_start_date', 'order' => 'ASC' ) ) );
+					$first_month = $EM_Events ? min( $event_month( current( $EM_Events )->start() ), $today_month ) : $today_month;
+					if ( $first_month > $this_month + 1 ) $months['next'] = $to_month( $first_month );
+				}
+			}
+		}
+		if ( $this_month >= $today_month ) {
+			// a long event shows on every day it runs so one still running next month counts, which needs a range scope for current_are_past to apply, and nothing past 9999 can be searched
+			$current_are_past = empty( $args['long_events'] ) ? '__return_true' : '__return_false';
+			add_filter( 'pre_option_dbem_events_current_are_past', $current_are_past );
+			$has_later = $year < 9999 && EM_Events::get( array_merge( $query_args, array( 'array' => true, 'scope' => array( $month_start->copy()->modify('first day of next month')->getDate(), '9999-12-31' ) ) ) );
+			remove_filter( 'pre_option_dbem_events_current_are_past', $current_are_past );
+			if ( !$has_later ) {
+				$months['next'] = false;
+				if ( $this_month > $today_month ) {
+					$date_field = empty( $args['long_events'] ) ? 'event_start_date' : 'event_end_date';
+					add_filter( 'pre_option_dbem_events_current_are_past', '__return_true' );
+					$EM_Events = EM_Events::get( array_merge( $query_args, array( 'array' => false, 'scope' => array( false, $month_start->copy()->setEndOfMonth()->getDate() ), 'orderby' => $date_field, 'order' => 'DESC' ) ) );
+					remove_filter( 'pre_option_dbem_events_current_are_past', '__return_true' );
+					$last_month = $today_month;
+					if ( $EM_Events ) {
+						$EM_Event = current( $EM_Events );
+						$last_month = max( $event_month( empty( $args['long_events'] ) ? $EM_Event->start() : $EM_Event->end() ), $today_month );
+					}
+					if ( $last_month < $this_month - 1 ) $months['previous'] = $to_month( $last_month );
+				}
+			}
+		}
+		return $months;
 	}
 
 	public static function days_in_month($month, $year) {

@@ -1,7 +1,7 @@
 <?php
 /*
 Plugin Name: Events Manager
-Version: 7.4.14
+Version: 7.5
 Plugin URI: https://wp-events-plugin.com
 Description: Event registration and booking management for WordPress. Recurring events, locations, webinars, google maps, rss, ical, booking registration and more!
 Author: Pixelite
@@ -30,7 +30,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 // Setting constants
 use EM\Archetypes;
 
-define('EM_VERSION', '7.4.14'); //self expanatory, although version currently may not correspond directly with published version number. until 6.0 we're stuck updating 5.999.x
+define('EM_VERSION', '7.5'); //self expanatory, although version currently may not correspond directly with published version number. until 6.0 we're stuck updating 5.999.x
 define('EM_PRO_MIN_VERSION', '3.9'); //self expanatory
 define('EM_PRO_MIN_VERSION_CRITICAL', '3.6.0.2'); //self expanatory
 define('EM_FILE', __FILE__); //an absolute path to this directory
@@ -115,6 +115,7 @@ if( !$requirements->passes(false) ) return;
 unset($requirements);
 
 // INCLUDES
+include( EM_DIR . '/classes/em-translations.php' );
 if( is_multisite() ){
 	include( EM_DIR . '/classes/em-ms-globals.php' );
 }
@@ -132,6 +133,7 @@ include( EM_DIR . '/classes/uploads/em-uploads-api.php' );
 include( EM_DIR . '/classes/uploads/em-uploads-uploader.php' );
 //set up events as posts
 include( EM_DIR . '/classes/em-archetypes.php' );
+include( EM_DIR . '/classes/em-organizers.php' );
 include( EM_DIR . '/classes/em-taxonomies.php' );
 
 //include( EM_DIR . '/em-posts.php' );
@@ -162,6 +164,7 @@ include( EM_DIR . '/classes/editor/em-editor.php' );
 include( EM_DIR . '/classes/em-list-table.php' );
 include( EM_DIR . '/classes/em-booking.php' );
 include( EM_DIR . '/classes/em-bookings.php' );
+include( EM_DIR . '/classes/em-booking-intents.php' );
 include( EM_DIR . '/classes/em-withdrawal.php' );
 include( EM_DIR . '/classes/em-bookings-table.php' );
 include( EM_DIR . '/classes/em-list-table-events-bookings.php' );
@@ -198,6 +201,7 @@ include( EM_DIR . '/classes/em-phone.php' );
 include( EM_DIR . '/classes/api/em-api.php' );
 // Push-notification framework for the mobile app: a generic type registry (bookings, events, …) that dispatches to Expo and registers its own /app/* REST routes under the API namespace — see EM\Notifications\Notifications::init(). Loaded after the API so it can reuse the same namespace and auth layer.
 include( EM_DIR . '/classes/notifications/em-notifications.php' );
+include( EM_DIR . '/classes/migrate/em-migrate.php' );
 
 
 //Admin / API context
@@ -209,6 +213,7 @@ if( is_admin() || ( defined('REST_REQUEST') && REST_REQUEST ) ){
 	include( EM_DIR . '/admin/dashboard.php' );
 	include( EM_DIR . '/admin/em-docs.php' );
 	include( EM_DIR . '/admin/em-help.php' );
+	include( EM_DIR . '/admin/em-addons.php' );
 	include( EM_DIR . '/admin/em-options.php' );
 	include( EM_DIR . '/admin/em-data-privacy.php' );
 	if( is_multisite() ){
@@ -251,6 +256,7 @@ if( EM_MS_GLOBAL ){
 	define('EM_BOOKINGS_TABLE',$prefix.'em_bookings'); //TABLE NAME
 	define('EM_BOOKINGS_META_TABLE',$prefix.'em_bookings_meta'); //TABLE NAME
 	define('EM_TICKETS_BOOKINGS_META_TABLE',$prefix.'em_tickets_bookings_meta'); //TABLE NAME
+	define('EM_ONLINE_SESSIONS_TABLE',$prefix.'em_online_sessions');
 
 //Backward compatability for old images stored in < EM 5
 if( EM_MS_GLOBAL ){
@@ -977,6 +983,7 @@ function em_delete_blog( $blog_id ){
 		$wpdb->query('DROP TABLE IF EXISTS '.$prefix.'em_event_recurrences');
 		$wpdb->query('DROP TABLE IF EXISTS '.$prefix.'em_bookings_meta');
 		$wpdb->query('DROP TABLE IF EXISTS '.$prefix.'em_tickets_bookings_meta');
+		$wpdb->query('DROP TABLE IF EXISTS '.$prefix.'em_online_sessions');
 	}
 	//delete events if MS Global
 	if( EM_MS_GLOBAL ){

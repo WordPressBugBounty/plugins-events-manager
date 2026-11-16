@@ -8,6 +8,8 @@ use EM\Archetypes;
  */
 class BP_EM_Component extends BP_Component {
 	
+	public $link = '';
+	
 	function __construct() {
 		global $bp;
 		parent::start('events',	Archetypes::$event['label'], EM_DIR);

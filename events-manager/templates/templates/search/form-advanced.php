@@ -16,12 +16,13 @@
 </section>
 <section class="em-search-advanced-sections input  em-search-advanced-style-<?php echo esc_attr($args['search_advanced_style']); ?>">
 	<?php do_action('em_search_form_advanced_sections_header', $args); ?>
-    <?php if ( !empty($args['search_countries']) || !empty($args['search_regions']) || !empty($args['search_states']) || !empty($args['search_towns']) || !empty($args['search_geo_units']) || !empty($args['search_eventful']) ) : ?>
+    <?php if ( !empty($args['search_countries']) || !empty($args['search_regions']) || !empty($args['search_states']) || !empty($args['search_towns']) || !empty($args['search_geo_units']) || !empty($args['search_eventful']) || !empty($args['search_online']) ) : ?>
 	<section class="em-search-section-location em-search-advanced-section">
 		<header>Location Options</header>
 		<div class="em-search-section-content">
 			<?php
 			em_locate_template('templates/search/location.php', true, array('args'=>$args));
+			if( !empty($args['search_online']) ) em_locate_template('templates/search/online.php',true,array('args'=>$args));
 			if( !empty($args['search_geo_units']) ) em_locate_template('templates/search/geo-units.php',true, array('args'=>$args));
 			if( !empty($args['search_eventful']) ) em_locate_template('templates/search/eventful-locations.php',true,array('args'=>$args));
 			?>

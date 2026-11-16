@@ -1,0 +1,55 @@
+{
+	"version": 1,
+	"currency": "USD",
+	"checkout": "https://eventsmanagerpro.com/gopro/",
+	"account": "https://eventsmanagerpro.com/account/",
+	"downloads": "https://eventsmanagerpro.com/downloads/",
+	"licenses": "https://eventsmanagerpro.com/account/licenses/",
+	"plans": {
+		"pro-plus": {
+			"name": "Events Manager Pro Plus",
+			"short": "Pro Plus",
+			"checkout": "https://eventsmanagerpro.com/gopro/"
+		},
+		"pro": {
+			"name": "Events Manager Pro",
+			"short": "Pro",
+			"checkout": "https://eventsmanagerpro.com/gopro/"
+		}
+	},
+	"addons": [
+		{
+			"key": "io",
+			"slug": "events-manager-io",
+			"name": "Events Manager I/O",
+			"short": "I/O",
+			"summary": "Import and export events with CSV, iCal, Google Calendar, Google Sheets, Meetup, Facebook and Zoom, on a schedule or on demand.",
+			"url": "https://wp-events-plugin.com/add-ons/events-manager-i-o/",
+			"included_in": [ "pro-plus" ],
+			"from": 49,
+			"buy": "https://eventsmanagerpro.com/add-ons/checkout/?addon=io"
+		},
+		{
+			"key": "connect",
+			"slug": "events-manager-connect",
+			"name": "Events Manager Connect",
+			"short": "Connect",
+			"summary": "Booking confirmations, reminders and replies over WhatsApp, Telegram and Twilio SMS.",
+			"url": "https://wp-events-plugin.com/add-ons/events-manager-connect/",
+			"included_in": [ "pro-plus" ],
+			"from": 49,
+			"buy": "https://eventsmanagerpro.com/add-ons/checkout/?addon=connect"
+		},
+		{
+			"key": "zoom-pro",
+			"slug": "events-manager-zoom-pro",
+			"name": "Events Manager Zoom Pro",
+			"short": "Zoom Pro",
+			"summary": "Attendees join Zoom meetings and webinars from your event pages, with automatic check-ins, time attended and cloud recordings for each booking.",
+			"url": "https://wp-events-plugin.com/add-ons/events-manager-zoom-pro/",
+			"included_in": [ "pro-plus" ],
+			"from": 49,
+			"buy": "https://eventsmanagerpro.com/add-ons/checkout/?addon=zoom-pro"
+		}
+	]
+}

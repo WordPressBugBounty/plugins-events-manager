@@ -1,0 +1,35 @@
+.em-tabs {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0 25px;
+	margin-bottom: 20px;
+	border-bottom: 1px solid var(--border-color, #dedede);
+
+	.em-tab {
+		padding: 10px 0;
+		margin-bottom: -1px;
+		border-bottom: 2px solid transparent;
+		text-decoration: none !important;
+		box-shadow: none !important;
+
+		&:hover {
+			border-bottom-color: var(--border-color, #dedede);
+		}
+		&.current {
+			border-bottom-color: currentColor;
+		}
+	}
+
+	> :not(.em-tab) {
+		margin: 0 0 8px auto !important;
+	}
+}
+
+.em-input-row {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 10px;
+	margin-bottom: 15px;
+}

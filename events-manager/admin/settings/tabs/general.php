@@ -129,6 +129,7 @@ global $events_placeholder_tip, $locations_placeholder_tip, $categories_placehol
 				//EM\Scripts_and_Styles::add_js_var('repeatedDisableWarning', __('Are you sure you want to disable repeated events? If you do so, any recurrences you currently have enabled will become nornal events, and de-sync from the recurring events should you re-save them whilst recurrences are disabled.', 'events-manager') );
 				em_options_radio_binary ( __( 'Enable bookings?', 'events-manager'), 'dbem_rsvp_enabled', __( 'Select yes to allow bookings and tickets for events.','events-manager') );
 				em_options_radio_binary ( __( 'Enable tags?', 'events-manager'), 'dbem_tags_enabled', __( 'Select yes to enable the tag features','events-manager') );
+				em_options_radio_binary ( __( 'Enable organizers?', 'events-manager'), 'dbem_organizers_enabled', __( 'Organizers are shared between events and hold contact details. Show them with #_EVENTORGANIZERS or #_EVENTORGANIZERSLIST.','events-manager') );
 				if( !(EM_MS_GLOBAL && !is_main_site()) ){
 					em_options_radio_binary ( __( 'Enable categories?', 'events-manager'), 'dbem_categories_enabled', __( 'Select yes to enable the category features','events-manager') );
 					if( get_option('dbem_categories_enabled') ){
@@ -172,41 +173,58 @@ global $events_placeholder_tip, $locations_placeholder_tip, $categories_placehol
 				        <?php
 				        $archetype_options = em_options_get_archetype_options('dbem_location_types');
 				        $location_types = get_option('dbem_location_types', array());
-				        ?>
-				        <div class="em-default-option option-checkboxes">
-					        <label>
-					            <input type="checkbox" name="dbem_location_types[location]" value="1" <?php if( !empty($location_types['location']) ) echo 'checked'; ?> data-trigger=".em-location-type-option-physical" class="em-trigger">
-						        <?php esc_html_e('Physicial Locations', 'events-manager'); ?>
-					        </label>
-					        <?php foreach (EM_Event_Locations\Event_Locations::get_types() as $event_location_type => $EM_Event_Location_Class): /* @var EM_Event_Locations\Event_Location $EM_Event_Location_Class */ ?>
-						        <br>
+				        // virtual types are listed under one Virtual switch that turns them all on or off, and greyed out while it is off
+				        $location_types_checklist = function( $name, $values, $defaults = null ){
+					        $checkbox = function( $key, $label, $trigger ) use ( $name, $values, $defaults ){
+						        ?>
 						        <label>
-							        <input type="checkbox" name="dbem_location_types[<?php echo esc_attr($event_location_type); ?>]" value="1" <?php if( !empty($location_types[$event_location_type]) ) echo 'checked'; ?> data-trigger=".em-location-type-option-<?php echo esc_attr($event_location_type); ?>" class="em-trigger">
-							        <?php echo $EM_Event_Location_Class::get_label('plural'); ?>
+							        <input type="checkbox" name="<?php echo esc_attr($name); ?>[<?php echo esc_attr($key); ?>]" value="1" <?php if( !empty($values[$key]) ) echo 'checked'; ?> <?php if( is_array($defaults) && !empty($defaults[$key]) ) echo 'data-default'; ?> data-trigger="<?php echo esc_attr($trigger); ?>" class="em-trigger">
+							        <?php echo esc_html($label); ?>
 						        </label>
-					        <?php endforeach; ?>
+						        <?php
+					        };
+					        $checkbox( 'location', __('Physical Locations', 'events-manager'), '.em-location-type-option-physical' );
+					        foreach( EM_Event_Locations\Event_Locations::get_types() as $event_location_type => $EM_Event_Location_Class ){ /* @var EM_Event_Locations\Event_Location $EM_Event_Location_Class */
+						        if( $EM_Event_Location_Class::is_virtual() ) continue;
+						        echo '<br>';
+						        $checkbox( $event_location_type, wp_strip_all_tags( $EM_Event_Location_Class::get_label('plural') ), '.em-location-type-option-'. $event_location_type );
+					        }
+					        echo '<br>';
+					        $checkbox( 'virtual', __('Virtual Locations', 'events-manager'), '.em-location-type-option-virtual' );
+					        ?>
+					        <div class="em-location-types-virtual <?php if( empty($values['virtual']) ) echo 'em-location-types-virtual-off'; ?>">
+						        <?php foreach( EM_Event_Locations\Event_Locations::get_virtual_types() as $event_location_type => $EM_Event_Location_Class ): ?>
+							        <?php if( !empty($EM_Event_Location_Class::$always_enabled) ): ?>
+								        <label><input type="checkbox" checked disabled> <?php echo esc_html( wp_strip_all_tags( $EM_Event_Location_Class::get_label('plural') ) ); ?> <em><?php esc_html_e('(always available)', 'events-manager'); ?></em></label><br>
+							        <?php else: ?>
+								        <?php $checkbox( $event_location_type, wp_strip_all_tags( $EM_Event_Location_Class::get_label('plural') ), '.em-location-type-option-'. $event_location_type ); ?><br>
+							        <?php endif; ?>
+						        <?php endforeach; ?>
+					        </div>
+					        <?php
+				        };
+				        ?>
+				        <style>
+					        .em-location-types-virtual { margin: 4px 0 0 24px; }
+					        .em-location-types-virtual-off { opacity: 0.5; pointer-events: none; }
+				        </style>
+				        <script>
+					        document.addEventListener( 'change', function( e ){
+						        if( e.target.matches && e.target.matches( '#dbem_location_types_row input[name$="[virtual]"]' ) ){
+							        let list = e.target.closest( 'label' ).nextElementSibling;
+							        if( list && list.classList.contains( 'em-location-types-virtual' ) ) list.classList.toggle( 'em-location-types-virtual-off', !e.target.checked );
+						        }
+					        } );
+				        </script>
+				        <div class="em-default-option option-checkboxes">
+					        <?php $location_types_checklist( 'dbem_location_types', $location_types ); ?>
 				        </div>
 
 				        <?php if( !empty($archetype_options['archetypes']) ): ?>
 				        <div class="em-archetype-options">
 					        <?php foreach ( $archetype_options['archetypes'] as $type => $atts ): ?>
 					        <div class="em-archetype-option option-checkboxes" data-archetype="<?php echo $type ?>"  <?php if ( empty($atts['value']) ) echo 'data-default'; ?>>
-						        <label>
-							        <input type="checkbox" name="<?php echo esc_attr($atts['name']); ?>[location]" value="1" <?php if( !empty($atts['value']['location']) ) echo 'checked'; ?>
-									        <?php echo !empty($location_types['location']) ? 'data-default' : ''; ?>
-							               data-trigger=".em-location-type-option-physical" class="em-trigger" >
-							        <?php esc_html_e('Physicial Locations', 'events-manager'); ?>
-						        </label>
-						        <?php foreach (EM_Event_Locations\Event_Locations::get_types() as $event_location_type => $EM_Event_Location_Class): /* @var EM_Event_Locations\Event_Location $EM_Event_Location_Class */ ?>
-							        <br>
-							        <label>
-								        <input type="checkbox" name="<?php echo esc_attr($atts['name']); ?>[<?php echo esc_attr($event_location_type); ?>]" value="1" <?php if( !empty($atts['value'][$event_location_type]) ) echo 'checked'; ?>
-										        <?php echo !empty($location_types[$event_location_type]) ? 'data-default' : ''; ?>
-								               data-trigger=".em-location-type-option-<?php echo esc_attr($event_location_type); ?>" class="em-trigger">
-								        <?php echo $EM_Event_Location_Class::get_label('plural'); ?>
-							        </label>
-						        <?php endforeach; ?>
-						        <br>
+						        <?php $location_types_checklist( $atts['name'], is_array($atts['value']) ? $atts['value'] : array(), $location_types ); ?>
 						        <div class="em-archetype-checkbox-buttons">
 							        <button type="button" class="button-secondary em-archetype-checkbox-default" <?php if ( empty($atts['value']) ) echo 'disabled'; ?>><?php esc_html_e('Use Defaults', 'events-manager'); ?></button>
 							        <button type="button" class="button-secondary em-archetype-checkbox-override" <?php if ( empty($atts['value']) ) echo 'disabled'; ?>><?php esc_html_e('Override Defaults', 'events-manager'); ?></button>
@@ -224,7 +242,7 @@ global $events_placeholder_tip, $locations_placeholder_tip, $categories_placehol
 	        <tbody class="em-location-type-option-physical">
 		        <tr class="em-subheader">
 			        <td colspan="2">
-				        <h5><?php esc_html_e('Physicial Locations', 'events-manager'); ?></h5>
+				        <h5><?php esc_html_e('Physical Locations', 'events-manager'); ?></h5>
 			        </td>
 		        </tr>
 		        <?php
@@ -345,6 +363,30 @@ global $events_placeholder_tip, $locations_placeholder_tip, $categories_placehol
 	</div> <!-- . inside -->
 	</div> <!-- .postbox -->
 	<?php do_action('em_options_page_event_submission_after'); ?>
+
+	<div  class="postbox" id="em-opt-virtual-events" >
+		<div class="handlediv" title="<?php esc_attr_e('Click to toggle', 'events-manager'); ?>"><br /></div><h3><span><?php esc_html_e( 'Virtual and Hybrid Events', 'events-manager'); ?></span></h3>
+		<div class="inside">
+			<table class="form-table">
+				<tr class="em-header"><td colspan="2">
+					<h4><?php esc_html_e( 'Hidden Links', 'events-manager'); ?></h4>
+					<p><?php esc_html_e( 'A virtual event can hold its link back until shortly before it starts. Until then, visitors and attendees see a short text in place of the link, and join links sent to attendees only start working at that time.', 'events-manager'); ?></p>
+				</td></tr>
+				<?php
+				$hidden_link_modes = array(
+					0 => __('Disabled', 'events-manager'),
+					1 => __('Enabled (on by default)', 'events-manager'),
+					2 => __('Enabled (off by default)', 'events-manager'),
+				);
+				em_options_select( __( 'Hidden links', 'events-manager'), 'dbem_virtual_links_hidden', $hidden_link_modes, __( 'On by default hides the link of every virtual event until the default time below. Off by default only hides the link of an event that is given a time of its own.', 'events-manager'), 2 );
+				em_options_radio_binary( __( 'Events can choose their own?', 'events-manager'), 'dbem_virtual_links_hidden_event', __( 'Adds the time and the hidden text to the event editor, so each event can set its own. If not, every event uses the defaults below.', 'events-manager') );
+				em_options_input_text( __( 'Minutes before the event', 'events-manager'), 'dbem_virtual_links_hidden_minutes', __( 'How many minutes before an event starts its link is shown, when the event has no time of its own.', 'events-manager'), 15 );
+				em_options_input_text( __( 'Hidden link text', 'events-manager'), 'dbem_virtual_links_hidden_text', __( 'Shown in place of the link until then. %s is replaced with the number of minutes.', 'events-manager'), EM\Event\Locations\Virtual::get_default_link_hidden_text() );
+				echo $save_button;
+				?>
+			</table>
+		</div> <!-- . inside -->
+	</div> <!-- .postbox -->
 
 	<div  class="postbox event-active-status-option" id="em-opt-event-cancellation" >
 		<div class="handlediv" title="<?php __('Click to toggle', 'events-manager'); ?>"><br /></div><h3><span><?php _e ( 'Event Cancellation', 'events-manager'); ?></span></h3>

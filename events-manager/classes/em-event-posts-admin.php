@@ -243,6 +243,9 @@ class EM_Event_Posts_Admin{
 					echo "<strong><a href='". $EM_Location->get_permalink()."'>" . $EM_Location->location_name . "</a></strong>";
 					echo "<span class='row-actions'> - ". implode(' | ', $actions) . "</span>";
 					echo "<br/>" . $EM_Location->location_address . " - " . $EM_Location->location_town;
+					if( $EM_Event->is_hybrid() ){
+						echo "<br/>" . $EM_Event->get_event_location()->get_admin_column();
+					}
 				}elseif( $EM_Event->has_event_location() ) {
 					echo $EM_Event->get_event_location()->get_admin_column();
 				}else{

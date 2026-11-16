@@ -306,7 +306,8 @@ class EM_Ticket_Bookings extends EM_Tickets_Bookings {
 		}
 		$available_spaces = $this->get_ticket()->get_available_spaces();
 		$spaces_needed = $this->get_spaces() - count($this->tickets_bookings_deleted); // if we're editing the booking, this is the real number of spaces we're booking
-		if( $this->booking_id ){
+		// an intent's own spaces are already left out of the available count, so only a lodged booking being edited gets them back
+		if( $this->booking_id && !$this->get_booking()->is_new() ){
 			// we're editing the booking, meaning we need to calculate then number of spaces we deleted into the total spaces we had
 			$spaces_previously_consumed = $this->get_spaces() + count($this->tickets_bookings_deleted);
 			// then add those spaces back to being available spaces, as if we're booking again

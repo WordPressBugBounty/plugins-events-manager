@@ -1,7 +1,7 @@
 <?php
 namespace EM_Event_Locations;
 /**
- * Adds a URL event location type by extending EM_Event_Location and registering itself with EM_Event_Locations
+ * Adds a URL event location type by extending EM_Event_Location and registering itself with EM_Event_Locations. A URL is a plain link, such as a page with more information, and is never treated as a virtual location; links attendees join through belong to the virtual Custom Link type.
  *
  * @property string url     The url of this event location.
  * @property string text    The text used in a link for the url.
@@ -71,6 +71,14 @@ class URL extends Event_Location {
 	
 	public function get_ical_location(){
 		return $this->url;
+	}
+
+	public function get_public_url(){
+		return apply_filters('em_event_location_public_url', (string) $this->url, $this);
+	}
+
+	public function get_public_data(){
+		return apply_filters('em_event_location_public_data', array_intersect_key( $this->data, array('url' => 1, 'text' => 1) ), $this);
 	}
 }
 URL::init();

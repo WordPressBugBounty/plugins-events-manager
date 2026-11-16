@@ -579,9 +579,9 @@ class EM_Withdrawal {
 		$ids  = array();
 		$user = get_user_by( 'email', $email );
 		if ( $user ) {
-			$ids = array_merge( $ids, $wpdb->get_col( $wpdb->prepare( 'SELECT booking_id FROM ' . EM_BOOKINGS_TABLE . ' WHERE person_id=%d', $user->ID ) ) );
+			$ids = array_merge( $ids, $wpdb->get_col( $wpdb->prepare( 'SELECT booking_id FROM ' . EM_BOOKINGS_TABLE . ' WHERE person_id=%d AND booking_status != ' . EM_Booking_Intents::STATUS, $user->ID ) ) );
 		}
-		$ids = array_merge( $ids, $wpdb->get_col( $wpdb->prepare( 'SELECT booking_id FROM ' . EM_BOOKINGS_TABLE . ' WHERE booking_meta LIKE %s', '%' . $wpdb->esc_like( $email ) . '%' ) ) );
+		$ids = array_merge( $ids, $wpdb->get_col( $wpdb->prepare( 'SELECT booking_id FROM ' . EM_BOOKINGS_TABLE . ' WHERE booking_meta LIKE %s AND booking_status != ' . EM_Booking_Intents::STATUS, '%' . $wpdb->esc_like( $email ) . '%' ) ) );
 		$ids = array_values( array_unique( array_map( 'intval', $ids ) ) );
 		$bookings = array();
 		foreach ( $ids as $id ) {

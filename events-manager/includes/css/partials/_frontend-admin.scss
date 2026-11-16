@@ -55,22 +55,12 @@
 	margin-bottom: 30px;
 }
 
-&.em-events-admin-list {
-	.subsubsub > div {
-		margin: 10px 0;
+&.em-events-admin-list .input {
+	.search-box {
+		float: left;
 	}
-	.input {
-		.search-box {
-			float:left;
-			width:50%;
-			input {
-				width: auto !important;
-				margin-bottom: 10px !important;
-			}
-		}
-		.tablenav {
-			width: 50% !important;
-		}
+	.tablenav {
+		width: 50% !important;
 	}
 }
 

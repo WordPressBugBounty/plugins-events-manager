@@ -417,6 +417,10 @@ class Scripts_and_Styles {
 						),
 					),
 					'update_listener' => implode( ',', apply_filters('em_booking_form_js_fields_change_match', array() )), // if anything here matches a field in the booking form, em_booking_form_updated JS Event will be triggered
+					'intent' => array(
+						'held' => __('Your spaces are held for %s while you complete your booking.', 'events-manager'),
+						'ended' => __('Your hold on these spaces has ended. You can still book them while they are available.', 'events-manager'),
+					),
 				),
 				//booking button
 				'bb_full' =>  em_get_option('dbem_booking_button_msg_full'),

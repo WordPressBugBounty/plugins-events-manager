@@ -157,9 +157,19 @@ if( !class_exists('EM_Permalinks') ){
 					$em_rules[ $events_slug . get_site_option( 'dbem_ms_events_slug', EM_EVENT_SLUG ) . '/(.+)$' ] = 'index.php?pagename=' . $events_pagename . '&em_redirect=1&event_slug=$matches[1]'; //single event from subsite
 				}
 				//add redirection for backwards compatability
-				$em_rules[ $events_slug . EM_EVENT_SLUG . '/(.+)$' ] = 'index.php?pagename=' . $events_pagename . '&em_redirect=1&event_slug=$matches[1]'; //single event
-				$em_rules[ $events_slug . EM_LOCATION_SLUG . '/(.+)$' ] = 'index.php?pagename=' . $events_pagename . '&em_redirect=1&location_slug=$matches[1]'; //single location page
-				$em_rules[ $events_slug . EM_CATEGORY_SLUG . '/(.+)$' ] = 'index.php?pagename=' . $events_pagename . '&em_redirect=1&category_slug=$matches[1]'; //single category page slug
+				// a legacy path that is also a current permalink base (a category base of events/category, say) would shadow it and redirect to itself
+				$current_bases = array();
+				foreach ( array( get_post_type_object( EM_POST_TYPE_EVENT ), get_post_type_object( EM_POST_TYPE_LOCATION ), get_taxonomy( EM_TAXONOMY_CATEGORY ), get_taxonomy( EM_TAXONOMY_TAG ) ) as $object ) {
+					if ( $object && ! empty( $object->rewrite['slug'] ) ) {
+						$current_bases[] = trim( $object->rewrite['slug'], '/' );
+					}
+				}
+				$legacy = array( EM_EVENT_SLUG => 'event_slug', EM_LOCATION_SLUG => 'location_slug', EM_CATEGORY_SLUG => 'category_slug' );
+				foreach ( $legacy as $legacy_slug => $legacy_var ) {
+					if ( ! in_array( $events_slug . $legacy_slug, $current_bases, true ) ) {
+						$em_rules[ $events_slug . $legacy_slug . '/(.+)$' ] = 'index.php?pagename=' . $events_pagename . '&em_redirect=1&' . $legacy_var . '=$matches[1]';
+					}
+				}
 				//add a rule that ensures that the events page is found and used over other pages
 				$em_rules[ trim( $events_slug, '/' ) . '/?$' ] = 'index.php?pagename=' . $events_pagename;
 			} else {

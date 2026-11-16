@@ -7,6 +7,9 @@ class EM_Admin_Modals {
 	const PROMO_ENDS = 1791183600; // 2026-10-05 07:00:00 UTC, when the saved-card and comeback offers end
 	const FLASH_SALE_ENDS = 1791183600; // 2026-10-05 07:00:00 UTC, when the Go Pro flash sale shown to sites without Pro ends
 	const HUNT_ENDS = 1794477600; // 2026-11-12 10:00:00 UTC, so Wednesday November 11 holds through Hawaii; the sale ends then and the hunt itself runs to November 30
+	const BF_ENDS = 1796198400; // 2026-12-02 08:00:00 UTC, when the Black Friday banner stops showing
+	const BF_NOTICE = 'bf-2026';
+	const UPDATE_MODAL = 'update-7-5';
 	
 	/** Dated so a new offer window is not hidden by a dismissal of the previous one. */
 	public static function promo_notice_name() {
@@ -28,6 +31,10 @@ class EM_Admin_Modals {
 		if( time() < static::HUNT_ENDS ) {
 			add_filter( 'em_admin_notice_security-hunt_message', 'EM_Admin_Modals::hunt_notice' );
 		}
+		if( time() < static::BF_ENDS ) {
+			add_filter( 'em_admin_notice_' . static::BF_NOTICE . '_message', 'EM_Admin_Modals::bf_notice' );
+		}
+		add_filter( 'em_admin_notice_' . static::UPDATE_MODAL . '_message', 'EM_Admin_Modals::update_notice' );
 		add_filter( 'em_admin_notice_expired-reminder_message', 'EM_Admin_Modals::expired_reminder_notice' );
 		add_filter( 'em_admin_notice_expiry-reminder_message', 'EM_Admin_Modals::expiry_reminder_notice' );
 		add_filter( 'em_admin_notice_' . static::promo_notice_name() . '_message', 'EM_Admin_Modals::expired_promo_notice' );
@@ -114,6 +121,29 @@ class EM_Admin_Modals {
 						unset($data['admin-modals']['security-hunt']);
 						update_site_option('dbem_data', $data);
 						$EM_Admin_Notice = new EM_Admin_Notice(array( 'name' => 'security-hunt', 'who' => 'admin', 'where' => 'plugin' ));
+						EM_Admin_Notices::add($EM_Admin_Notice, is_multisite());
+					}
+				}
+			}
+			
+			// what's new in this version, shown once as a modal and then as a notice, and held back a page load if another modal is already showing
+			$update_modal_blocked = $hunt_review_showing || has_filter( 'admin_footer', 'EM_Admin_Modals::hunt_popup' );
+			if( !empty($data['admin-modals'][static::UPDATE_MODAL]) && !$update_modal_blocked ) {
+				if( $show_plugin_pages || $show_network_admin ) {
+					if( empty($data['admin-modals'][static::UPDATE_MODAL . '-count']) ){
+						$data['admin-modals'][static::UPDATE_MODAL . '-count'] = 0;
+					}
+					if( $data['admin-modals'][static::UPDATE_MODAL . '-count'] < 1 ) {
+						if( !wp_script_is('events-manager-admin') ) EM_Scripts_and_Styles::admin_enqueue(true);
+						add_filter('admin_footer', 'EM_Admin_Modals::update_popup');
+						$data['admin-modals'][static::UPDATE_MODAL . '-count']++;
+						update_site_option('dbem_data', $data);
+					}else{
+						// move it into a regular admin notice and stop displaying
+						unset($data['admin-modals'][static::UPDATE_MODAL . '-count']);
+						unset($data['admin-modals'][static::UPDATE_MODAL]);
+						update_site_option('dbem_data', $data);
+						$EM_Admin_Notice = new EM_Admin_Notice(array( 'name' => static::UPDATE_MODAL, 'who' => 'admin', 'where' => 'plugin' ));
 						EM_Admin_Notices::add($EM_Admin_Notice, is_multisite());
 					}
 				}
@@ -476,6 +506,106 @@ class EM_Admin_Modals {
 					<a href="https://pxlink.cc/hunt-rules-notice" class="button button-primary input" target="_blank" style="margin-right:10px; --accent-color:#429543; --accent-color-hover:#429543;">See the Scoreboard</a>
 					<a href="<?php echo esc_url( $sale['url'] ); ?>" class="button button-primary input" target="_blank" style="margin-right:10px;"><?php echo esc_html( $sale['label'] ); ?></a>
 					<a href="<?php echo esc_url( admin_url('admin-ajax.php?action=em_dismiss_admin_notice&notice=security-hunt&redirect=1&nonce='. wp_create_nonce('em_dismiss_admin_noticesecurity-hunt'.get_current_user_id()) ) ); ?>" class="button button-secondary"><?php esc_html_e('Dismiss', 'events-manager'); ?></a>
+				</div>
+			</div>
+		</div><!-- content -->
+		<?php
+		return ob_get_clean();
+	}
+	
+	/** The new features named in the update modal and notice, kept in one place so both say the same. */
+	public static function update_features() {
+		return array(
+			'Migrate from The Events Calendar and keep your existing web addresses',
+			'Import events, locations and organizers from a CSV file',
+			'In-person, online and hybrid events, with virtual locations',
+			'Spaces held for visitors while they complete the booking form',
+			'Event organizers',
+			'Translations included for over 90 languages',
+			'A new Add-ons page under Events',
+		);
+	}
+	
+	public static function update_popup(){
+		?>
+		<div class="em pixelbones em-modal <?php em_template_classes('search', 'search-advanced'); ?> em-admin-modal" id="em-<?php echo esc_attr( static::UPDATE_MODAL ); ?>" data-nonce="<?php echo wp_create_nonce( 'em-' . static::UPDATE_MODAL ); ?>">
+			<div class="em-modal-popup">
+				<header>
+					<a class="em-close-modal dismiss-modal" href="#"></a><!-- close modal -->
+					<div class="em-modal-title">What's New in Events Manager 7.5</div>
+				</header>
+				<div class="em-modal-content has-image" style="--font-size:16px;">
+					<div>
+						<p>This is one of our biggest updates. Here is what it adds:</p>
+						<ul style="list-style:disc; margin:0 0 15px 20px;">
+							<?php foreach ( static::update_features() as $feature ) : ?>
+							<li><?php echo esc_html( $feature ); ?></li>
+							<?php endforeach; ?>
+						</ul>
+						<p>There is more on the way for Events Manager Pro over the coming days, including a payment page with payment links and moving bookings between events.</p>
+					</div>
+					<div class="image">
+						<img src="<?php echo EM_DIR_URI . '/includes/images/events-manager.svg'; ?>">
+					</div>
+				</div><!-- content -->
+				<footer class="em-submit-section input">
+					<div>
+						<a href="https://pxlink.cc/em-7-5" class="button button-primary input" target="_blank" style="margin:10px auto; --accent-color:#429543; --accent-color-hover:#429543;">Read the Announcement</a>
+					</div>
+					<div>
+						<button class="button button-secondary dismiss-modal">Dismiss Notice</button>
+					</div>
+				</footer>
+			</div><!-- modal -->
+		</div>
+		<?php
+		static::output_js();
+	}
+	
+	public static function update_notice(){
+		ob_start();
+		?>
+		<div style="display: grid; grid-template-columns: 80px auto; grid-gap: 20px; margin: 15px 0;">
+			<div style="text-align: center; align-self: start; padding-left: 10px; padding-top:10px;">
+				<img src="<?php echo EM_DIR_URI . '/includes/images/events-manager.svg'; ?>" style="width: 100%;">
+			</div>
+			<div>
+				<h3 style="margin: 0 0 5px; padding-bottom:0;">What's new in Events Manager 7.5</h3>
+				<p><?php echo esc_html( implode( '. ', static::update_features() ) ); ?>. There is more on the way for Events Manager Pro over the coming days.</p>
+				<div>
+					<a href="https://pxlink.cc/em-7-5" class="button button-primary input" target="_blank" style="margin-right:10px; --accent-color:#429543; --accent-color-hover:#429543;">Read the Announcement</a>
+					<a href="<?php echo esc_url( admin_url('admin-ajax.php?action=em_dismiss_admin_notice&notice=' . static::UPDATE_MODAL . '&redirect=1&nonce='. wp_create_nonce('em_dismiss_admin_notice' . static::UPDATE_MODAL . get_current_user_id()) ) ); ?>" class="button button-secondary"><?php esc_html_e('Dismiss', 'events-manager'); ?></a>
+				</div>
+			</div>
+		</div><!-- content -->
+		<?php
+		return ob_get_clean();
+	}
+	
+	public static function bf_notice(){
+		// checked here rather than in init(), which runs before Pro has loaded
+		if ( time() >= static::BF_ENDS || static::has_lifetime_license() ) return '';
+		$id = 'notice-' . static::BF_NOTICE;
+		ob_start();
+		?>
+		<style>
+			#<?php echo esc_attr( $id ); ?> { background:#000; color:#fff; border-color:#000; border-left-color:#429543; }
+			#<?php echo esc_attr( $id ); ?> h3 { color:#fff; }
+			#<?php echo esc_attr( $id ); ?> p { color:#e0e0e0; }
+			#<?php echo esc_attr( $id ); ?> .notice-dismiss:before { color:#fff; }
+			#<?php echo esc_attr( $id ); ?> .em-bf-dismiss { background:transparent; color:#fff; border-color:#8c8f94; }
+			#<?php echo esc_attr( $id ); ?> .em-bf-dismiss:hover, #<?php echo esc_attr( $id ); ?> .em-bf-dismiss:focus { background:#1d2327; color:#fff; border-color:#fff; }
+		</style>
+		<div style="display: grid; grid-template-columns: 80px auto; grid-gap: 20px; margin: 15px 0;">
+			<div style="text-align: center; align-self: start; padding-left: 10px; padding-top:10px;">
+				<img src="<?php echo EM_DIR_URI . '/includes/images/events-manager.svg'; ?>" style="width: 100%;">
+			</div>
+			<div>
+				<h3 style="margin: 0 0 5px; padding-bottom:0;">Black Friday Sale</h3>
+				<p>Our Black Friday sale is on, with savings on Events Manager Pro and lifetime licenses back for the sale.</p>
+				<div>
+					<a href="https://pxlink.cc/bf-26-promo" class="button button-primary input" target="_blank" style="margin-right:10px; --accent-color:#429543; --accent-color-hover:#429543;">See the Black Friday Deals</a>
+					<a href="<?php echo esc_url( admin_url('admin-ajax.php?action=em_dismiss_admin_notice&notice=' . static::BF_NOTICE . '&redirect=1&nonce='. wp_create_nonce('em_dismiss_admin_notice' . static::BF_NOTICE . get_current_user_id()) ) ); ?>" class="button button-secondary em-bf-dismiss"><?php esc_html_e('Dismiss', 'events-manager'); ?></a>
 				</div>
 			</div>
 		</div><!-- content -->

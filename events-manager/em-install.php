@@ -29,6 +29,7 @@ function em_install() {
 				em_create_tickets_table();
 				em_create_tickets_bookings_table();
 			    em_create_tickets_bookings_meta_table();
+				em_create_online_sessions_table();
 		 		delete_option('em_ms_global_install'); //in case for some reason the user changed global settings
 			    add_action('em_ml_init', 'EM_ML::toggle_languages_index');
 		 	}else{
@@ -406,6 +407,7 @@ function em_create_bookings_table() {
 		booking_spaces int(5) NOT NULL,
 		booking_comment text DEFAULT NULL,
 		booking_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		booking_expires datetime NULL DEFAULT NULL,
 		booking_status int(2) NOT NULL DEFAULT 1,
 		booking_rsvp_status int(1) NULL DEFAULT NULL,
  		booking_price decimal(14,4) unsigned NOT NULL DEFAULT 0,
@@ -416,7 +418,10 @@ function em_create_bookings_table() {
 		) $charset_collate;";
 	require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
 	dbDelta($sql);
-	em_sort_out_table_nu_keys($table_name, array('event_id', 'timeslot_id', 'person_id','booking_status', 'booking_rsvp_status'));
+	em_sort_out_table_nu_keys($table_name, array('booking_uuid', 'event_id', 'timeslot_id', 'person_id','booking_status', 'booking_rsvp_status'));
+	if( class_exists('EM_Booking_Intents') ){
+		EM_Booking_Intents::reset_column_check();
+	}
 	if( em_check_utf8mb4_tables() ) maybe_convert_table_to_utf8mb4( $table_name );
 }
 
@@ -525,6 +530,38 @@ function em_create_tickets_bookings_meta_table() {
 	if( em_check_utf8mb4_tables() ) maybe_convert_table_to_utf8mb4( $table_name );
 }
 
+/**
+ * Remote meetings, spaces and broadcasts created on online venue providers, one row per event or per series when a provider shares one room across dates.
+ */
+function em_create_online_sessions_table() {
+	global $wpdb;
+	$table_name = $wpdb->prefix.'em_online_sessions';
+	$charset_collate = $wpdb->get_charset_collate();
+	$sql = "CREATE TABLE ".$table_name." (
+		session_id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+		event_id bigint(20) unsigned NOT NULL,
+		series_id bigint(20) unsigned NULL DEFAULT NULL,
+		location_type varchar(15) NOT NULL,
+		account varchar(191) NULL DEFAULT NULL,
+		remote_id varchar(191) NULL DEFAULT NULL,
+		join_url text NULL DEFAULT NULL,
+		remote_status varchar(20) NULL DEFAULT NULL,
+		queue varchar(10) NULL DEFAULT NULL,
+		attempts smallint(5) unsigned NOT NULL DEFAULT 0,
+		not_before datetime NULL DEFAULT NULL,
+		data longtext NULL DEFAULT NULL,
+		last_error text NULL DEFAULT NULL,
+		synced_at datetime NULL DEFAULT NULL,
+		created_at datetime NOT NULL,
+		updated_at datetime NOT NULL,
+		PRIMARY KEY  (session_id)
+		) $charset_collate ";
+	require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+	dbDelta($sql);
+	em_sort_out_table_nu_keys($table_name, array('event_id (event_id,location_type)', 'series_id', 'UNIQUE remote (location_type,remote_id)', 'queue (queue,not_before)'));
+	if( em_check_utf8mb4_tables() ) maybe_convert_table_to_utf8mb4( $table_name );
+}
+
 function em_add_options() {
 	global $wp_locale, $wpdb;
 	if( !class_exists("EM_Admin_Notice") ) include_once( EM_DIR . "/classes/em-admin-notices.php" ); // only loaded for admin requests otherwise, but activation can run from WP-CLI
@@ -539,6 +576,9 @@ function em_add_options() {
 	$email_footer = '<br/><br/>-------------------------------<br/>Powered by Events Manager - https://wp-events-plugin.com';
 	$respondent_email_body_localizable = __("Dear #_BOOKINGNAME, <br/>You have successfully reserved #_BOOKINGSPACES space/spaces for #_EVENTNAME.<br/>When : #_EVENTDATES @ #_EVENTTIMES<br/>Where : #_LOCATIONNAME - #_LOCATIONFULLLINE<br/>Yours faithfully,<br/>#_CONTACTNAME",'events-manager').$email_footer;
 	$respondent_email_pending_body_localizable = __("Dear #_BOOKINGNAME, <br/>You have requested #_BOOKINGSPACES space/spaces for #_EVENTNAME.<br/>When : #_EVENTDATES @ #_EVENTTIMES<br/>Where : #_LOCATIONNAME - #_LOCATIONFULLLINE<br/>Your booking is currently pending approval by our administrators. Once approved you will receive an automatic confirmation.<br/>Yours faithfully,<br/>#_CONTACTNAME",'events-manager').$email_footer;
+	// replaced after translation so existing translations of these defaults still apply
+	$respondent_email_body_localizable = str_replace('#_LOCATIONNAME - #_LOCATIONFULLLINE', '#_BOOKINGLOCATION', $respondent_email_body_localizable);
+	$respondent_email_pending_body_localizable = str_replace('#_LOCATIONNAME - #_LOCATIONFULLLINE', '#_BOOKINGLOCATION', $respondent_email_pending_body_localizable);
 	$respondent_email_rejected_body_localizable = __("Dear #_BOOKINGNAME, <br/>Your requested booking for #_BOOKINGSPACES spaces at #_EVENTNAME on #_EVENTDATES has been rejected.<br/>Yours faithfully,<br/>#_CONTACTNAME",'events-manager').$email_footer;
 	$respondent_email_cancelled_body_localizable = __("Dear #_BOOKINGNAME, <br/>Your requested booking for #_BOOKINGSPACES spaces at #_EVENTNAME on #_EVENTDATES has been cancelled.<br/>Yours faithfully,<br/>#_CONTACTNAME",'events-manager').$email_footer;
 	$respondent_email_event_cancelled = __("Dear Guest, <br/>We regret to inform you that #_EVENTNAME on #_EVENTDATES has been cancelled.<br/>Yours faithfully,<br/>#_CONTACTNAME",'events-manager').$email_footer;
@@ -660,6 +700,8 @@ function em_add_options() {
 		'dbem_search_form_towns' => 0,
 		'dbem_search_form_towns_label' => __('All Cities/Towns','events-manager'),
 		'dbem_search_form_town_label' => __('City/Town','events-manager'),
+		'dbem_search_form_online' => 0,
+		'dbem_search_form_online_label' => __('Virtual events only','events-manager'),
 		/*
 		//GeoCoding
 		'dbem_geo' => 1,
@@ -875,7 +917,11 @@ function em_add_options() {
 		'dbem_timezone_default' => EM_DateTimeZone::create()->getName(),
 		'dbem_require_location' => 0,
 		'dbem_locations_enabled' => 1,
-		'dbem_location_types' => array('location' => 1, 'url' => 1),
+		'dbem_location_types' => array('location' => 1, 'url' => 1, 'virtual' => 1),
+		'dbem_virtual_links_hidden' => 2,
+		'dbem_virtual_links_hidden_event' => 1,
+		'dbem_virtual_links_hidden_minutes' => 15,
+		'dbem_virtual_links_hidden_text' => __('The link will be shown %s minutes before the event starts.', 'events-manager'),
 		'dbem_use_select_for_locations' => 0,
 		'dbem_attributes_enabled' => 1,
 		'dbem_recurrence_enabled'=> 1,
@@ -895,6 +941,9 @@ function em_add_options() {
 		'dbem_bookings_approval_reserved' => 0, //overbooking before approval?
 		'dbem_bookings_approval_overbooking' => 0, //overbooking possible when approving?
 		'dbem_bookings_double'=>0,//double bookings or more, users can't double book by default
+		'dbem_bookings_intents' => 0, //hold the spaces a visitor picks while they fill in the booking form
+		'dbem_bookings_hold_minutes' => 15,
+		'dbem_bookings_hold_share' => 50, //the most of an event's spaces that visitors' holds may take at once, as a percentage
 		'dbem_bookings_user_cancellation' => 1, //can users cancel their booking?
 		'dbem_bookings_user_cancellation_time' => '', //can users cancel their booking?
 		'dbem_bookings_currency' => 'USD',
@@ -1210,6 +1259,20 @@ function em_upgrade_current_installation(){
 		$data['admin-modals']['security-hunt'] = true;
 		unset($data['admin-modals']['security-hunt-count']);
 		update_site_option('dbem_data', $data);
+	}
+
+	// what's new in 7.5, existing installs only, the key is EM_Admin_Modals::UPDATE_MODAL, that class is only loaded in admin requests
+	if( !empty($current_version) && version_compare($current_version, '7.5', '<') ) {
+		if( empty($data['admin-modals']) || !is_array($data['admin-modals']) ) $data['admin-modals'] = array();
+		$data['admin-modals']['update-7-5'] = true;
+		unset($data['admin-modals']['update-7-5-count']);
+		update_site_option('dbem_data', $data);
+	}
+
+	// Black Friday banner for admins on plugin pages, with no modal, the timestamp and key are EM_Admin_Modals::BF_ENDS and BF_NOTICE
+	if( time() < 1796198400 ) {
+		$EM_Admin_Notice = new EM_Admin_Notice(array( 'name' => 'bf-2026', 'who' => 'admin', 'where' => 'plugin' ));
+		EM_Admin_Notices::add($EM_Admin_Notice, is_multisite());
 	}
 
 	// Check EM Pro update min
@@ -1998,6 +2061,14 @@ function em_upgrade_current_installation(){
 		}
 		if ( version_compare( $current_version, '7.4.4', '<' ) ) {
 			em_repair_event_defaults();
+		}
+		if ( version_compare( $current_version, '7.5', '<' ) ) {
+			// Zoom types now sit under the Virtual Locations switch, so sites already using one keep them
+			$location_types = get_option('dbem_location_types', array());
+			if ( is_array($location_types) && array_intersect_key( array_filter($location_types), array( 'zoom_meeting' => 1, 'zoom_webinar' => 1, 'zoom_room' => 1 ) ) ) {
+				$location_types['virtual'] = 1;
+				update_option('dbem_location_types', $location_types);
+			}
 		}
 
 		$pro_update = function() {

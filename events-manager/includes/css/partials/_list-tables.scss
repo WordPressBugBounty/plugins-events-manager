@@ -4,6 +4,45 @@
 /// @param {boolean} $frontend
 $frontend: true !default;
 
+%em-tablenav-pages {
+	float: right;
+	grid-area: pagination;
+	text-wrap: nowrap;
+	text-align: right;
+	margin: 0 0 15px;
+
+	&.no-pages, &.one-page {
+		@if $frontend {
+			padding-top: 18px;
+		}
+		.pagination-links {
+			display: none;
+			visibility: hidden;
+		}
+	}
+
+	.button {
+		padding: 0 12px !important;
+		margin: 0 !important;
+		&.disabled {
+			display: none;
+		}
+	}
+	input.current-page {
+		width: auto !important;
+		margin: 0 !important;
+	}
+}
+
+.em-tablenav {
+	display: flex;
+	justify-content: flex-end;
+	margin-top: 15px;
+	.tablenav-pages {
+		@extend %em-tablenav-pages;
+	}
+}
+
 .em-list-table {
 	position: relative; // for spinners to load correctly
 	margin: 15px 0;
@@ -37,36 +76,8 @@ $frontend: true !default;
 		}
 
 		// Pagination elements only modified in front-end, let WP do it's thing backend
-		div.tablenav {
-			.tablenav-pages {
-				float:right;
-				grid-area: pagination;
-				text-wrap: nowrap;
-				text-align: right;
-				margin: 0 0 15px;
-
-				&.no-pages, &.one-page {
-					@if $frontend {
-						padding-top: 18px;
-					}
-					.pagination-links {
-						display: none;
-						visibility: hidden;
-					}
-				}
-
-				.button {
-					padding: 0 12px !important;
-					margin: 0 !important;
-					&.disabled {
-						display: none;
-					}
-				}
-				input.current-page {
-					width: auto !important;
-					margin: 0 !important;
-				}
-			}
+		div.tablenav .tablenav-pages {
+			@extend %em-tablenav-pages;
 		}
 	}
 

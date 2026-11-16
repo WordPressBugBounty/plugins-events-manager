@@ -123,7 +123,7 @@ class OAuth_API {
 		//load user access token
 		if( $user_id !== false ) {
 			if ( empty($user_id) ) $user_id = get_current_user_id();
-			$client->load_token( $user_id, $api_user_id );
+			$client->load_token( $api_user_id, $user_id );
 		}
 		return $client;
 	}
@@ -151,7 +151,7 @@ class OAuth_API {
 	 */
 	public static function oauth_authorize() {
 		global $EM_Notices;
-		if( !empty($EM_Notices) ) $EM_Notices = new EM_Notices();
+		if( empty($EM_Notices) ) $EM_Notices = new EM_Notices();
 		if( !empty($_REQUEST['code']) ){
 			try{
 				$client = static::get_client(false);
@@ -184,7 +184,7 @@ class OAuth_API {
 	 */
 	public static function oauth_disconnect(){
 		global $EM_Notices;
-		if( !empty($EM_Notices) ) $EM_Notices = new EM_Notices();
+		if( empty($EM_Notices) ) $EM_Notices = new EM_Notices();
 
 		if( static::$authorization_scope == 'user' ){
 			$account_tokens = static::get_user_tokens();
@@ -218,9 +218,9 @@ class OAuth_API {
 			if( !empty($disconnected_accounts) ){
 				if( static::$authorization_scope == 'user' ){
 					if( empty($account_tokens) ){
-						delete_user_meta( get_current_user_id(), 'em_oauth_'.static::$option_name );
+						delete_user_meta( get_current_user_id(), static::$option_dataset.'_'.static::$option_name );
 					}else{
-						update_user_meta( get_current_user_id(), 'em_oauth_'.static::$option_name, $account_tokens );
+						update_user_meta( get_current_user_id(), static::$option_dataset.'_'.static::$option_name, $account_tokens );
 					}
 				}else{
 					EM_Options::set(static::$option_name.'_token', $account_tokens, static::$option_dataset);

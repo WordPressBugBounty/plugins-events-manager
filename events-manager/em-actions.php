@@ -8,6 +8,11 @@ use EM\Archetypes;
 function em_init_actions_start() {
 	global $wpdb,$EM_Notices,$EM_Event; 
 	if( defined('DOING_AJAX') && DOING_AJAX ) $_REQUEST['em_ajax'] = true;
+	// calendar navigation links used to carry ajaxCalendar and a random id per page load, and crawlers still request those by the thousand, so send them once to the plain month URL rather than render a page for each
+	if( !empty($_GET['ajaxCalendar']) && empty($_REQUEST['em_ajax']) && isset($_SERVER['REQUEST_METHOD']) && in_array($_SERVER['REQUEST_METHOD'], array('GET', 'HEAD'), true) ) {
+		wp_safe_redirect( remove_query_arg( array('ajaxCalendar', 'id') ), 301 );
+		exit();
+	}
 	
 	//NOTE - No EM objects are globalized at this point, as we're hitting early init mode.
 	//TODO Clean this up.... use a uniformed way of calling EM Ajax actions
@@ -362,6 +367,8 @@ function em_init_actions_start() {
 			//ADD/EDIT Booking
 			ob_start();
 			em_verify_booking_nonce('booking_add');
+			// the intent this form was holding has already become a booking when the same form is submitted twice
+			$intent_claimed = EM_Booking_Intents::claim_for_submit();
 			// Authorise against the booking's persisted event before get_post() re-assigns event_id from the request. Otherwise a user could pass another user's booking_id together with an event they manage and have that booking re-saved onto their event, the same substitution already guarded in booking_form_summary. A new booking (no booking_id) is unaffected.
 			$can_edit_booking = empty($EM_Booking->booking_id) || $EM_Booking->can_manage('manage_bookings','manage_others_bookings') || ( is_user_logged_in() && !empty($EM_Booking->person->ID) && $EM_Booking->person->ID == get_current_user_id() );
 			if( empty($EM_Booking->booking_id) && !$EM_Event->can_manage('manage_bookings','manage_others_bookings') ){
@@ -369,7 +376,9 @@ function em_init_actions_start() {
 				$EM_Person = is_user_logged_in() ? new EM_Person( get_current_user_id() ) : null;
 			}
 			if( !is_user_logged_in() || $EM_Booking->get_option('dbem_bookings_double') || !$EM_Event->get_bookings()->has_booking(get_current_user_id()) ){
-				if ( $EM_Event->event_status != 1 || $EM_Event->event_active_status != 1 ) {
+				if ( !$intent_claimed ) {
+					$EM_Notices->add_error( __('This booking has already been submitted.', 'events-manager') );
+				} elseif ( $EM_Event->event_status != 1 || $EM_Event->event_active_status != 1 ) {
 					$EM_Notices->add_error( __('This event is not available or has been cancelled', 'events-manager') ); // uncommon, not needed for custom error.
 				} elseif ( !$EM_Event->is_viewable() && !$EM_Event->can_manage('manage_bookings','manage_others_bookings') ) {
 					// The booking_add nonce is global, so a visitor can reuse one from any public event. Refuse a booking on an event they cannot view (private, pending or password-protected) unless they manage it, matching the booking form's own visibility.
@@ -383,6 +392,8 @@ function em_init_actions_start() {
 					if( $post_validation ){
 					    //register the user - or not depending - according to the booking
 					    $registration = em_booking_add_registration($EM_Booking);
+						// the booking converts the intent it was made from, taking over its row once everything that treats it as a new booking has run
+						EM_Booking_Intents::adopt( $EM_Booking );
 						$EM_Bookings = $EM_Event->get_bookings();
 						if( $registration && $EM_Bookings->add($EM_Booking) ){
 						    if( is_user_logged_in() && is_multisite() && !is_user_member_of_blog(get_current_user_id(), get_current_blog_id()) ){
@@ -669,12 +680,14 @@ function em_init_actions_start() {
 			$can_view_summary = $EM_Booking->can_manage() || ( is_user_logged_in() && !empty($EM_Booking->person->ID) && $EM_Booking->person->ID == get_current_user_id() );
 			$EM_Booking->get_post();
 			if( $can_view_summary ){
+				EM_Booking_Intents::sync_summary( $EM_Booking );
 				// wrap in main tag as we only need what's inside by JS
 				echo '<main>';
 				if( $EM_Booking->get_option('dbem_bookings_summary') ){
 					em_locate_template('forms/bookingform/summary.php', true, array('EM_Event' => $EM_Event, 'EM_Booking' => $EM_Booking));
 				}
 				echo $EM_Booking->output_intent_html();
+				echo EM_Booking_Intents::output_errors();
 				echo '</main>';
 			}
 			exit();

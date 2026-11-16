@@ -1703,10 +1703,15 @@ class Recurrence_Set extends EM_Object {
 	 * @return bool
 	 */
 	public function delete() {
-		$this->delete_events();
+		global $wpdb;
+		$result = $this->delete_events() !== false;
 		$this->delete_bookings();
 		$this->get_timeranges()->delete();
-		return apply_filters('em_recurrence_set_delete', true, $this );
+		// keep the set row if its occurrences couldn't be removed, otherwise they'd be left pointing at a missing set
+		if ( $result && $this->recurrence_set_id ) {
+			$result = $wpdb->delete( EM_EVENT_RECURRENCES_TABLE, ['recurrence_set_id' => $this->recurrence_set_id], ['%d'] ) !== false;
+		}
+		return apply_filters('em_recurrence_set_delete', $result, $this );
 	}
 
 	/**
@@ -1753,7 +1758,13 @@ class Recurrence_Set extends EM_Object {
 	public function delete_bookings () {
 		global $wpdb;
 		$result = true;
+		if ( $this->recurrence_type === 'exclude' ) {
+			return $result;
+		}
 		foreach ( $this->get_recurrences() as $recurrence ) {
+			if ( empty( $recurrence['event_id'] ) ) {
+				continue;
+			}
 			$event_id = $recurrence['event_id'];
 			// EM_Bookings only recognizes an EM_Event object or an array of bookings, not a bare event id
 			$EM_Bookings = new EM_Bookings( em_get_event( $event_id ) );

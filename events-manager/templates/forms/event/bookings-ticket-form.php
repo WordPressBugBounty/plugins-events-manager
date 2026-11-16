@@ -55,6 +55,20 @@ $price = $EM_Ticket->ticket_price === null ? '' : $EM_Ticket->get_price_precise(
 				<option value="0" <?php if ( $EM_Ticket->ticket_status === 0 ) echo 'selected'; ?>><?php esc_html_e('Disabled', 'events-manager'); ?></option>
 			</select>
 		</div>
+		<?php if ( EM_Event::is_hybrid_available() ) : ?>
+		<?php $ticket_access = $EM_Ticket->ticket_parent ? ( isset( $EM_Ticket->ticket_meta['access'] ) ? $EM_Ticket->ticket_meta['access'] : '' ) : $EM_Ticket->get_access_setting(); ?>
+		<div class="ticket-access em-hybrid-only" <?php if ( !$EM_Ticket->get_event()->is_hybrid() ) echo 'style="display:none;"'; ?>>
+			<label title="<?php esc_attr_e('Whether this ticket lets attendees attend physically, virtually, or both, on a hybrid event.','events-manager'); ?>"><?php esc_html_e('Access','events-manager') ?></label>
+			<select name="em_tickets[<?php echo $col_count; ?>][ticket_access]" class="ticket_access" <?php if ( $EM_Ticket->ticket_parent ) echo 'data-inherited="' . esc_attr( $EM_Ticket->get_parent()->get_access_setting() ) . '"'; ?>>
+				<?php if ( $EM_Ticket->ticket_parent ) : ?>
+				<option value=""><?php echo esc_html( EM_Event::get_access_label( $EM_Ticket->get_parent()->get_access_setting() ) . ' ' . _x( '(inherited)', 'value inherited from another parent item', 'events-manager' ) ); ?></option>
+				<?php endif; ?>
+				<?php foreach ( array( 'both', 'in_person', 'online' ) as $access ) : ?>
+				<option value="<?php echo esc_attr( $access ); ?>" <?php if ( $ticket_access === $access ) echo 'selected'; ?>><?php echo esc_html( EM_Event::get_access_label( $access ) ); ?></option>
+				<?php endforeach; ?>
+			</select>
+		</div>
+		<?php endif; ?>
 	</div>
 	<div class="em-ticket-form-advanced" style="display:none;">
 		<div class="ticket-spaces ticket-spaces-min inline-inputs">

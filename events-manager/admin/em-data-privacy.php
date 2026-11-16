@@ -512,7 +512,7 @@ class EM_Data_Privacy {
 			$conditions[] = $wpdb->prepare('person_id = %d', $user->ID);
 		}
 		$conditions[] = $wpdb->prepare('person_id=0 AND booking_meta LIKE %s', "%\"user_email\";s:".strlen($email_address).":\"$email_address\"%"); //find any booking that may have their email, anonymous or previous email address.
-		$bookings = $wpdb->get_col('SELECT booking_id FROM '.EM_BOOKINGS_TABLE.' WHERE '. implode(' OR ', $conditions) .' LIMIT '.$limit . ' OFFSET '.$offset);
+		$bookings = $wpdb->get_col('SELECT booking_id FROM '.EM_BOOKINGS_TABLE.' WHERE ('. implode(' OR ', $conditions) .') AND booking_status != '. EM_Booking_Intents::STATUS .' LIMIT '.$limit . ' OFFSET '.$offset);
 
 		return $bookings;
 

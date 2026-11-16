@@ -52,6 +52,7 @@ class EM_Bookings extends EM_Object implements Iterator, ArrayAccess {
 	protected $pending_spaces;
 	protected $available_spaces;
 	protected $reserved_spaces;
+	protected $intent_spaces;
 	protected $status_counts = [];
 	
 	/**
@@ -134,12 +135,12 @@ class EM_Bookings extends EM_Object implements Iterator, ArrayAccess {
 				$timeslot = "";
 				if ( $this->get_event()->is_recurring( true ) ) {
 					$subquery = "SELECT event_id FROM " . EM_EVENTS_TABLE . " WHERE recurrence_set_id IN ( SELECT recurrence_set_id FROM " . EM_EVENT_RECURRENCES_TABLE . " WHERE event_id = '{$this->event_id}' )";
-					$sql = "SELECT * FROM ". EM_BOOKINGS_TABLE ." WHERE event_id IN ( $subquery ) ORDER BY booking_date";
+					$sql = "SELECT * FROM ". EM_BOOKINGS_TABLE ." WHERE event_id IN ( $subquery ) AND booking_status != ". EM_Booking_Intents::STATUS ." ORDER BY booking_date";
 				} else {
 					if ( $this->event->timeslot_id ) {
 						$timeslot = " AND timeslot_id = '". absint($this->event->timeslot_id) . "'";
 					}
-					$sql = "SELECT * FROM ". EM_BOOKINGS_TABLE ." WHERE event_id ='{$this->event_id}' $timeslot ORDER BY booking_date";
+					$sql = "SELECT * FROM ". EM_BOOKINGS_TABLE ." WHERE event_id ='{$this->event_id}' $timeslot AND booking_status != ". EM_Booking_Intents::STATUS ." ORDER BY booking_date";
 				}
 				$bookings = $wpdb->get_results($sql, ARRAY_A);
 			}
@@ -206,7 +207,7 @@ class EM_Bookings extends EM_Object implements Iterator, ArrayAccess {
 			$this->errors = array_merge( $this->errors, $EM_Booking->get_errors() );
 			return apply_filters('em_bookings_add', false, $EM_Booking);
 		}
-		if( !self::$disable_restrictions && $EM_Booking->get_event()->get_bookings()->get_available_spaces(true) < $EM_Booking->get_spaces() ){
+		if( !self::$disable_restrictions && ( $EM_Booking->get_event()->get_bookings()->get_available_spaces(true) < $EM_Booking->get_spaces() || !$EM_Booking->has_access_spaces(true) ) ){
 			if( $booking_locked ) self::release_lock( $lock_event_id );
 			$EM_Booking->add_error( $EM_Booking->get_option('dbem_booking_feedback_full') );
 			$this->feedback_message = $EM_Booking->get_option('dbem_booking_feedback_full');
@@ -653,10 +654,42 @@ class EM_Bookings extends EM_Object implements Iterator, ArrayAccess {
 			$spaces = $this->get_spaces($force_refresh);
 			$available_spaces = $spaces - $this->get_booked_spaces($force_refresh);
 			$available_spaces -= $this->get_reserved_spaces($force_refresh);
+			$available_spaces -= $this->get_intent_spaces($force_refresh);
 		}
 		// @deprecated use em_bookings_get_available_spaces instead
 		$available_spaces = apply_filters('em_booking_get_available_spaces', $available_spaces, $this);
 		return apply_filters('em_bookings_get_available_spaces', $available_spaces, $this, $force_refresh);
+	}
+
+	/**
+	 * Remaining in-person or online spaces on a hybrid event with a cap for that mode.
+	 * @param string $mode in_person or online
+	 * @param bool $force_refresh
+	 * @return int|null null when the mode is not capped
+	 */
+	public function get_access_available_spaces( $mode, $force_refresh = false ) {
+		$limit = $this->get_event()->get_access_spaces_limit( $mode );
+		if ( $limit === null ) {
+			return null;
+		}
+		$available_spaces = max( 0, $limit - $this->get_access_used_spaces( $mode, $force_refresh ) );
+		return apply_filters( 'em_bookings_get_access_available_spaces', $available_spaces, $mode, $this, $force_refresh );
+	}
+
+	/**
+	 * Booked and reserved spaces across the tickets giving this access, counted through each ticket so gateway holds and status rules stay identical to ticket availability.
+	 * @param string $mode in_person or online
+	 * @param bool $force_refresh
+	 * @return int
+	 */
+	public function get_access_used_spaces( $mode, $force_refresh = false ) {
+		$used_spaces = 0;
+		foreach ( $this->get_tickets()->tickets as $EM_Ticket ) {
+			if ( $EM_Ticket->grants_access( $mode ) ) {
+				$used_spaces += (int) $EM_Ticket->get_booked_spaces( $force_refresh ) + (int) $EM_Ticket->get_reserved_spaces( $force_refresh );
+			}
+		}
+		return apply_filters( 'em_bookings_get_access_used_spaces', $used_spaces, $mode, $this, $force_refresh );
 	}
 
 	/**
@@ -706,6 +739,29 @@ class EM_Bookings extends EM_Object implements Iterator, ArrayAccess {
 		}
 		// if we reach here, always run the filter to allow other bookings to override other reserved spaces with bookings of different status
 		return apply_filters('em_bookings_get_pending_spaces', 0, $this, $force_refresh);
+	}
+
+	/**
+	 * Gets the number of spaces held by other visitors' booking intents that have not run out, see EM_Booking_Intents.
+	 * @param bool $force_refresh
+	 * @return int
+	 */
+	public function get_intent_spaces( $force_refresh = false ) {
+		global $wpdb;
+		if ( !EM_Booking_Intents::counting() || empty( $this->event_id ) ) {
+			return 0;
+		}
+		if ( $this->intent_spaces === null || $force_refresh ) {
+			if ( $this->get_event()->is_recurring( true ) ) {
+				$subquery = "SELECT event_id FROM " . EM_EVENTS_TABLE . " WHERE recurrence_set_id IN ( SELECT recurrence_set_id FROM " . EM_EVENT_RECURRENCES_TABLE . " WHERE event_id = '" . absint( $this->event_id ) . "' )";
+				$sql = 'SELECT SUM(booking_spaces) FROM ' . EM_BOOKINGS_TABLE . " WHERE event_id IN ( $subquery ) AND " . EM_Booking_Intents::live_sql();
+			} else {
+				$timeslot = !empty($this->timeslot_id) ? ' AND timeslot_id = ' . absint( $this->timeslot_id ) : '';
+				$sql = 'SELECT SUM(booking_spaces) FROM ' . EM_BOOKINGS_TABLE . ' WHERE event_id=' . absint( $this->event_id ) . $timeslot . ' AND ' . EM_Booking_Intents::live_sql();
+			}
+			$this->intent_spaces = max( 0, (int) $wpdb->get_var( $sql ) );
+		}
+		return apply_filters( 'em_bookings_get_intent_spaces', $this->intent_spaces, $this, $force_refresh );
 	}
 
 	public function get_status_count( $status, $force_refresh = false ) {
@@ -827,7 +883,7 @@ class EM_Bookings extends EM_Object implements Iterator, ArrayAccess {
 			global $wpdb;
 			// get the first booking ID available and return that
 			$timeslot = !empty($this->timeslot_id) ? ' AND timeslot_id = ' . absint($this->timeslot_id) : '';
-			$sql = $wpdb->prepare('SELECT booking_id FROM '.EM_BOOKINGS_TABLE.' WHERE event_id = %d AND person_id = %d AND booking_status NOT IN (2,3)' . $timeslot, $this->event_id, $user_id);
+			$sql = $wpdb->prepare('SELECT booking_id FROM '.EM_BOOKINGS_TABLE.' WHERE event_id = %d AND person_id = %d AND booking_status NOT IN (2,3,'. EM_Booking_Intents::STATUS .')' . $timeslot, $this->event_id, $user_id);
 			$booking_id = $wpdb->get_var($sql);
 			if( (int) $booking_id > 0 ){
 				$EM_Booking = em_get_booking($booking_id);
@@ -1327,6 +1383,9 @@ class EM_Bookings extends EM_Object implements Iterator, ArrayAccess {
 			$conditions['status'] = 'booking_status IN ('.implode(',',$args['status']).')';
 		}elseif( !is_array($args['status']) && preg_match('/^([0-9],?)+$/D', $args['status']) ){
 			$conditions['status'] = 'booking_status IN ('.$args['status'].')';
+		}else{
+			// booking intents are only listed when their status is asked for
+			$conditions['status'] = 'booking_status != '. EM_Booking_Intents::STATUS;
 		}
 		// RSVP status
 		if( $args['rsvp_status'] !== false ){

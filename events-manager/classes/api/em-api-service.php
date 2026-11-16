@@ -758,7 +758,7 @@ class Service {
 
 	public static function get_booking( $id, $context = 'view' ) {
 		$EM_Booking = em_get_booking( sanitize_text_field( $id ) );
-		if ( !$EM_Booking || !$EM_Booking->booking_id ) {
+		if ( !$EM_Booking || !$EM_Booking->booking_id || $EM_Booking->is_intent() ) {
 			return Utils::error( 'em_api_booking_not_found', __( 'Booking not found.', 'events-manager' ), 404 );
 		}
 		if ( !static::can_read_booking( $EM_Booking ) ) {
@@ -784,7 +784,7 @@ class Service {
 				$EM_Booking = $filtered_booking;
 			}
 		}
-		if ( $id && ( !$EM_Booking || !$EM_Booking->booking_id ) ) {
+		if ( $id && ( !$EM_Booking || !$EM_Booking->booking_id || $EM_Booking->is_intent() ) ) {
 			return Utils::error( 'em_api_booking_not_found', __( 'Booking not found.', 'events-manager' ), 404 );
 		}
 		if ( $id && !$EM_Booking->can_manage( 'manage_bookings', 'manage_others_bookings' ) ) {
@@ -912,10 +912,10 @@ class Service {
 
 	public static function set_booking_status( $id, $status, $send_email = true, $ignore_spaces = false ) {
 		$EM_Booking = em_get_booking( sanitize_text_field( $id ) );
-		if ( !$EM_Booking || !$EM_Booking->booking_id ) {
+		if ( !$EM_Booking || !$EM_Booking->booking_id || $EM_Booking->is_intent() ) {
 			return Utils::error( 'em_api_booking_not_found', __( 'Booking not found.', 'events-manager' ), 404 );
 		}
-		if ( !is_numeric( $status ) || !array_key_exists( absint( $status ), $EM_Booking->status_array ) ) {
+		if ( !is_numeric( $status ) || !array_key_exists( absint( $status ), $EM_Booking->status_array ) || absint( $status ) === \EM_Booking_Intents::STATUS ) {
 			return Utils::error( 'em_api_booking_status_invalid', __( 'Booking status is invalid.', 'events-manager' ), 400 );
 		}
 		if ( !$EM_Booking->can_manage( 'manage_bookings', 'manage_others_bookings' ) ) {

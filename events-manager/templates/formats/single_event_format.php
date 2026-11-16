@@ -63,7 +63,7 @@
 			{/has_location_venue}
 			{has_event_location}
 			<section class="em-event-where">
-				<h3><?php esc_html_e('Where', 'events-manager'); ?></h3>
+				<h3>{is_hybrid}<?php esc_html_e('Virtual', 'events-manager'); ?>{/is_hybrid}{not_hybrid}<?php esc_html_e('Where', 'events-manager'); ?>{/not_hybrid}</h3>
 				<div class="em-item-meta-line em-event-location">
 					<span class="em-icon-at em-icon"></span>
 					#_EVENTLOCATION
