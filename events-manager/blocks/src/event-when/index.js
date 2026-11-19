@@ -92,6 +92,28 @@ function setActiveTab( container, tab ) {
 	} );
 }
 
+// The Where box stays in the parent document while this block renders in the editor-canvas iframe, so EM's location-mode script (which only searches its own document) never reaches the canvas copies of the hybrid-only ticket fields.
+function syncHybridToCanvas( container ) {
+	const mode = document.querySelector( '.em-location-types .em-location-mode-select' );
+	if ( ! container || ! mode ) return;
+	const hybrid = mode.value === 'hybrid';
+	container.querySelectorAll( '.em-hybrid-only' ).forEach( ( el ) => {
+		el.style.display = hybrid ? '' : 'none';
+	} );
+}
+
+// The reverse direction: Where reads registration from the hidden Bookings metabox to decide whether to offer the attendee-only link option, so a canvas change has to reach that copy and its change handler.
+function syncRsvpToMetabox( input ) {
+	const copy = document.querySelector( '#em-event-bookings [name="event_rsvp"]' );
+	if ( ! copy || copy === input ) return;
+	copy.checked = input.checked;
+	if ( window.jQuery ) {
+		window.jQuery( copy ).trigger( 'change' );
+	} else {
+		copy.dispatchEvent( new Event( 'change', { bubbles: true } ) );
+	}
+}
+
 function EventWhenEdit() {
 	const containerRef = useRef( null );
 
@@ -184,6 +206,7 @@ function EventWhenEdit() {
 					} );
 				} );
 				setActiveTab( container, activeTab );
+				syncHybridToCanvas( container );
 
 				// Run EM's setup in the container's OWN window. In the Gutenberg canvas
 				// that window is the iframe's, where EM's runtime (jQuery, flatpickr,
@@ -244,8 +267,23 @@ function EventWhenEdit() {
 		// guard after each save so nonces and record IDs stay current.
 		window.emReloadWhenBlock = loadContent;
 
+		const onWhereChange = ( e ) => {
+			if ( e.target?.matches?.( '.em-location-mode-select' ) ) {
+				syncHybridToCanvas( containerRef.current );
+			}
+		};
+		const onCanvasChange = ( e ) => {
+			if ( e.target?.name === 'event_rsvp' ) {
+				syncRsvpToMetabox( e.target );
+			}
+		};
+		document.addEventListener( 'change', onWhereChange );
+		containerRef.current?.addEventListener( 'change', onCanvasChange );
+
 		return () => {
 			window.emReloadWhenBlock = null;
+			document.removeEventListener( 'change', onWhereChange );
+			containerRef.current?.removeEventListener( 'change', onCanvasChange );
 			const container = containerRef.current;
 			if ( container && typeof window.em_unsetup_ui_elements === 'function' ) {
 				try { window.em_unsetup_ui_elements( container ); } catch ( _ ) {}

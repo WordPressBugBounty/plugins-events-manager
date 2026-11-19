@@ -13,7 +13,7 @@ function em_ms_upgrade( $blog_id ){
 			foreach($blog_ids as $blog_id){
 			    $plugin_basename = plugin_basename(dirname(dirname(__FILE__)).'/events-manager.php');
 			    if( in_array( $plugin_basename, (array) get_blog_option($blog_id, 'active_plugins', array() ) ) || is_plugin_active_for_network($plugin_basename) ){
-					if( EM_VERSION > get_blog_option($blog_id, 'dbem_version', 0) ){
+					if( version_compare(EM_VERSION, get_blog_option($blog_id, 'dbem_version', 0), '>') ){
 						switch_to_blog($blog_id);
 						require_once( dirname(__FILE__).'/../em-install.php');
 						em_install();

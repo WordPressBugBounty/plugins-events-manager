@@ -329,10 +329,7 @@ function onPublishClick( e ) {
 
 				editor.editPost( { status: intendedPublishStatus( editorRO ) }, { undoIgnore: true } );
 
-				// Mirror canvas-block inputs to hidden metaboxes before the
-				// meta-box-loader POST serialises them.
-				syncAllCanvasToMetabox();
-
+				// The canvas → metabox mirror runs for every save in watchSavesForCanvasSync().
 				editor.savePost();
 				return;
 			}
@@ -340,10 +337,9 @@ function onPublishClick( e ) {
 			// Validation failed — surface the errors and stop. Leaving the
 			// publish lock OFF lets the user click Publish again after fixing
 			// fields, which re-enters this handler.
-			const headline = __(
-				'This event has validation errors and cannot be published until they are fixed:',
-				'events-manager'
-			);
+			const headline = window.EM_EDITOR_TABS?.context === 'location'
+				? __( 'This location has validation errors and cannot be published until they are fixed:', 'events-manager' )
+				: __( 'This event has validation errors and cannot be published until they are fixed:', 'events-manager' );
 			const body = ( ( response && response.errors ) || [] )
 				.map( ( err ) => ( err && err.message ) || '' )
 				.filter( Boolean )
@@ -372,7 +368,6 @@ function onPublishClick( e ) {
 				{ id: NOTICE_ID, isDismissible: true }
 			);
 			editor.editPost( { status: intendedPublishStatus( editorRO ) }, { undoIgnore: true } );
-			syncAllCanvasToMetabox();
 			editor.unlockPostSaving( LOCK_KEY );
 			editor.savePost();
 		} );
@@ -409,7 +404,7 @@ function onPublishClick( e ) {
 /**
  * Mirror every named input from the em/event-when canvas block into the hidden
  * classic metaboxes so Gutenberg's meta-box-loader POST serialises the values
- * the user actually edited. Called right before editor.savePost().
+ * the user actually edited. Called as each save starts (watchSavesForCanvasSync).
  *
  * For inputs that already exist in the metabox: copy the value (and un-disable
  * if needed, inserting a shadow hidden input). For inputs that don't exist yet
@@ -435,6 +430,9 @@ function syncAllCanvasToMetabox() {
 		METABOX_IDS.push( 'em-event-when', 'em-event-recurring', 'em-event-bookings' );
 	}
 
+	// Every save mirrors again, so drop the shadows the previous save added or values would be posted twice.
+	document.querySelectorAll( 'input[data-em-canvas-sync]' ).forEach( ( el ) => el.remove() );
+
 	// Append one hidden input PER value. Multi-value array fields — a weekly
 	// recurrence's recurrence_bydays[] select, a select[multiple], grouped
 	// checkboxes — must POST as a real PHP array (repeated name[]), not a single
@@ -448,6 +446,7 @@ function syncAllCanvasToMetabox() {
 			hidden.type  = 'hidden';
 			hidden.name  = fieldName;
 			hidden.value = v ?? '';
+			hidden.dataset.emCanvasSync = '1';
 			if ( mode === 'after' ) {
 				after.insertAdjacentElement( 'afterend', hidden );
 				after = hidden; // keep source order for the next value
@@ -470,17 +469,21 @@ function syncAllCanvasToMetabox() {
 		const escaped = CSS.escape( name );
 		const sourceBox = input.closest( '[data-em-metabox]' )?.getAttribute( 'data-em-metabox' );
 
-		// Radios share a name across multiple elements — match by value so we
-		// update the counterpart of THIS radio, not just the first by name.
-		const valueSuffix = input.type === 'radio' ? `[value="${ CSS.escape( input.value ) }"]` : '';
-		const lookup = ( boxId ) => document.querySelector( `#${ boxId } [name="${ escaped }"]${ valueSuffix }` );
-
-		let existing = sourceBox ? lookup( sourceBox ) : null;
-		if ( ! existing ) {
-			for ( const boxId of METABOX_IDS ) {
-				existing = lookup( boxId );
-				if ( existing ) break;
+		// Radios and checkbox groups (name[] such as coupons or member roles) share a name across elements, so match by value to update the counterpart of THIS one, not the first by name.
+		const checkable = input.type === 'radio' || input.type === 'checkbox';
+		const byValue = checkable ? `[value="${ CSS.escape( input.value ) }"]` : '';
+		const lookupIn = ( boxId, suffix ) => document.querySelector( `#${ boxId } [name="${ escaped }"]${ suffix }` );
+		const find = ( suffix ) => {
+			let el = sourceBox ? lookupIn( sourceBox, suffix ) : null;
+			for ( let i = 0; ! el && i < METABOX_IDS.length; i++ ) {
+				el = lookupIn( METABOX_IDS[ i ], suffix );
 			}
+			return el;
+		};
+
+		let existing = find( byValue );
+		if ( ! existing && byValue && input.type === 'checkbox' && ! /\[\]$/.test( name ) ) {
+			existing = find( '' );
 		}
 
 		const getValue = ( el ) => {
@@ -501,9 +504,16 @@ function syncAllCanvasToMetabox() {
 				// metabox copy or the stale checked value gets POSTed (e.g. turning off
 				// "Enable registration" would silently not save).
 				existing.checked = input.checked;
-			} else if ( Array.isArray( val ) ) {
-				Array.from( existing.options || [] ).forEach( ( opt ) => {
-					opt.selected = val.includes( opt.value );
+			} else if ( existing.tagName === 'SELECT' ) {
+				// A selectize-managed select only keeps <option>s for its chosen items (the hidden metabox's weekday picker has none), so add any missing value before selecting it.
+				const values = Array.isArray( val ) ? val : [ val ?? '' ];
+				values.forEach( ( v ) => {
+					if ( ! Array.from( existing.options ).some( ( opt ) => opt.value === v ) ) {
+						existing.add( new Option( v, v ) );
+					}
+				} );
+				Array.from( existing.options ).forEach( ( opt ) => {
+					opt.selected = values.includes( opt.value );
 				} );
 			} else {
 				existing.value = val ?? '';
@@ -685,10 +695,30 @@ function watchSavesForMetaBoxReload() {
 	} );
 }
 
+/**
+ * Mirror the canvas into the hidden metaboxes whenever a real save starts, not only on the Publish/Update click the guard intercepts: Save draft, Ctrl+S, Schedule and Submit for Review never pass through onPublishClick, so their meta-box-loader POST used to carry the metaboxes' untouched defaults. The metabox forms are serialised after the REST save returns, so mirroring at the start of the save is early enough.
+ */
+function watchSavesForCanvasSync() {
+	let wasSaving = false;
+	subscribe( () => {
+		const editorRO = select( 'core/editor' );
+		if ( ! editorRO || typeof editorRO.isSavingPost !== 'function' ) {
+			return;
+		}
+		const saving = !! editorRO.isSavingPost();
+		if ( saving && ! wasSaving && ! editorRO.isAutosavingPost() && isEMPostType() ) {
+			syncAllCanvasToMetabox();
+		}
+		wasSaving = saving;
+	} );
+}
+
 domReady( () => {
 	// Capture phase: fires before React's bubble-phase listeners so the
 	// preventDefault / stopPropagation actually keep Gutenberg from saving.
 	document.addEventListener( 'click', onPublishClick, true );
+
+	watchSavesForCanvasSync();
 
 	// Recurring metabox visibility sync — see syncRecurringMetabox().
 	startRecurringMetaboxSync();

@@ -318,5 +318,5 @@ function wpfc_em_fullcalendar_args($args){
 }
 
 if( is_admin() ){
-	include('admin/settings/wpfc-admin.php');
+	include( EM_DIR . '/admin/settings/wpfc-admin.php' );
 }

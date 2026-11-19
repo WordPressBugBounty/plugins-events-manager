@@ -1276,7 +1276,7 @@ function em_upgrade_current_installation(){
 	}
 
 	// Check EM Pro update min
-	if( defined('EMP_VERSION') && EMP_VERSION < EM_PRO_MIN_VERSION && !defined('EMP_DISABLE_WARNINGS') ) {
+	if( defined('EMP_VERSION') && version_compare(EMP_VERSION, EM_PRO_MIN_VERSION, '<') && !defined('EMP_DISABLE_WARNINGS') ) {
 		$message = esc_html__('There is a newer version of Events Manager Pro which is recommended for this current version of Events Manager as new features have been added. Please go to the plugin website and download the latest update.','events-manager');
 		$message .= ' ' . sprintf(__('<a href="%s">Visit our blog</a> for the latest news about recent updates.','events-manager'), 'https://wp-events-plugin.com/blog/');
 

@@ -52,10 +52,18 @@ function em_init_actions_start() {
 			$json_locations = array();
 			foreach($EM_Locations as $location_key => $EM_Location) {
 				if ( ! $EM_Location->is_publicly_viewable() ) continue; // never disclose pending, draft or private locations to visitors who can't read them
-				$json_locations[$location_key] = $EM_Location->to_array();
-				if ( ! $EM_Location->password_required() ) {
-					$json_locations[$location_key]['location_balloon'] = $EM_Location->output( em_get_option('dbem_map_text_format') );
+				if ( $EM_Location->password_required() ) {
+					// A published but password-protected location still passes is_publicly_viewable(); to_array() would otherwise leak its address, town, notes and owner, so emit only the fields the map pin needs, matching the get_location branch above.
+					$json_locations[$location_key] = array(
+						'location_id'        => $EM_Location->location_id,
+						'location_latitude'  => $EM_Location->location_latitude,
+						'location_longitude' => $EM_Location->location_longitude,
+						'location_name'      => $EM_Location->location_name,
+					);
+					continue;
 				}
+				$json_locations[$location_key] = $EM_Location->to_array();
+				$json_locations[$location_key]['location_balloon'] = $EM_Location->output( em_get_option('dbem_map_text_format') );
 			}
 			echo EM_Object::json_encode( array_values($json_locations) ); // a skipped location leaves a gap in the keys, which encodes as an object the map can't read
 		 	die();
@@ -69,10 +77,18 @@ function em_init_actions_start() {
 			foreach($EM_Events as $EM_Event) {
 				$EM_Location = $EM_Event->get_location();
 				if ( ! $EM_Location->is_publicly_viewable() ) continue; // the joined location is only clamped on the main table, so re-check visibility before disclosing a pending/private venue (incl. venues of password-protected events)
-				$location_array = $EM_Location->to_array();
-				if ( ! $EM_Location->password_required() ) {
-					$location_array['location_balloon'] = $EM_Location->output(em_get_option('dbem_map_text_format'));
+				if ( $EM_Location->password_required() ) {
+					// a password-protected venue still passes is_publicly_viewable(); emit only the map-pin fields, not its full to_array(), to match GlobalMapData above
+					$json_locations[] = array(
+						'location_id'        => $EM_Location->location_id,
+						'location_latitude'  => $EM_Location->location_latitude,
+						'location_longitude' => $EM_Location->location_longitude,
+						'location_name'      => $EM_Location->location_name,
+					);
+					continue;
 				}
+				$location_array = $EM_Location->to_array();
+				$location_array['location_balloon'] = $EM_Location->output(em_get_option('dbem_map_text_format'));
 				$json_locations[] = $location_array;
 			}
 			echo EM_Object::json_encode($json_locations);
@@ -426,6 +442,9 @@ function em_init_actions_start() {
 			em_verify_nonce('booking_add_one');
 			if ( $EM_Event->event_status != 1 || $EM_Event->event_active_status != 1 ) {
 				$EM_Notices->add_error( __('This event is not available or has been cancelled.', 'events-manager') ); // uncommon, not needed for custom error.
+			} elseif ( !$EM_Event->is_viewable() && !$EM_Event->can_manage('manage_bookings','manage_others_bookings') ) {
+				// The booking_add_one nonce is not tied to an event, so a user can take one from a public event's one-click button and reuse it against an event they cannot view (private, pending or password-protected). Refuse unless they manage it, matching booking_add.
+				$EM_Notices->add_error( __('This event is not available or has been cancelled.', 'events-manager') );
 			} else {
 				if( $EM_Booking->get_option('dbem_bookings_double') || !$EM_Event->get_bookings()->has_booking(get_current_user_id()) ){
 					$EM_Booking = em_get_booking(array('person_id'=>get_current_user_id(), 'event_id'=>$EM_Event->event_id, 'booking_spaces'=>1)); //new booking

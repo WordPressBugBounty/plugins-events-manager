@@ -20,7 +20,7 @@ jQuery(document).ready( function($){
 			let form_data = new FormData();
 			if( custom_data.length > 0 ){
 				form_data = new FormData(custom_data[0]);
-				let $URL = new URL(url, window.location.origin);
+				let $URL = new URL(url, document.baseURI);
 				let url_params = $URL.searchParams;
 				for (const [key, value] of url_params.entries()) {
 					if( key === 'mo' ) {
@@ -70,7 +70,7 @@ jQuery(document).ready( function($){
 		let calendar_trigger_ajax = function( calendar, year, month ){
 			let link = calendar.find('.em-calnav-next');
 			// the next link has no href in the last month with events, and an empty href would send the request to the site root
-			let url = new URL(link.attr('href') || window.location.href, window.location.origin);
+			let url = new URL(link.attr('href') || document.baseURI, document.baseURI);
 			url.searchParams.set('mo', month);
 			url.searchParams.set('yr', year);
 			link.attr('href', url.toString()).trigger('click');

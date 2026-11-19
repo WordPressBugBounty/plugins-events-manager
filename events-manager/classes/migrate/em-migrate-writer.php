@@ -594,6 +594,11 @@ class Writer {
 					return true;
 				}
 				$EM_Booking->manage_override = true;
+				if ( defined( 'EM_TICKETS_BOOKINGS_CHECKINS_TABLE' ) ) {
+					// Pro's check-in rows aren't removed with their ticket bookings
+					global $wpdb;
+					$wpdb->query( $wpdb->prepare( 'DELETE FROM ' . EM_TICKETS_BOOKINGS_CHECKINS_TABLE . ' WHERE ticket_booking_id IN (SELECT ticket_booking_id FROM ' . EM_TICKETS_BOOKINGS_TABLE . ' WHERE booking_id=%d)', $id ) );
+				}
 				return (bool) $EM_Booking->delete();
 			case 'term':
 				$taxonomy = $row['data']['taxonomy'] ?? '';
@@ -626,6 +631,9 @@ class Writer {
 				return true;
 			case 'attendee':
 				return true;
+			case 'em_meta':
+				global $wpdb;
+				return false !== $wpdb->delete( EM_META_TABLE, array( 'meta_id' => $id ) );
 			case 'attachment':
 				return ! get_post( $id ) || (bool) wp_delete_attachment( $id, true );
 			case 'woocommerce_item':

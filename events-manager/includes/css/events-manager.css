@@ -4158,6 +4158,49 @@
   padding-left: 15px !important;
   text-align: left !important;
 }
+@media (max-width: 768px) {
+  .em.em-my-bookings #dbem-bookings-table {
+    display: block;
+  }
+  .em.em-my-bookings #dbem-bookings-table thead {
+    display: none;
+  }
+  .em.em-my-bookings #dbem-bookings-table tbody {
+    display: block;
+  }
+  .em.em-my-bookings #dbem-bookings-table tbody tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: 15px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border-color-softer, #dedede);
+  }
+  .em.em-my-bookings #dbem-bookings-table tbody td {
+    display: block;
+    grid-column: 1/-1;
+    min-width: 0;
+    padding: 0 !important;
+    border: 0 !important;
+    overflow-wrap: anywhere;
+  }
+  .em.em-my-bookings #dbem-bookings-table tbody td:first-child {
+    grid-column: 1;
+  }
+  .em.em-my-bookings #dbem-bookings-table tbody td:last-child {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .em.em-my-bookings #dbem-bookings-table tbody td[data-colname] {
+    display: flex;
+    gap: 10px;
+    margin-top: 6px;
+  }
+  .em.em-my-bookings #dbem-bookings-table tbody td[data-colname]::before {
+    content: attr(data-colname);
+    flex: 0 0 35%;
+    color: var(--text-color-softer, #555);
+  }
+}
 .em .em-my-bookings-actions-content a.em-bookings-rsvp-confirm {
   color: #198754 !important;
 }
@@ -4217,6 +4260,46 @@
 }
 .em.em-events-admin-list .input .tablenav {
   width: 50% !important;
+}
+@media only screen and (max-width: 39.99rem) {
+  .em.em-events-admin-list table.events-table {
+    display: block;
+    clear: both;
+  }
+  .em.em-events-admin-list table.events-table tbody {
+    display: block;
+  }
+  .em.em-events-admin-list table.events-table thead {
+    display: none;
+  }
+  .em.em-events-admin-list table.events-table tbody tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: 15px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border-color-softer, #dedede);
+  }
+  .em.em-events-admin-list table.events-table tbody td {
+    display: block;
+    grid-column: 1/-1;
+    min-width: 0;
+    padding: 0 !important;
+    border: 0 !important;
+    overflow-wrap: anywhere;
+  }
+  .em.em-events-admin-list table.events-table tbody td:first-child {
+    grid-column: 1;
+  }
+  .em.em-events-admin-list table.events-table tbody td:nth-child(2) {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .em.em-events-admin-list table.events-table tbody td:nth-child(n+3) {
+    margin-top: 8px;
+  }
+  .em.em-events-admin-list table.events-table tbody td:last-child:not(:has(*)) {
+    display: none;
+  }
 }
 .em.em-event-editor section, .em.em-location-editor section {
   margin-bottom: 40px;

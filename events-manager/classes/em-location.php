@@ -404,6 +404,8 @@ class EM_Location extends EM_Object {
 		//TODO shuffle filters into right place
 		if( get_site_option('dbem_ms_mainblog_locations') ){ self::ms_global_switch(); }
 		if( !$this->can_manage('edit_locations', 'edit_others_locations') && !( em_get_option('dbem_events_anonymous_submissions') && empty($this->location_id)) ){
+			if( get_site_option('dbem_ms_mainblog_locations') ){ self::ms_global_switch_back(); }
+			$EM_SAVING_LOCATION = false;
 			return apply_filters('em_location_save', false, $this);
 		}
 		do_action('em_location_save_pre', $this);
@@ -650,6 +652,7 @@ class EM_Location extends EM_Object {
 				}
 		    }
 			do_action('em_location_delete_pre', $this);
+			$switched = $this->switch_to_post_blog();
 			if( $force_delete ){
 				$result = wp_delete_post($this->post_id,$force_delete);
 			}else{
@@ -660,6 +663,7 @@ class EM_Location extends EM_Object {
 				    $result = true;
 				}
 			}
+			if( $switched ) restore_current_blog();
 			if( !$result && !empty($this->orphaned_location) ){
 			    //this is an orphaned event, so the wp delete posts would have never worked, so we just delete the row in our locations table
 			    $result = $this->delete_meta();
@@ -734,6 +738,7 @@ class EM_Location extends EM_Object {
 	 */
 	function set_status($status, $set_post_status = false){
 		global $wpdb;
+		$switched = $this->switch_to_post_blog();
 		//decide on what status to set and update wp_posts in the process
 		if($status === null){ 
 			$set_status='NULL'; //draft post
@@ -770,7 +775,20 @@ class EM_Location extends EM_Object {
 		$this->previous_status = $wpdb->get_var('SELECT location_status FROM '.EM_LOCATIONS_TABLE.' WHERE location_id='.$this->location_id); //get status from db, not post_status, as posts get saved quickly
 		$result = $wpdb->query($wpdb->prepare("UPDATE ".EM_LOCATIONS_TABLE." SET location_status=$set_status, location_slug=%s WHERE location_id=%d", array($this->post_name, $this->location_id)));
 		$this->get_status(); //reload status
+		if( $switched ) restore_current_blog();
 		return apply_filters('em_location_set_status', $result !== false, $status, $this);
+	}
+
+	/**
+	 * Switches to the blog holding this location's post (always the main blog when dbem_ms_mainblog_locations is on), so writes to $wpdb->posts and slug lookups never hit a post on the current blog that shares its ID.
+	 * @return boolean Whether a switch happened, in which case the caller must restore_current_blog().
+	 */
+	protected function switch_to_post_blog(){
+		if( !EM_MS_GLOBAL ) return false;
+		$blog_id = get_site_option('dbem_ms_mainblog_locations') ? get_current_site()->blog_id : $this->blog_id;
+		if( empty($blog_id) || $blog_id == get_current_blog_id() ) return false;
+		switch_to_blog($blog_id);
+		return true;
 	}
 	
 	/**

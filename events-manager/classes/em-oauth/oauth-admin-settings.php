@@ -123,7 +123,7 @@ class OAuth_API_Admin_Settings {
 	            }
 	            if( $connected ){
 	                $button_url = add_query_arg( array( 'action' => 'em_oauth_'. $option_name, 'callback' => 'disconnect', 'nonce' => wp_create_nonce('em-oauth-'. $option_name .'-disconnect') ), admin_url( 'admin-ajax.php' ) );
-	                $button_text = count($oauth_accounts) > 1 ? __('Disconnect All', 'events-manager') : __('Disonnect', 'events-manager');
+	                $button_text = count($oauth_accounts) > 1 ? __('Disconnect All', 'events-manager') : __('Disconnect', 'events-manager');
 	                $button_class = 'button-secondary';
 	            }else{
 	                $button_url = $oauth_url;

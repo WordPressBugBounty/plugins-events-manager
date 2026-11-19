@@ -147,7 +147,11 @@ class Tickets {
 		$meta = array( 'tec' => array( 'provider' => $t['provider'], 'ticket_id' => $post->ID, 'rsvp' => $is_rsvp ? 1 : 0 ) );
 		$fields = get_post_meta( $post->ID, '_tribe_tickets_meta', true );
 		if ( is_array( $fields ) && $fields ) {
-			$meta['tec']['attendee_fields'] = array_map( function( $f ) { return array( 'slug' => $f['slug'] ?? '', 'label' => $f['label'] ?? '', 'type' => $f['type'] ?? 'text', 'required' => ! empty( $f['required'] ) ); }, $fields );
+			$meta['tec']['attendee_fields'] = array_map( function( $f ) { return array( 'slug' => $f['slug'] ?? '', 'label' => $f['label'] ?? '', 'type' => $f['type'] ?? 'text', 'required' => ! empty( $f['required'] ), 'options' => array_values( (array) ( $f['extra']['options'] ?? array() ) ) ); }, $fields );
+		}
+		// Event Tickets Plus "individual attendee collection": none, allowed or required name and email for each attendee
+		if ( in_array( $m( '_tribe_tickets_ar_iac' ), array( 'allowed', 'required' ), true ) ) {
+			$meta['tec']['iac'] = $m( '_tribe_tickets_ar_iac' );
 		}
 		$EM_Ticket = Writer::save_ticket( $EM_Event, array(
 			// Event Tickets saves ticket names and descriptions HTML-escaped (Chef&#039;s table)
@@ -291,6 +295,10 @@ class Tickets {
 				'tec_security_code' => $am( $p['a_code'] ),
 				'tec_checked_in' => $tec->is_truthy( $am( $p['a_checkin'] ) ) ? 1 : null,
 			);
+			$checkin = maybe_unserialize( get_post_meta( $a->ID, $p['a_checkin'] . '_details', true ) );
+			if ( $attendee['tec_checked_in'] && is_array( $checkin ) && ! empty( $checkin['date'] ) && strtotime( $checkin['date'] ) ) {
+				$attendee['tec_checked_in_at'] = gmdate( 'Y-m-d H:i:s', strtotime( get_gmt_from_date( $checkin['date'] ) ) );
+			}
 			$fields = get_post_meta( $a->ID, '_tribe_tickets_meta', true );
 			if ( is_array( $fields ) ) {
 				foreach ( $fields as $slug => $value ) {
@@ -512,5 +520,131 @@ class Tickets {
 			$item->save();
 			Map::set( TEC::KEY, 'woocommerce_item', $order_id . ':' . $item_id, 'woocommerce_item', $item_id, array( 'order_id' => $order_id ) );
 		}
+	}
+
+	/**
+	 * With Events Manager Pro: events whose TEC tickets collected attendee information get a Pro attendee form with the same fields, and TEC check-ins go into Pro's check-in table.
+	 * Runs at the end of every migration, so a site that adds Pro afterwards gets both by running the migration again.
+	 */
+	public static function sync_pro( TEC $tec, Job $job ) {
+		if ( ! class_exists( 'EM_Attendees_Form' ) || ! defined( 'EM_TICKETS_BOOKINGS_CHECKINS_TABLE' ) || ! $job->option( 'tickets', true ) ) {
+			return;
+		}
+		$forms = static::sync_pro_attendee_forms( $tec, $job );
+		$checkins = static::sync_pro_checkins();
+		if ( $forms ) {
+			$job->log( sprintf( _n( '%d event got an attendee form with its Event Tickets attendee fields.', '%d events got attendee forms with their Event Tickets attendee fields.', $forms, 'events-manager' ), $forms ) );
+		}
+		if ( $checkins ) {
+			$job->count( 'attendees', 'checked_in', $checkins );
+			// Pro only loads check-in status and history with its attendance feature on
+			static::switch_on( 'dbem_bookings_attendance', $job );
+		}
+	}
+
+	/**
+	 * Turns a Pro option on, recording its previous value so rollback restores it.
+	 */
+	protected static function switch_on( $option, Job $job ) {
+		if ( get_option( $option ) ) {
+			return;
+		}
+		if ( ! Map::get( TEC::KEY, 'option', $option ) ) {
+			Map::set( TEC::KEY, 'option', $option, 'option', 0, array( 'option' => $option, 'previous' => get_option( $option, null ) ) );
+		}
+		update_option( $option, 1 );
+		$job->log( sprintf( 'Set %s to 1.', $option ) );
+	}
+
+	protected static function sync_pro_attendee_forms( TEC $tec, Job $job ) {
+		global $wpdb;
+		$events = $wpdb->get_col( $wpdb->prepare( 'SELECT em_id FROM ' . Map::table() . " WHERE source=%s AND object_type='event' AND em_type='event'", TEC::KEY ) );
+		$assigned = 0;
+		foreach ( $events as $event_id ) {
+			$post_id = (int) $wpdb->get_var( $wpdb->prepare( 'SELECT post_id FROM ' . EM_EVENTS_TABLE . ' WHERE event_id=%d', $event_id ) );
+			if ( ! $post_id ) {
+				continue;
+			}
+			// a recurring event's tickets are copied onto each of its dates
+			$metas = $wpdb->get_col( $wpdb->prepare( 'SELECT ticket_meta FROM ' . EM_TICKETS_TABLE . ' WHERE event_id=%d OR event_id IN (SELECT event_id FROM ' . EM_EVENTS_TABLE . ' WHERE recurrence_set_id IN (SELECT recurrence_set_id FROM ' . EM_EVENT_RECURRENCES_TABLE . ' WHERE event_id=%d))', $event_id, $event_id ) );
+			$fields = array();
+			$iac = '';
+			foreach ( $metas as $meta ) {
+				$t = ( (array) maybe_unserialize( $meta ) )['tec'] ?? array();
+				foreach ( (array) ( $t['attendee_fields'] ?? array() ) as $f ) {
+					$id = sanitize_key( $f['slug'] ?? '' );
+					if ( $id && ! isset( $fields[ $id ] ) ) {
+						$fields[ $id ] = $f;
+					}
+				}
+				if ( ! empty( $t['iac'] ) ) {
+					$iac = 'required' === $iac || 'required' === $t['iac'] ? 'required' : 'allowed';
+				}
+			}
+			if ( ! $fields && ! $iac ) {
+				continue;
+			}
+			$form = array( 'attendee_intro' => array( 'label' => __( 'Title', 'events-manager' ), 'type' => 'html', 'fieldid' => 'attendee_intro', 'options_html_content' => '<strong>' . sprintf( __( 'Attendee %s', 'events-manager' ), '#NUM#' ) . '</strong>' ) );
+			// field ids match the ticket booking meta keys the attendees were migrated with
+			// Event Tickets keeps a name for every attendee, so it is always shown; the email only where tickets collected one per attendee
+			$form['attendee_name'] = array( 'label' => __( 'Name', 'events-manager' ), 'type' => 'text', 'fieldid' => 'attendee_name', 'required' => 'required' === $iac ? 1 : 0 );
+			if ( $iac ) {
+				$form['attendee_email'] = array( 'label' => __( 'Email', 'events-manager' ), 'type' => 'text', 'fieldid' => 'attendee_email', 'required' => 'required' === $iac ? 1 : 0 );
+			}
+			foreach ( $fields as $id => $f ) {
+				$form[ $id ] = static::pro_form_field( $id, $f );
+			}
+			$hash = md5( wp_json_encode( $form ) );
+			$row = Map::get( TEC::KEY, 'attendee_form', $hash );
+			$form_id = $row && $wpdb->get_var( $wpdb->prepare( 'SELECT meta_id FROM ' . EM_META_TABLE . " WHERE meta_id=%d AND meta_key='attendee-form'", $row['em_id'] ) ) ? (int) $row['em_id'] : 0;
+			if ( ! $form_id ) {
+				$name = sprintf( __( '%s attendees (from The Events Calendar)', 'events-manager' ), get_the_title( $post_id ) );
+				$wpdb->insert( EM_META_TABLE, array( 'object_id' => 0, 'meta_key' => 'attendee-form', 'meta_value' => serialize( array( 'name' => $name, 'form' => $form ) ) ) );
+				$form_id = (int) $wpdb->insert_id;
+				Map::set( TEC::KEY, 'attendee_form', $hash, 'em_meta', $form_id );
+			}
+			if ( (int) get_post_meta( $post_id, '_custom_attendee_form', true ) !== $form_id ) {
+				update_post_meta( $post_id, '_custom_attendee_form', $form_id );
+				$assigned++;
+			}
+		}
+		if ( $events && $wpdb->get_var( $wpdb->prepare( 'SELECT map_id FROM ' . Map::table() . " WHERE source=%s AND object_type='attendee_form' LIMIT 1", TEC::KEY ) ) ) {
+			static::switch_on( 'em_attendee_fields_enabled', $job );
+		}
+		return $assigned;
+	}
+
+	protected static function pro_form_field( $id, array $f ) {
+		$types = array( 'textarea' => 'textarea', 'telephone' => 'tel', 'birth' => 'date', 'datetime' => 'date', 'select' => 'select', 'radio' => 'radio', 'checkbox' => 'checkboxes' );
+		$type = $types[ $f['type'] ?? 'text' ] ?? 'text';
+		$field = array( 'label' => $f['label'] ?: $id, 'type' => $type, 'fieldid' => $id, 'required' => ! empty( $f['required'] ) ? 1 : 0 );
+		$options = implode( "\r\n", array_map( 'strval', (array) ( $f['options'] ?? array() ) ) );
+		if ( 'select' === $type ) {
+			$field['options_select_values'] = $options;
+		} elseif ( in_array( $type, array( 'radio', 'checkboxes' ), true ) ) {
+			$field['options_selection_values'] = $options;
+		}
+		return $field;
+	}
+
+	/**
+	 * @return int check-ins added
+	 */
+	protected static function sync_pro_checkins() {
+		global $wpdb;
+		$rows = $wpdb->get_results( $wpdb->prepare(
+			'SELECT m.ticket_booking_id, at.meta_value AS checked_in_at FROM ' . EM_TICKETS_BOOKINGS_META_TABLE . ' m JOIN ' . EM_TICKETS_BOOKINGS_TABLE . ' tb ON tb.ticket_booking_id=m.ticket_booking_id'
+			. ' LEFT JOIN ' . EM_TICKETS_BOOKINGS_META_TABLE . " at ON at.ticket_booking_id=m.ticket_booking_id AND at.meta_key='tec_checked_in_at'"
+			. " WHERE m.meta_key='tec_checked_in' AND m.meta_value='1'"
+			. ' AND tb.booking_id IN (SELECT em_id FROM ' . Map::table() . " WHERE source=%s AND em_type='booking')"
+			. ' AND m.ticket_booking_id NOT IN (SELECT ticket_booking_id FROM ' . EM_TICKETS_BOOKINGS_CHECKINS_TABLE . ')', TEC::KEY ) );
+		foreach ( $rows as $r ) {
+			$row = array( 'ticket_booking_id' => (int) $r->ticket_booking_id, 'checkin_status' => 1 );
+			if ( $r->checked_in_at ) {
+				$row['checkin_ts'] = $r->checked_in_at;
+			}
+			$wpdb->insert( EM_TICKETS_BOOKINGS_CHECKINS_TABLE, $row );
+		}
+		return count( $rows );
 	}
 }

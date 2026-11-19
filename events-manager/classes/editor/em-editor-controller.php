@@ -43,7 +43,7 @@ class Editor {
 	}
 
 	/**
-	 * Whether canvas mode gathers its non-canvas tabs into a single tabbed fallback box (consumed by the Phase 3 fallback renderer).
+	 * Whether canvas mode gathers the panels the canvas can't render (Where, add-on tabs without canvas support) into one tabbed box in the parent document, when there are at least two of them; see do_consolidate().
 	 */
 	public static function canvas_fallback() {
 		return (bool) get_option( 'dbem_event_editor_canvas_fallback', 1 );
@@ -62,6 +62,11 @@ class Editor {
 		$layout = self::layout();
 		if ( $layout === 'canvas' ) {
 			add_action( 'admin_head', [ self::class, 'print_canvas_hide_css' ] );
+			if ( self::canvas_fallback() ) {
+				add_action( 'add_meta_boxes', [ self::class, 'consolidate_metaboxes' ], 20 );
+				add_action( 'admin_head', [ self::class, 'print_panel_css' ] );
+				add_action( 'admin_print_footer_scripts', [ self::class, 'print_panel_js' ] );
+			}
 		} elseif ( $layout === 'tabs' ) {
 			add_action( 'add_meta_boxes', [ self::class, 'consolidate_metaboxes' ], 20 );
 			add_action( 'admin_head', [ self::class, 'print_panel_css' ] );
@@ -115,6 +120,7 @@ class Editor {
 			return;
 		}
 		$config = [
+			'context'  => $registry instanceof Location ? 'location' : 'event',
 			'layout'   => self::effective_layout( $registry ),
 			'fallback' => self::canvas_fallback(),
 			'tabs'     => $registry->get_tabs_for_js(),
@@ -195,8 +201,23 @@ class Editor {
 		if ( ! $registry ) {
 			return;
 		}
+		$layout = self::effective_layout( $registry );
+		$box_ids = $registry->get_mapped_metabox_ids();
+		$title   = self::container_title( $post_type );
+		if ( $layout === 'canvas' ) {
+			// Canvas fallback: only the boxes the canvas can't render are gathered, and only when there are at least two of them, since a tabbed box holding a single panel would just rename that panel.
+			$box_ids = array_values( array_filter( array_diff( $box_ids, $registry->get_mapped_metabox_ids( true ) ), function ( $box_id ) use ( $post_type ) {
+				return self::has_metabox( $post_type, $box_id );
+			} ) );
+			if ( count( $box_ids ) < 2 ) {
+				return;
+			}
+			$title = __( 'Event Details', 'events-manager' );
+		} elseif ( $layout !== 'tabs' ) {
+			return;
+		}
 		self::$folded_boxes = [];
-		foreach ( $registry->get_mapped_metabox_ids() as $box_id ) {
+		foreach ( $box_ids as $box_id ) {
 			$box = self::extract_metabox( $post_type, $box_id );
 			if ( $box ) {
 				self::$folded_boxes[ $box_id ] = $box;
@@ -205,7 +226,20 @@ class Editor {
 		if ( empty( self::$folded_boxes ) ) {
 			return;
 		}
-		add_meta_box( 'em-editor-tabs', self::container_title( $post_type ), [ self::class, 'render_tabs_metabox' ], $post_type, 'normal', 'high' );
+		add_meta_box( 'em-editor-tabs', $title, [ self::class, 'render_tabs_metabox' ], $post_type, 'normal', 'high' );
+	}
+
+	/** Whether a metabox is currently registered for the screen, in any context or priority. */
+	private static function has_metabox( $screen, $box_id ) {
+		global $wp_meta_boxes;
+		foreach ( (array) ( $wp_meta_boxes[ $screen ] ?? [] ) as $priorities ) {
+			foreach ( (array) $priorities as $boxes ) {
+				if ( is_array( $boxes ) && ! empty( $boxes[ $box_id ] ) ) {
+					return true;
+				}
+			}
+		}
+		return false;
 	}
 
 	/**

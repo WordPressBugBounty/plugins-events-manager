@@ -44,9 +44,10 @@ function em_content($page_content) {
 					$args = EM_Events::get_post_search( $args );
 					$args['limit'] = !empty($args['limit']) ? $args['limit'] : em_get_option('dbem_events_default_limit');
 					em_locate_template('templates/calendar-day.php',true, array('args'=>$args));
-				}elseif ( is_object($EM_Event)) {
+				}elseif ( is_object($EM_Event) && $EM_Event->is_viewable() ) {
+					// An event set only from ?event_id=N must still pass its own visibility gate here. em_load_event() loads it for the booking actions (which do their own checks) with no gate, so without this a visitor could read a draft, pending, private or password-protected event's single view on the events page. is_viewable() still allows the owner/manager and an unlocked password.
 					$args['id'] = 6; // for easier reference in customizations
-					em_locate_template('templates/event-single.php',true, array('args'=>$args));	
+					em_locate_template('templates/event-single.php',true, array('args'=>$args));
 				}else{
 					// Multiple events page
 					$args['orderby'] = em_get_option('dbem_events_default_orderby');

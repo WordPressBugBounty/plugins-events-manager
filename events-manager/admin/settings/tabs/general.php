@@ -315,7 +315,7 @@ global $events_placeholder_tip, $locations_placeholder_tip, $categories_placehol
 						'dynamic' => _x('Dynamic', 'Google Map Type', 'events-manager'),
 						'embed' => _x('Embedded', 'Google Map Type', 'events-manager')
 					));
-					$google_map_options_pro = !defined('EMP_VERSION') || EMP_VERSION < 2.64 ? '<strong>'.sprintf(__('Upgrade to %s for more options!', 'events-manager'), '<a target="_blank" href="https://wp-events-plugin.com/google-maps/static-maps/?utm_source=plugin&utm_medium=settings&utm_campaign=gmaps-types">Events Manager Pro</a>').'</strong>' : '';
+					$google_map_options_pro = !defined('EMP_VERSION') || version_compare(EMP_VERSION, '2.64', '<') ? '<strong>'.sprintf(__('Upgrade to %s for more options!', 'events-manager'), '<a target="_blank" href="https://wp-events-plugin.com/google-maps/static-maps/?utm_source=plugin&utm_medium=settings&utm_campaign=gmaps-types">Events Manager Pro</a>').'</strong>' : '';
 					$google_map_options_desc = sprintf(__('Google offers different map displays, each with varying prices and free usage allowance. See our %s page for more information on these display options.', 'events-manager'), '<a href="https://wp-events-plugin.com/google-maps/map-types/?utm_source=plugin&utm_medium=settings&utm_campaign=gmaps-types">'.__('documentation', 'events-manager').'</a>') .' '. $google_map_options_pro;
 					em_options_select(__('Google Map Type', 'events-manager'), 'dbem_gmap_type', $google_map_options, $google_map_options_desc);
 					$embed_options = array('place' => __('Location name and address', 'events-manager'), 'address' => __('Address only', 'events-manager'), 'coordinates' => __('Location coordinates', 'events-manager'));

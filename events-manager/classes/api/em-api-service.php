@@ -803,6 +803,10 @@ class Service {
 		} else {
 			$can_manage_target = false;
 		}
+		// A booking must not be a backdoor to an event the caller cannot read. The read methods gate on can_read_event(); save_booking did not, so a subscriber could book a password-protected or otherwise unviewable event and read its content from the event embedded in the response. Someone who manages the event's bookings is exempt. Only on create; an existing booking is already gated by can_manage() above.
+		if ( !$id && $target_event && $target_event->event_id && !$can_manage_target && !static::can_read_event( $target_event ) ) {
+			return Utils::error( 'em_api_event_forbidden', __( 'You do not have permission to view this event.', 'events-manager' ), 403 );
+		}
 		// Let an add-on (Events Manager Pro) reshape the request data — e.g. map a structured booker `person` object onto the booking-form field names. Core books under the authenticated account, so it leaves the request data as-is.
 		$request_data = apply_filters( 'em_api_booking_request_data', static::booking_request_data( $data, $EM_Booking, $can_manage_target ), $data, $EM_Booking, $id );
 		// The gateway is only applied when a booking is made, so an update naming a different one would report success while changing nothing; a free booking is made without one, so there it is ignored unless the update makes the booking paid.
@@ -814,6 +818,13 @@ class Service {
 		$override_availability = !empty( $data['override_availability'] ) && $can_manage_target;
 		// "Booking on behalf of someone else" — attributing a booking to a guest or another user instead of the authenticated account — is a Pro capability (it depends on Pro's manual-booking / custom-form machinery). Core never does it: it always books as the authenticated account. Pro opts a create in by returning true here, and core then flips EM_Bookings::$force_registration for the save cycle so the booking form reads the supplied booker details rather than the current user. The API add() path never calls em_booking_add_registration(), so this can't create a WordPress account on its own — it only steers the form's person resolution.
 		$force_registration = (bool) apply_filters( 'em_api_booking_force_registration', false, $EM_Booking, $data, $id );
+		// em_load_event() binds the logged-in user to the booking and applies the one-booking-per-user rule for the form path, but it runs on template_redirect, which REST and ability requests never reach. Without this an API booking is saved as a guest (person_id 0), untraceable to the account and outside the limit. Attribute it to the authenticated user and apply the double-booking rule on create, unless Pro is booking on someone's behalf (force_registration). Set person_id on the booking itself rather than the global $EM_Person, which get_person() would otherwise keep set for the rest of the request (and, in the test suite with backupGlobals off, into later tests).
+		if ( !$id && !$force_registration && is_user_logged_in() && $target_event && $target_event->event_id ) {
+			if ( !$can_manage_target && !$EM_Booking->get_option( 'dbem_bookings_double' ) && $target_event->get_bookings()->has_booking( get_current_user_id() ) ) {
+				return Utils::error( 'em_api_booking_already_booked', $EM_Booking->get_option( 'dbem_booking_feedback_already_booked' ), 400 );
+			}
+			$EM_Booking->person_id = get_current_user_id();
+		}
 		// Run the whole get_post → validate → save cycle with the form-post environment in place. EM core and the Pro booking form re-read $_REQUEST during validate() and add()/save() (gateways, custom form fields, uploads), so the request data has to stay in $_REQUEST for the entire cycle, not just get_post().
 		$persist = function() use ( $EM_Booking, $data, $id, $override_availability, $gateway_change ) {
 			if ( $id ) {

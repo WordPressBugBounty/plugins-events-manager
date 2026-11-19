@@ -95,6 +95,10 @@ class Requirements_Check {
 						// translators: plugin names and version numbers
 						$warning = __('%1$s recommends %2$s version %3$s or greater installed. Earlier versions may cause unexpected issues.', 'events-manager');
 						$warning = sprintf( esc_html($warning), '<code>' . $this->title . '</code>', '<a href="'. $dependency['url'] .'">' . $dependency['name'] . '</a>', $dependency['minimum']);
+						if ( ! class_exists( 'EM_Admin_Notices' ) ) {
+							// admin notice classes are only loaded for admin and REST requests, but plugins run this check on every request
+							include_once( EM_DIR . '/classes/em-admin-notices.php' );
+						}
 						$EM_Admin_Notice = new EM_Admin_Notice( $dependency['name'].'-minimum', 'warning', $warning );
 						\EM_Admin_Notices::add( $EM_Admin_Notice );
 					}

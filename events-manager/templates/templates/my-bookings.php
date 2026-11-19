@@ -47,13 +47,13 @@
 						?>
 						<tr>
 							<td><?php echo $EM_Event->output("#_EVENTLINK"); ?></td>
-							<td><?php echo $EM_Event->start()->i18n( em_get_option('dbem_date_format') ); ?></td>
-							<td><?php echo $EM_Booking->get_spaces() ?></td>
-							<td>
+							<td data-colname="<?php esc_attr_e('Date', 'events-manager'); ?>"><?php echo $EM_Event->start()->i18n( em_get_option('dbem_date_format') ); ?></td>
+							<td data-colname="<?php esc_attr_e('Spaces', 'events-manager'); ?>"><?php echo $EM_Booking->get_spaces() ?></td>
+							<td data-colname="<?php esc_attr_e('Status', 'events-manager'); ?>">
 								<?php echo $EM_Booking->get_status(); ?>
 							</td>
 							<?php if( em_get_option('dbem_bookings_rsvp') && em_get_option('dbem_bookings_rsvp_my_bookings') ): ?>
-								<td>
+								<td data-colname="<?php esc_attr_e('RSVP', 'events-manager'); ?>">
 									<?php echo $EM_Booking->get_rsvp_status( true ); ?>
 								</td>
 							<?php endif; ?>

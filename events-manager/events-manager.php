@@ -1,7 +1,7 @@
 <?php
 /*
 Plugin Name: Events Manager
-Version: 7.5
+Version: 7.6
 Plugin URI: https://wp-events-plugin.com
 Description: Event registration and booking management for WordPress. Recurring events, locations, webinars, google maps, rss, ical, booking registration and more!
 Author: Pixelite
@@ -30,7 +30,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 // Setting constants
 use EM\Archetypes;
 
-define('EM_VERSION', '7.5'); //self expanatory, although version currently may not correspond directly with published version number. until 6.0 we're stuck updating 5.999.x
+define('EM_VERSION', '7.6'); //self expanatory, although version currently may not correspond directly with published version number. until 6.0 we're stuck updating 5.999.x
 define('EM_PRO_MIN_VERSION', '3.9'); //self expanatory
 define('EM_PRO_MIN_VERSION_CRITICAL', '3.6.0.2'); //self expanatory
 define('EM_FILE', __FILE__); //an absolute path to this directory
@@ -301,21 +301,7 @@ function em_enqueue_public(){ EM_Scripts_and_Styles::public_enqueue(); } //In ca
  * Perform plugins_loaded actions
  */
 function em_plugins_loaded(){
-	//WPFC Integration
-	if( defined('WPFC_VERSION') ){
-		function load_em_wpfc_plugin(){
-			if( !function_exists('wpfc_em_init') ) include( EM_DIR . '/em-wpfc.php' );	
-		}
-		add_action('init', 'load_em_wpfc_plugin', 200);
-	}
-	//bbPress
-	if( class_exists( 'bbPress' ) ) include( EM_DIR . '/em-bbpress.php' );
-	// other integrations
-	if( class_exists('\Thrive\Automator\Admin') ){
-		include( EM_DIR . '/integrations/thrive-automator/events-manager-thrive-automator.php' );
-	}
-	// duplicate posts - small so we just include it
-	include( EM_DIR . '/integrations/duplicate-post-plugins/duplicate-post-plugins.php' );
+	include( EM_DIR . '/integrations/integrations.php' );
 	// fix Pro timeslot support by disabling timeslots if not the high enough version
 	if ( defined('EMP_VERSION')  && version_compare( EMP_VERSION, '3.7.2', '<' ) ) {
 		add_filter('pre_option_dbem_event_timeranges_enabled', '__return_zero');
@@ -1009,7 +995,7 @@ register_deactivation_hook( __FILE__,'em_deactivate');
  * Fail-safe compatibility checking of EM Pro 
  */
 function em_check_pro_compatability(){
-	if( defined('EMP_VERSION') && EMP_VERSION < EM_PRO_MIN_VERSION_CRITICAL && (!defined('EMP_DISABLE_CRITICAL_WARNINGS') || !EMP_DISABLE_CRITICAL_WARNINGS) ){
+	if( defined('EMP_VERSION') && version_compare(EMP_VERSION, EM_PRO_MIN_VERSION_CRITICAL, '<') && (!defined('EMP_DISABLE_CRITICAL_WARNINGS') || !EMP_DISABLE_CRITICAL_WARNINGS) ){
 		include( EM_DIR . '/em-pro-compatibility.php' );
 	}
 }

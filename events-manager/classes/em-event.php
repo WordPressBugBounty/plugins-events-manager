@@ -3206,12 +3206,14 @@ class EM_Event extends EM_Object{
 					break;
 				case '#_NOTES': //deprecated
 				case '#_EVENTNOTES':
-					$replace = $this->post_content;
+					$replace = $this->password_required() ? '' : $this->post_content; // a password-protected event's body must not leak through placeholders rendered in lists, search and the calendar
 					break;
 				case '#_EXCERPT': //deprecated
 				case '#_EVENTEXCERPT':
 				case '#_EVENTEXCERPTCUT':
-					if( !empty($this->post_excerpt) && $result != "#_EVENTEXCERPTCUT" ){
+					if( $this->password_required() ){
+						$replace = ''; // same: no excerpt of a password-protected event's content
+					}elseif( !empty($this->post_excerpt) && $result != "#_EVENTEXCERPTCUT" ){
 						$replace = $this->post_excerpt;
 					}else{
 						$excerpt_length = ( $result == "#_EVENTEXCERPTCUT" ) ? 55:false;

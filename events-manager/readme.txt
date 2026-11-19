@@ -5,7 +5,7 @@ Tags: events, calendar, tickets, bookings, appointments
 Text Domain: events-manager
 Requires at least: 6.1
 Tested up to: 7.1
-Stable tag: 7.5
+Stable tag: 7.6
 Requires PHP: 7.4
 License: GPLv2
 
@@ -231,6 +231,27 @@ See our [FAQ](http://wp-events-plugin.com/documentation/faq/) page for help with
 18. Grid view for displaying your upcoming events at a glance
 
 == Changelog ==
+= 7.6 =
+* Added: Elementor widgets for the events list, calendar, locations and Pro bookings cart
+* Added: Beaver Builder modules for the events list, calendar, locations and Pro bookings cart
+* Added: Divi modules for the events list, calendar, locations and Pro bookings cart, for Divi 4 and Divi 5
+* Added: WPBakery Page Builder elements for the events list, calendar, locations and Pro bookings cart
+* Added: The Events Calendar migration now brings Event Tickets Plus attendee fields and check-ins into Events Manager Pro
+* Tweaked: Updated the bundled js-cookie library to 3.0.7
+* Security: Fixed information disclosure vulnerabilities affecting non-public events and locations, reported by Zackary Loevseth and Lowk3yz via the Security Hunt
+* Security: Fixed broken access control vulnerabilities when booking events, reported by Zackary Loevseth and Honeypunch via the Security Hunt
+* Fixed: Block editor Save draft not saving an event's dates, registration and tickets in the Canvas tabs layout
+* Fixed: Block editor putting a new weekly recurring event back to draft with no dates, as its weekdays were not saved
+* Fixed: Block editor checkbox lists in the Canvas tabs layout, such as event coupons and ticket member roles, saving the wrong boxes
+* Fixed: Block editor hybrid ticket access, physical and virtual spaces and the attendee-only link option not appearing until the event was saved and reopened
+* Fixed: Block editor location validation errors calling the location an event
+* Fixed: Fallback panels setting having no effect in the Canvas tabs layout
+* Fixed: Front-end My Bookings and event management lists running wider than the screen on phones
+* Fixed: MultiSite global locations publishing or deleting a location from a sub-site changing the sub-site post with the same ID instead
+* Fixed: Calendar navigation and list pagination not working inside page builder previews such as the Divi Visual Builder
+* Fixed: Fatal error on the front end and in cron when an add-on recommends a newer version of Events Manager
+* Fixed: Events Manager Pro 3.10 and later being read as older than 3.9 in version checks
+* Fixed: "Disonnect" typo on the OAuth account disconnect button
 = 7.5 =
 * Added: Migration tool for The Events Calendar, bringing over events, venues, organizers, categories, tags, tickets and attendees while keeping your existing web addresses
 * Added: One-time CSV import of events, locations and organizers, under Settings > Admin Tools

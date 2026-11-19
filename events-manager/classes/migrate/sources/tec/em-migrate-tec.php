@@ -126,7 +126,7 @@ class TEC extends Source {
 			$notices[] = array( 'type' => 'info', 'message' => __( 'Bookings are disabled in Events Manager. Migrating tickets turns them on.', 'events-manager' ) );
 		}
 		if ( ! defined( 'EMP_VERSION' ) && Tickets::count_attendees() ) {
-			$notices[] = array( 'id' => 'attendee_details_need_pro', 'type' => 'info', 'message' => __( 'Attendee names, answers to attendee fields and check-in status are copied and kept with each ticket. Without Events Manager Pro they are not shown, so you will see each booking, its tickets and the person who booked.', 'events-manager' ) );
+			$notices[] = array( 'id' => 'attendee_details_need_pro', 'type' => 'info', 'message' => __( 'Attendee names, answers to attendee fields and check-in status are copied and kept with each ticket. Without Events Manager Pro they are not shown, so you will see each booking, its tickets and the person who booked. If you add Events Manager Pro later, run the migration again to set up its attendee forms and check-ins.', 'events-manager' ) );
 		}
 		$recurring_tickets = Tickets::count_recurring_event_tickets( $this );
 		if ( $recurring_tickets ) {
@@ -883,6 +883,7 @@ class TEC extends Source {
 
 	protected function step_finish( Job $job ) {
 		wp_defer_term_counting( false );
+		Tickets::sync_pro( $this, $job );
 		if ( $job->option( 'redirects', true ) ) {
 			Migrate::enable_redirects( static::KEY );
 			if ( ! Map::get( static::KEY, 'option', 'dbem_migrate_redirects' ) ) {

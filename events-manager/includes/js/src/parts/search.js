@@ -730,7 +730,7 @@ jQuery(document).ready( function($){
 			href += data;
 		}
 		// build querystring from url
-		let url_params = new URL(href, window.location.origin).searchParams;
+		let url_params = new URL(href, document.baseURI).searchParams;
 		if( view.attr('data-view') ) {
 			url_params.set('view', view.attr('data-view'));
 		}

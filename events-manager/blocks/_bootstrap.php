@@ -193,46 +193,10 @@ class EM_Blocks {
 	 * ----------------------------------------------------------------- */
 
 	private static function render_widget( $widget_class, $attrs ) {
-		if ( ! class_exists( $widget_class ) ) {
-			return '';
-		}
-		$widget = new $widget_class();
-		$args = [
-			'before_widget' => '',
-			'after_widget'  => '',
-			'before_title'  => '<h3 class="wp-block-events-manager__title">',
-			'after_title'   => '</h3>',
-		];
-
-		// Block.json attributes default to empty strings/zero for many fields
-		// (format, format_header, no_events_text, etc.). When passed straight to
-		// the widget, array_merge( $widget->defaults, $attrs ) lets those empty
-		// strings clobber the widget's real defaults — most importantly the
-		// per-item format template, which produces empty <li> output for every
-		// event/location. Strip empty values so the widget's defaults kick in
-		// for any field the user hasn't actually configured.
-		$instance = [];
-		foreach ( (array) $attrs as $key => $value ) {
-			if ( $value === '' || $value === null ) {
-				continue;
-			}
-			$instance[ $key ] = $value;
-		}
-
-		ob_start();
-		$widget->widget( $args, $instance );
-		$html = ob_get_clean();
-
-		// The EM widget templates (templates/formats/block_*_list_item_format.php
-		// and the items they render) are indented for readability — newlines and
-		// tabs between every tag. When this output ends up inside a single-event
-		// post (the_content path) and then through the dbem_notes filter chain
-		// in classes/em-event.php (which add wpautop, line 4045), all that
-		// inter-tag whitespace gets turned into spurious <p>…</p> and <br />
-		// wrappers, breaking the address grid and the flex/grid item alignment.
-		// Compressing whitespace between tags leaves wpautop with nothing to
-		// expand, so the block markup arrives at the browser intact.
-		return preg_replace( '/>\s+</', '><', $html );
+		return \EM\Builders\Units::render_widget( $widget_class, (array) $attrs, [
+			'before_title' => '<h3 class="wp-block-events-manager__title">',
+			'after_title'  => '</h3>',
+		] );
 	}
 
 	public static function render_calendar( $attrs ) {

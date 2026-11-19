@@ -712,6 +712,51 @@
 	padding-left: 15px !important;
 	text-align: left !important;
 }
+@media (max-width: 768px) {
+	&.em-my-bookings #dbem-bookings-table {
+		display: block;
+		thead {
+			display: none;
+		}
+		tbody {
+			display: block;
+		}
+		tbody tr {
+			display: grid;
+			grid-template-columns: minmax(0, 1fr) auto;
+			column-gap: 15px;
+			padding: 12px 0;
+			border-bottom: 1px solid var(--border-color-softer, #dedede);
+		}
+		tbody td {
+			display: block;
+			grid-column: 1 / -1;
+			min-width: 0;
+			padding: 0 !important;
+			border: 0 !important;
+			overflow-wrap: anywhere;
+
+			&:first-child {
+				grid-column: 1;
+			}
+			&:last-child {
+				grid-column: 2;
+				grid-row: 1;
+			}
+			&[data-colname] {
+				display: flex;
+				gap: 10px;
+				margin-top: 6px;
+
+				&::before {
+					content: attr(data-colname);
+					flex: 0 0 35%;
+					color: var(--text-color-softer, #555);
+				}
+			}
+		}
+	}
+}
 .em-my-bookings-actions-content {
 	a.em-bookings-rsvp-confirm {
 		color : #198754 !important;
